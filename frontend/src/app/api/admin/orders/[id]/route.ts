@@ -1,0 +1,80 @@
+import { directusFetch } from "@/lib/directus-fetch";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  try {
+    const body = await request.json();
+    const updateData: Record<string, unknown> = {};
+
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+      if (body.status === "success") {
+        updateData.paid_at = new Date().toISOString();
+      }
+    }
+
+    const res = await directusFetch(`/items/orders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updateData),
+    });
+
+    if (res.status === 401) {
+      return NextResponse.json(
+        { error: "Không có quyền truy cập" },
+        { status: 401 }
+      );
+    }
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: "Không thể cập nhật đơn hàng" },
+        { status: res.status }
+      );
+    }
+
+    // If marking as success, create enrollments for all items
+    if (body.status === "success") {
+      try {
+        const orderRes = await directusFetch(
+          `/items/orders/${id}?fields=user_id,items.course_id`
+        );
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          const order = orderData.data;
+          const userId = typeof order.user_id === "string" ? order.user_id : order.user_id?.id;
+
+          for (const item of order.items ?? []) {
+            const courseId = typeof item.course_id === "string" ? item.course_id : item.course_id?.id;
+            if (userId && courseId) {
+              await directusFetch(`/items/enrollments`, {
+                method: "POST",
+                body: JSON.stringify({
+                  user_id: userId,
+                  course_id: courseId,
+                  status: "active",
+                  progress_percentage: 0,
+                  enrolled_at: new Date().toISOString(),
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json(
+      { error: "Lỗi hệ thống" },
+      { status: 500 }
+    );
+  }
+}

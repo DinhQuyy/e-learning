@@ -1,0 +1,65 @@
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: elearning
+      POSTGRES_USER: directus
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U directus -d elearning"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elearning-network
+
+  directus:
+    image: directus/directus:11
+    restart: unless-stopped
+    ports:
+      - "8055:8055"
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      DB_CLIENT: pg
+      DB_HOST: database
+      DB_PORT: "5432"
+      DB_DATABASE: elearning
+      DB_USER: directus
+      DB_PASSWORD: ${DB_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "http://localhost:3000"
+      CORS_CREDENTIALS: "true"
+      WEBSOCKETS_ENABLED: "true"
+      PUBLIC_URL: "http://localhost:8055"
+      REFRESH_TOKEN_COOKIE_SECURE: "false"
+      REFRESH_TOKEN_COOKIE_SAME_SITE: "lax"
+      EMAIL_TRANSPORT: "smtp"
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_SMTP_HOST: "smtp.gmail.com"
+      EMAIL_SMTP_PORT: "587"
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD}
+      EMAIL_SMTP_SECURE: "false" # STARTTLS on port 587
+      PASSWORD_RESET_URL_ALLOW_LIST: "http://localhost:3000/reset-password"
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./extensions:/directus/extensions
+      - ./snapshots:/directus/snapshots
+    networks:
+      - elearning-network
+
+volumes:
+  pgdata:
+
+networks:
+  elearning-network:
+    driver: bridge

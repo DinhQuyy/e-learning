@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,8 +25,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Edit, Trash2, HelpCircle } from "lucide-react";
-import { apiFetch, apiDelete } from "@/lib/api-fetch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowLeft,
+  Edit,
+  HelpCircle,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import { apiDelete, apiFetch, apiPost } from "@/lib/api-fetch";
 
 interface Quiz {
   id: string;
@@ -39,26 +62,41 @@ interface Quiz {
   questions?: { id: string }[];
 }
 
+interface StudentOption {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface LessonWithQuizzes {
+  id: string | number;
+  title: string;
+  quizzes?: Quiz[];
+}
+
 export default function QuizListPage() {
   const params = useParams();
   const courseId = params.id as string;
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resetQuiz, setResetQuiz] = useState<Quiz | null>(null);
+  const [resetStudentId, setResetStudentId] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
 
   const loadQuizzes = async () => {
     try {
-      const res = await apiFetch(
-        `/api/instructor/courses/${courseId}/lessons`
-      );
+      const res = await apiFetch(`/api/instructor/courses/${courseId}/lessons`);
 
       if (!res.ok) {
         throw new Error("Failed to load lessons");
       }
 
       const data = await res.json();
-      const lessons = data.data ?? [];
+      const lessons: LessonWithQuizzes[] = data.data ?? [];
 
       // Extract quizzes from lessons
       const allQuizzes: Quiz[] = [];
@@ -67,7 +105,7 @@ export default function QuizListPage() {
         for (const quiz of lessonQuizzes) {
           allQuizzes.push({
             ...quiz,
-            lesson_id: { id: lesson.id, title: lesson.title },
+            lesson_id: { id: String(lesson.id), title: lesson.title },
           });
         }
       }
@@ -79,8 +117,37 @@ export default function QuizListPage() {
     }
   };
 
+  const loadStudents = async () => {
+    try {
+      const res = await apiFetch(`/api/instructor/courses/${courseId}/students`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        const message = [err?.error, err?.detail].filter(Boolean).join(" | ");
+        throw new Error(message || "Không thể tải danh sách học viên");
+      }
+
+      const data = await res.json();
+      const list: StudentOption[] = data.data ?? [];
+      setStudents(list);
+
+      const enrollmentCount = Number(data?.meta?.enrollment_count ?? 0);
+      if (list.length === 0 && enrollmentCount > 0) {
+        toast.warning(
+          "Có học viên đã đăng ký nhưng chưa đọc được user_id để đặt lại lượt làm quiz."
+        );
+      }
+    } catch {
+      toast.error("Không thể tải danh sách học viên");
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
   useEffect(() => {
+    setIsLoading(true);
+    setIsLoadingStudents(true);
     loadQuizzes();
+    loadStudents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
@@ -89,24 +156,66 @@ export default function QuizListPage() {
     try {
       const res = await apiDelete(`/api/instructor/quizzes/${quizId}`);
 
-      if (!res.ok) throw new Error("Không thể xoá quiz");
+      if (!res.ok) throw new Error("Không thể xóa quiz");
 
-      toast.success("Đã xoá quiz!");
+      toast.success("Đã xóa quiz!");
       setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Không thể xoá quiz"
-      );
+      toast.error(error instanceof Error ? error.message : "Không thể xóa quiz");
     } finally {
       setDeletingId(null);
     }
   };
 
+  const handleOpenResetDialog = (quiz: Quiz) => {
+    setResetQuiz(quiz);
+    setResetStudentId("");
+  };
+
+  const handleCloseResetDialog = () => {
+    if (isResetting) return;
+    setResetQuiz(null);
+    setResetStudentId("");
+  };
+
+  const handleResetAttempts = async () => {
+    if (!resetQuiz || !resetStudentId) {
+      toast.error("Vui lòng chọn học viên");
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const res = await apiPost(
+        `/api/instructor/courses/${courseId}/quizzes/${resetQuiz.id}/reset-attempts`,
+        { user_id: resetStudentId }
+      );
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const message = [data?.error, data?.detail].filter(Boolean).join(" | ");
+        throw new Error(message || "Không thể đặt lại lượt làm quiz");
+      }
+
+      toast.success(data?.message || "Đã đặt lại lượt làm quiz");
+      setResetQuiz(null);
+      setResetStudentId("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể đặt lại lượt làm quiz"
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const getLessonTitle = (quiz: Quiz): string => {
-    if (!quiz.lesson_id) return "Chưa gán bài học";
+    if (!quiz.lesson_id) return "Chưa gắn bài học";
     if (typeof quiz.lesson_id === "object") return quiz.lesson_id.title;
     return `Bài học #${quiz.lesson_id}`;
   };
+
+  const selectedStudent = students.find((student) => student.id === resetStudentId);
 
   return (
     <div className="space-y-6">
@@ -119,12 +228,8 @@ export default function QuizListPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Quản lý Quiz
-            </h1>
-            <p className="text-muted-foreground">
-              {quizzes.length} quiz trong khoá học
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">Quản lý quiz</h1>
+            <p className="text-muted-foreground">{quizzes.length} quiz trong khóa học</p>
           </div>
         </div>
         <Link href={`/instructor/courses/${courseId}/quizzes/new`}>
@@ -150,10 +255,7 @@ export default function QuizListPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Tạo quiz để kiểm tra kiến thức của học viên
             </p>
-            <Link
-              href={`/instructor/courses/${courseId}/quizzes/new`}
-              className="mt-4"
-            >
+            <Link href={`/instructor/courses/${courseId}/quizzes/new`} className="mt-4">
               <Button>
                 <Plus className="mr-2 size-4" />
                 Tạo quiz đầu tiên
@@ -169,19 +271,26 @@ export default function QuizListPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-base">{quiz.title}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {getLessonTitle(quiz)}
-                    </CardDescription>
+                    <CardDescription className="mt-1">{getLessonTitle(quiz)}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link
-                      href={`/instructor/courses/${courseId}/quizzes/${quiz.id}/edit`}
-                    >
+                    <Link href={`/instructor/courses/${courseId}/quizzes/${quiz.id}/edit`}>
                       <Button variant="outline" size="sm">
                         <Edit className="mr-1.5 size-3.5" />
                         Sửa
                       </Button>
                     </Link>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenResetDialog(quiz)}
+                      disabled={isLoadingStudents || students.length === 0}
+                    >
+                      <RotateCcw className="mr-1.5 size-3.5" />
+                      Đặt lại lượt
+                    </Button>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -191,25 +300,24 @@ export default function QuizListPage() {
                           disabled={deletingId === quiz.id}
                         >
                           <Trash2 className="mr-1.5 size-3.5" />
-                          Xoá
+                          Xóa
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Xoá quiz?</AlertDialogTitle>
+                          <AlertDialogTitle>Xóa quiz?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Bạn có chắc muốn xoá quiz &ldquo;{quiz.title}
-                            &rdquo;? Tất cả câu hỏi và câu trả lời sẽ bị xoá
-                            vĩnh viễn.
+                            Bạn có chắc muốn xóa quiz &ldquo;{quiz.title}&rdquo;? Tất cả câu hỏi và
+                            câu trả lời sẽ bị xóa vĩnh viễn.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                          <AlertDialogCancel>Hủy</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDelete(quiz.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            Xoá
+                            Xóa
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -217,22 +325,13 @@ export default function QuizListPage() {
                   </div>
                 </div>
               </CardHeader>
+
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  <Badge variant="secondary">
-                    {quiz.questions?.length ?? 0} câu hỏi
-                  </Badge>
-                  <Badge variant="outline">
-                    Điểm đạt: {quiz.passing_score}%
-                  </Badge>
-                  {quiz.time_limit > 0 && (
-                    <Badge variant="outline">
-                      {quiz.time_limit} phút
-                    </Badge>
-                  )}
-                  <Badge variant="outline">
-                    Tối đa {quiz.max_attempts} lần thử
-                  </Badge>
+                  <Badge variant="secondary">{quiz.questions?.length ?? 0} câu hỏi</Badge>
+                  <Badge variant="outline">Điểm đạt: {quiz.passing_score}%</Badge>
+                  {quiz.time_limit > 0 && <Badge variant="outline">{quiz.time_limit} phút</Badge>}
+                  <Badge variant="outline">Tối đa {quiz.max_attempts} lần thử</Badge>
                 </div>
                 {quiz.description && (
                   <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
@@ -244,6 +343,81 @@ export default function QuizListPage() {
           ))}
         </div>
       )}
+
+      <Dialog
+        open={Boolean(resetQuiz)}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseResetDialog();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đặt lại lượt làm quiz</DialogTitle>
+            <DialogDescription>
+              Xóa toàn bộ lượt làm của một học viên cho quiz <span className="font-medium">{resetQuiz?.title}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="reset-student">Học viên</Label>
+            <Select
+              value={resetStudentId}
+              onValueChange={setResetStudentId}
+              disabled={isLoadingStudents || students.length === 0 || isResetting}
+            >
+              <SelectTrigger id="reset-student">
+                <SelectValue
+                  placeholder={
+                    isLoadingStudents
+                      ? "Đang tải học viên..."
+                      : students.length === 0
+                        ? "Chưa có học viên"
+                        : "Chọn học viên cần đặt lại lượt"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map((student) => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.name}
+                    {student.email ? ` - ${student.email}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedStudent && (
+              <p className="text-xs text-muted-foreground">
+                Sẽ đặt lại tất cả lượt làm quiz của {selectedStudent.name}.
+              </p>
+            )}
+            {!isLoadingStudents && students.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Khóa học chưa có học viên đăng ký.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseResetDialog}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleResetAttempts}
+              disabled={
+                isResetting ||
+                isLoadingStudents ||
+                students.length === 0 ||
+                !resetStudentId
+              }
+            >
+              {isResetting ? "Đang đặt lại..." : "Xác nhận đặt lại"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

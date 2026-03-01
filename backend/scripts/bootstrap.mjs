@@ -8,10 +8,10 @@
  *
  * Yêu cầu: Docker backend phải đang chạy.
  *
- * Usage: node backend/scripts/bootstrap.mjs
+ * Usage: node backend/scripts/bootstrap.mjs [--write-static-token-file]
  */
 
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -39,6 +39,11 @@ const ADMIN_EMAIL = env.ADMIN_EMAIL || "admin@elearning.dev";
 const ADMIN_PASSWORD = env.ADMIN_PASSWORD || "Admin@123456";
 
 let TOKEN = "";
+const args = new Set(process.argv.slice(2));
+const WRITE_STATIC_TOKEN_FILE =
+  args.has("--write-static-token-file") ||
+  args.has("--write-token-file") ||
+  args.has("--write-env");
 
 // ─── HTTP Helpers ────────────────────────────────────────────────────────────
 
@@ -92,6 +97,40 @@ function section(title) {
   console.log(`\n${"─".repeat(60)}`);
   console.log(`  ${title}`);
   console.log(`${"─".repeat(60)}`);
+}
+
+function centerText(text, width) {
+  if (text.length >= width) return text;
+  const left = Math.floor((width - text.length) / 2);
+  const right = width - text.length - left;
+  return `${" ".repeat(left)}${text}${" ".repeat(right)}`;
+}
+
+function printSummary({ staticToken, wroteEnvFile }) {
+  const lines = [
+    `  Admin:      ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`,
+    "  Instructor: instructor@elearning.dev / Instructor@123",
+    "  Student:    student@elearning.dev / Student@123",
+    "",
+    `  Directus Admin: ${BASE_URL}`,
+    `  Static token: ${staticToken}`,
+  ];
+
+  if (wroteEnvFile) {
+    lines.push("  Static token file: frontend/.env.local");
+  }
+
+  const title = "Bootstrap complete!";
+  const width = Math.max(title.length, ...lines.map((line) => line.length));
+  const border = "═".repeat(width + 2);
+
+  console.log(`\n╔${border}╗`);
+  console.log(`║ ${centerText(title, width)} ║`);
+  console.log(`╠${border}╣`);
+  for (const line of lines) {
+    console.log(`║ ${line.padEnd(width)} ║`);
+  }
+  console.log(`╚${border}╝\n`);
 }
 
 // ─── 1. Authenticate ────────────────────────────────────────────────────────
@@ -677,8 +716,7 @@ async function createCollections() {
       options: {
         choices: [
           { text: "Video", value: "video" },
-          { text: "Bài viết", value: "article" },
-          { text: "Quiz", value: "quiz" },
+          { text: "Bài đọc", value: "text" },
         ],
       },
     },
@@ -994,7 +1032,8 @@ async function createCollections() {
       note: "Loại câu hỏi",
       options: {
         choices: [
-          { text: "Trắc nghiệm", value: "multiple_choice" },
+          { text: "Trắc nghiệm nhiều đáp án", value: "multiple_choice" },
+          { text: "Trắc nghiệm một đáp án", value: "single_choice" },
           { text: "Đúng/Sai", value: "true_false" },
         ],
       },
@@ -1181,13 +1220,13 @@ async function createCollections() {
   await addField("cart_items", {
     field: "user_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Người dùng" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Người dùng" },
     schema: { is_nullable: false },
   });
   await addField("cart_items", {
     field: "course_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Khoá học" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Khoá học" },
     schema: { is_nullable: false },
   });
   await addRelation({
@@ -1209,13 +1248,13 @@ async function createCollections() {
   await addField("wishlists", {
     field: "user_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Người dùng" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Người dùng" },
     schema: { is_nullable: false },
   });
   await addField("wishlists", {
     field: "course_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Khoá học" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Khoá học" },
     schema: { is_nullable: false },
   });
   await addRelation({
@@ -1237,7 +1276,7 @@ async function createCollections() {
   await addField("orders", {
     field: "user_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Người mua" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Người mua" },
     schema: { is_nullable: false },
   });
   await addField("orders", {
@@ -1312,13 +1351,13 @@ async function createCollections() {
   await addField("order_items", {
     field: "order_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Đơn hàng" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Đơn hàng" },
     schema: { is_nullable: false },
   });
   await addField("order_items", {
     field: "course_id",
     type: "uuid",
-    meta: { interface: "select-dropdown-m2o", required: true, note: "Khoá học" },
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], required: true, note: "Khoá học" },
     schema: { is_nullable: false },
   });
   await addField("order_items", {
@@ -1447,12 +1486,12 @@ async function setPermissions() {
   // Student: own enrollments
   await perm(S, "enrollments", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
   await perm(S, "enrollments", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
-  await perm(S, "enrollments", "update", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: ["status", "last_lesson_id"] });
+  await perm(S, "enrollments", "update", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: ["status", "last_lesson_id", "progress_percentage", "completed_at"] });
 
   // Student: own progress
   await perm(S, "progress", "create", { fields: "*" });
   await perm(S, "progress", "read", { permissions: { enrollment_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: "*" });
-  await perm(S, "progress", "update", { permissions: { enrollment_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: ["completed", "completed_at"] });
+  await perm(S, "progress", "update", { permissions: { enrollment_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: ["completed", "completed_at", "video_position"] });
 
   // Student: own reviews
   await perm(S, "reviews", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
@@ -1523,9 +1562,22 @@ async function setPermissions() {
   await perm(I, "quiz_questions", "read", { fields: ["*", "answers"] });
   await perm(I, "quiz_answers", "read", { fields: ["*"] });
 
-  // Instructor: own profile
+  // Instructor: own profile + students in instructor-owned courses
   await perm(I, "directus_users", "read", {
-    permissions: { id: { _eq: "$CURRENT_USER" } },
+    permissions: {
+      _or: [
+        { id: { _eq: "$CURRENT_USER" } },
+        {
+          enrollments: {
+            course_id: {
+              instructors: {
+                user_id: { _eq: "$CURRENT_USER" },
+              },
+            },
+          },
+        },
+      ],
+    },
     fields: ["id", "first_name", "last_name", "email", "avatar", "role", "status", "bio", "phone", "headline", "social_links", "date_created"],
   });
   await perm(I, "directus_users", "update", {
@@ -1613,6 +1665,9 @@ async function setPermissions() {
   await perm(I, "quiz_attempts", "read", {
     permissions: { quiz_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
     fields: "*",
+  });
+  await perm(I, "quiz_attempts", "delete", {
+    permissions: { quiz_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
   });
 
   // Instructor: notifications (own)
@@ -1807,7 +1862,7 @@ async function seedData() {
     if (mod1) {
       await safeCreate("lessons", { title: "React là gì?", slug: "react-la-gi", sort: 1, type: "video", video_url: "https://example.com/react-intro", duration: 600, is_free: true, status: "published", module_id: mod1.id });
       await safeCreate("lessons", { title: "JSX và Components", slug: "jsx-va-components", sort: 2, type: "video", video_url: "https://example.com/jsx-components", duration: 900, is_free: false, status: "published", module_id: mod1.id });
-      await safeCreate("lessons", { title: "Props và State", slug: "props-va-state", sort: 3, type: "article", content: "<h2>Props</h2><p>Props là dữ liệu truyền từ component cha sang component con...</p><h2>State</h2><p>State là dữ liệu nội bộ của component...</p>", duration: 0, is_free: false, status: "published", module_id: mod1.id });
+      await safeCreate("lessons", { title: "Props và State", slug: "props-va-state", sort: 3, type: "text", content: "<h2>Props</h2><p>Props là dữ liệu truyền từ component cha sang component con...</p><h2>State</h2><p>State là dữ liệu nội bộ của component...</p>", duration: 0, is_free: false, status: "published", module_id: mod1.id });
     }
     if (mod2) {
       await safeCreate("lessons", { title: "Cài đặt Next.js", slug: "cai-dat-nextjs", sort: 1, type: "video", video_url: "https://example.com/nextjs-setup", duration: 480, is_free: true, status: "published", module_id: mod2.id });
@@ -1831,7 +1886,7 @@ async function seedData() {
     });
 
     if (mod3) {
-      await safeCreate("lessons", { title: "UI vs UX — Sự khác biệt", slug: "ui-vs-ux-su-khac-biet", sort: 1, type: "article", content: "<p>UI (User Interface) là giao diện người dùng...</p><p>UX (User Experience) là trải nghiệm người dùng...</p>", duration: 0, is_free: true, status: "published", module_id: mod3.id });
+      await safeCreate("lessons", { title: "UI vs UX — Sự khác biệt", slug: "ui-vs-ux-su-khac-biet", sort: 1, type: "text", content: "<p>UI (User Interface) là giao diện người dùng...</p><p>UX (User Experience) là trải nghiệm người dùng...</p>", duration: 0, is_free: true, status: "published", module_id: mod3.id });
       await safeCreate("lessons", { title: "Nguyên tắc thiết kế cơ bản", slug: "nguyen-tac-thiet-ke-co-ban", sort: 2, type: "video", video_url: "https://example.com/design-principles", duration: 720, is_free: false, status: "published", module_id: mod3.id });
     }
     if (mod4) {
@@ -1865,6 +1920,60 @@ async function safeCreate(collection, data) {
   } catch {
     return null;
   }
+}
+
+// ─── 7. Static Token ─────────────────────────────────────────────────────────
+
+async function setupStaticToken({ writeFile } = {}) {
+  section("7. Static Token");
+
+  // Generate random token
+  const { randomBytes } = await import("crypto");
+  const token = randomBytes(32).toString("base64url"); // ~43 chars, URL-safe
+
+  // Set token on admin user via Directus API
+  await api("PATCH", "/users/me", { token });
+  log("✓", `Static token: ${token}`);
+
+  if (!writeFile) {
+    return token;
+  }
+
+  const frontendEnvPath = resolve(__dirname, "..", "..", "frontend", ".env.local");
+
+  // Read existing .env.local or create new
+  let envContent = "";
+  try {
+    envContent = readFileSync(frontendEnvPath, "utf-8");
+  } catch {
+    // File doesn't exist — will create
+  }
+
+  // Update or append DIRECTUS_STATIC_TOKEN
+  if (envContent.includes("DIRECTUS_STATIC_TOKEN=")) {
+    envContent = envContent.replace(
+      /DIRECTUS_STATIC_TOKEN=.*/,
+      `DIRECTUS_STATIC_TOKEN=${token}`
+    );
+  } else {
+    envContent += `${envContent.endsWith("\n") ? "" : "\n"}DIRECTUS_STATIC_TOKEN=${token}\n`;
+  }
+
+  // Ensure other required env vars exist
+  if (!envContent.includes("NEXT_PUBLIC_DIRECTUS_URL=")) {
+    envContent = `NEXT_PUBLIC_DIRECTUS_URL=http://localhost:8055\n${envContent}`;
+  }
+  if (!envContent.includes("NEXT_PUBLIC_APP_NAME=")) {
+    envContent += `NEXT_PUBLIC_APP_NAME=E-Learning Platform\n`;
+  }
+  if (!envContent.includes("NEXT_PUBLIC_APP_URL=")) {
+    envContent += `NEXT_PUBLIC_APP_URL=http://localhost:3000\n`;
+  }
+
+  writeFileSync(frontendEnvPath, envContent, "utf-8");
+  log("✓", `Wrote token to frontend/.env.local`);
+
+  return token;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -1901,16 +2010,9 @@ async function main() {
   await createCollections();
   await setPermissions();
   await seedData();
+  const staticToken = await setupStaticToken({ writeFile: WRITE_STATIC_TOKEN_FILE });
 
-  console.log("\n╔══════════════════════════════════════════════════════════╗");
-  console.log("║                   Bootstrap complete!                   ║");
-  console.log("╠══════════════════════════════════════════════════════════╣");
-  console.log("║  Admin:      admin@elearning.dev / Admin@123456          ║");
-  console.log("║  Instructor: instructor@elearning.dev / Instructor@123  ║");
-  console.log("║  Student:    student@elearning.dev / Student@123        ║");
-  console.log("║                                                          ║");
-  console.log("║  Directus Admin: http://localhost:8055                  ║");
-  console.log("╚══════════════════════════════════════════════════════════╝\n");
+  printSummary({ staticToken, wroteEnvFile: WRITE_STATIC_TOKEN_FILE });
 }
 
 main().catch((err) => {

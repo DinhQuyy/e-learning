@@ -10,7 +10,7 @@ instructor:
 - Thiếu chức năng thay đổi trạng thái khi đã lưu trữ khóa học x
 - http://localhost:3000/instructor/dashboard:thiếu thống kê doanh thu theo tháng, quý, năm ; thống kê học viên theo tháng, quý, năm; 
 thống kê khóa học theo tháng, quý, năm; tiến độ ở phần đăng ký gần đây chưa được cập nhật theo dữ liệu thật 
-- Danh sách đăng ký học viên chưa hiển thị tên học viên và eamil đúng theo dữ liệu thật ( chưa làm được ) và đồng bộ lại % tiến độ theo dữ liệu thật tương tự như admin và student x
+- Danh sách đăng ký học viên chưa hiển thị tên học viên và eamil đúng theo dữ liệu thật x và đồng bộ lại % tiến độ theo dữ liệu thật tương tự như admin và student x
 - Thêm ui để giảng viên có thể xem được chi tiết thông tin của học viên đã đăng kí khóa học http://localhost:3000/instructor/courses/id (chưa xong)
 
 

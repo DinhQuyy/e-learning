@@ -374,12 +374,9 @@ export async function getRecentEnrollments(
   if (courseIds.length === 0) return [];
 
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&fields=*,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id.id,course_id.title,course_id.slug,course_id.total_lessons&sort=-enrolled_at&limit=${limit}`,
+    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&fields=id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons&sort=-enrolled_at&limit=${limit}`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(token),
       next: { revalidate: 0 },
     }
   );

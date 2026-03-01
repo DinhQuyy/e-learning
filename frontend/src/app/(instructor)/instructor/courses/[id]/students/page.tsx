@@ -32,6 +32,15 @@ export default async function CourseStudentsPage({
   }
 
   const students = await getCourseStudents(token, courseId);
+  const visibleStudents = students.filter((student) => {
+    const user = student.user as unknown;
+    return Boolean(
+      user &&
+        typeof user === "object" &&
+        "id" in user &&
+        (user as { id?: string }).id
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -44,11 +53,9 @@ export default async function CourseStudentsPage({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Danh sách học viên
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Danh sach hoc vien</h1>
             <p className="text-muted-foreground">
-              {students.length} học viên đã đăng ký
+              {visibleStudents.length} hoc vien da dang ky
             </p>
           </div>
         </div>
@@ -56,36 +63,36 @@ export default async function CourseStudentsPage({
         <div className="flex gap-2">
           <Link href={`/instructor/courses/${courseId}/edit`}>
             <Button variant="outline" size="sm">
-              Thông tin khoá học
+              Thong tin khoa hoc
             </Button>
           </Link>
           <Button variant="outline" size="sm" disabled>
             <Download className="mr-2 size-4" />
-            Xuất dữ liệu
+            Xuat du lieu
           </Button>
         </div>
       </div>
 
       {/* Students Table */}
-      {students.length === 0 ? (
+      {visibleStudents.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Users className="size-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              Chưa có học viên nào đăng ký khoá học này.
+              Chua co hoc vien nao dang ky khoa hoc nay.
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Học viên</CardTitle>
+            <CardTitle>Hoc vien</CardTitle>
             <CardDescription>
-              Danh sách tất cả học viên đã đăng ký khoá học
+              Danh sach tat ca hoc vien da dang ky khoa hoc
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CourseStudentsTable students={students} />
+            <CourseStudentsTable students={visibleStudents} />
           </CardContent>
         </Card>
       )}

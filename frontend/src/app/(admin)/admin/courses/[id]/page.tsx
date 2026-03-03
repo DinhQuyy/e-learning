@@ -92,9 +92,28 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
   const course = courseData.data;
   if (!course) notFound();
 
-  const instructors = (course.instructors ?? [])
-    .map((ci: { user_id: unknown }) => ci.user_id)
-    .filter((u: unknown) => u && typeof u === "object");
+  const instructors = Array.from(
+    new Map(
+      (course.instructors ?? [])
+        .map((ci: { user_id: unknown }) => ci.user_id)
+        .filter(
+          (
+            u
+          ): u is {
+            id: string;
+            first_name: string | null;
+            last_name: string | null;
+            email: string;
+            avatar: string | null;
+          } =>
+            !!u &&
+            typeof u === "object" &&
+            typeof (u as { id?: unknown }).id === "string" &&
+            typeof (u as { email?: unknown }).email === "string"
+        )
+        .map((inst) => [inst.id, inst] as const)
+    ).values()
+  );
 
   const sortedModules = (course.modules ?? [])
     .sort((a: { sort: number }, b: { sort: number }) => a.sort - b.sort)

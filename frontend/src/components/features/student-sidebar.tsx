@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   BookOpen,
+  Award,
   User,
   Bell,
 } from "lucide-react";
@@ -21,6 +22,11 @@ const navItems = [
     label: "Khoá học của tôi",
     href: "/my-courses",
     icon: BookOpen,
+  },
+  {
+    label: "Chứng chỉ của tôi",
+    href: "/my-certificates",
+    icon: Award,
   },
   {
     label: "Hồ sơ",
@@ -63,3 +69,4 @@ export function StudentSidebar() {
     </ScrollArea>
   );
 }
+

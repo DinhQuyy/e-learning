@@ -1,5 +1,125 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
+import { directusUrl } from "@/lib/directus";
+
+function normalizePositiveNumber(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function normalizeRelationId(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "id" in value &&
+    typeof (value as { id?: unknown }).id === "string"
+  ) {
+    return (value as { id: string }).id;
+  }
+  return "";
+}
+
+function buildCertificateCode(enrollmentId: string): string {
+  const compactEnrollmentId = enrollmentId.replace(/-/g, "").toUpperCase();
+  return `EL-${compactEnrollmentId}`;
+}
+
+async function createCertificateWithServerToken(payload: {
+  user_id: string;
+  course_id: string;
+  enrollment_id: string;
+  certificate_code: string;
+}): Promise<boolean> {
+  const serviceToken = process.env.DIRECTUS_STATIC_TOKEN;
+  if (!serviceToken) return false;
+
+  const res = await fetch(`${directusUrl}/items/certificates`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${serviceToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  }).catch(() => null);
+
+  return !!res && res.ok;
+}
+
+async function issueCertificateIfMissing(enrollmentId: string): Promise<void> {
+  const encodedEnrollmentId = encodeURIComponent(enrollmentId);
+
+  const existingRes = await directusFetch(
+    `/items/certificates?filter[enrollment_id][_eq]=${encodedEnrollmentId}&fields=id&limit=1`
+  );
+  if (existingRes.ok) {
+    const existingData = await existingRes.json().catch(() => null);
+    if (Array.isArray(existingData?.data) && existingData.data.length > 0) return;
+  }
+
+  const enrollmentRes = await directusFetch(
+    `/items/enrollments/${encodedEnrollmentId}?fields=id,user_id.id,user_id,course_id.id,course_id`
+  );
+  if (!enrollmentRes.ok) return;
+
+  const enrollmentData = await enrollmentRes.json().catch(() => null);
+  const enrollmentRow = enrollmentData?.data;
+  const userId = normalizeRelationId(enrollmentRow?.user_id);
+  const courseId = normalizeRelationId(enrollmentRow?.course_id);
+  if (!userId || !courseId) return;
+
+  const payload = {
+    user_id: userId,
+    course_id: courseId,
+    enrollment_id: enrollmentId,
+    certificate_code: buildCertificateCode(enrollmentId),
+  };
+
+  const createRes = await directusFetch("/items/certificates", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() => null);
+
+  if (
+    createRes &&
+    !createRes.ok &&
+    (createRes.status === 401 || createRes.status === 403)
+  ) {
+    await createCertificateWithServerToken(payload).catch(() => {});
+  }
+}
+
+async function getPublishedLessonCountByCourse(courseId: string): Promise<number | null> {
+  const query = `/items/modules?filter[course_id][_eq]=${encodeURIComponent(courseId)}&fields=course_id,lessons.id&deep[lessons][_filter][status][_eq]=published&limit=-1`;
+  const serviceToken = process.env.DIRECTUS_STATIC_TOKEN;
+
+  let res: Response;
+  if (serviceToken) {
+    res = await fetch(`${directusUrl}${query}`, {
+      headers: {
+        Authorization: `Bearer ${serviceToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+  } else {
+    res = await directusFetch(query);
+  }
+
+  if (!res.ok) return null;
+
+  const payload = await res.json().catch(() => null);
+  const modules = Array.isArray(payload?.data) ? payload.data : [];
+  let total = 0;
+
+  for (const moduleRow of modules) {
+    const lessons = Array.isArray(moduleRow?.lessons) ? moduleRow.lessons : [];
+    total += lessons.length;
+  }
+
+  return total;
+}
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -110,8 +230,18 @@ export async function PATCH(request: NextRequest) {
 
     if (enrollmentRes.ok) {
       const enrollmentData = await enrollmentRes.json();
+      const courseIdRaw = enrollmentData.data?.course_id?.id;
+      const courseId = courseIdRaw ? String(courseIdRaw) : "";
+      const storedTotalLessons = normalizePositiveNumber(
+        enrollmentData.data?.course_id?.total_lessons
+      );
+      const countedTotalLessons = courseId
+        ? await getPublishedLessonCountByCourse(courseId)
+        : null;
       const totalLessons =
-        enrollmentData.data?.course_id?.total_lessons ?? 0;
+        countedTotalLessons !== null
+          ? normalizePositiveNumber(countedTotalLessons)
+          : storedTotalLessons;
 
       if (totalLessons > 0) {
         // Count completed progress records for this enrollment
@@ -121,7 +251,7 @@ export async function PATCH(request: NextRequest) {
 
         if (completedRes.ok) {
           const completedData = await completedRes.json();
-          const completedCount = completedData.data?.[0]?.count?.id ?? 0;
+          const completedCount = Number(completedData.data?.[0]?.count?.id ?? 0);
           const progressPercentage = Math.round(
             (completedCount / totalLessons) * 100
           );
@@ -146,6 +276,10 @@ export async function PATCH(request: NextRequest) {
               body: JSON.stringify(enrollmentUpdate),
             }
           ).catch(() => {});
+
+          if (progressPercentage >= 100) {
+            await issueCertificateIfMissing(String(enrollment_id)).catch(() => {});
+          }
         }
       }
     }

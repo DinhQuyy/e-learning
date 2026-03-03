@@ -899,6 +899,65 @@ async function createCollections() {
   });
   log("✓", "Fields & relations: progress");
 
+  // ── 4.8 certificates ──
+  await createCollection("certificates", { icon: "workspace_premium", note: "Chung chi hoan thanh khoa hoc" });
+  await addField("certificates", {
+    field: "user_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Hoc vien" },
+    schema: { is_nullable: false },
+  });
+  await addField("certificates", {
+    field: "course_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Khoa hoc" },
+    schema: { is_nullable: false },
+  });
+  await addField("certificates", {
+    field: "enrollment_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Dang ky khoa hoc" },
+    schema: { is_nullable: false, is_unique: true },
+  });
+  await addField("certificates", {
+    field: "certificate_code",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Ma chung chi" },
+    schema: { max_length: 64, is_nullable: false, is_unique: true },
+  });
+  await addField("certificates", {
+    field: "issued_at",
+    type: "timestamp",
+    meta: {
+      interface: "datetime",
+      special: ["date-created"],
+      readonly: true,
+      note: "Ngay cap",
+    },
+    schema: {},
+  });
+  await addRelation({
+    collection: "certificates",
+    field: "user_id",
+    related_collection: "directus_users",
+    meta: { one_field: "certificates" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "certificates",
+    field: "course_id",
+    related_collection: "courses",
+    meta: { one_field: "certificates" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "certificates",
+    field: "enrollment_id",
+    related_collection: "enrollments",
+    meta: { one_field: "certificate" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: certificates");
   // ── 4.8 reviews ──
   await createCollection("reviews", { icon: "star", note: "Đánh giá khóa học" });
   await addField("reviews", {
@@ -1493,6 +1552,19 @@ async function setPermissions() {
   await perm(S, "progress", "read", { permissions: { enrollment_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: "*" });
   await perm(S, "progress", "update", { permissions: { enrollment_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: ["completed", "completed_at", "video_position"] });
 
+  // Student: own certificates
+  await perm(S, "certificates", "create", {
+    fields: ["user_id", "course_id", "enrollment_id", "certificate_code"],
+    validation: {
+      user_id: { _eq: "$CURRENT_USER" },
+      enrollment_id: { user_id: { _eq: "$CURRENT_USER" } },
+    },
+  });
+  await perm(S, "certificates", "read", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: "*",
+  });
+
   // Student: own reviews
   await perm(S, "reviews", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
   await perm(S, "reviews", "read", { fields: "*" });
@@ -1658,6 +1730,10 @@ async function setPermissions() {
 
   // Instructor: read enrollments, reviews, quiz_attempts for own courses
   await perm(I, "enrollments", "read", {
+    permissions: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } },
+    fields: "*",
+  });
+  await perm(I, "certificates", "read", {
     permissions: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } },
     fields: "*",
   });
@@ -1834,16 +1910,32 @@ async function seedData() {
 
   // ── Link instructors to courses ──
   if (course1) {
-    try {
-      await post("/items/courses_instructors", { course_id: course1.id, user_id: instructor.id });
+    const link1 = await get(
+      `/items/courses_instructors?filter[course_id][_eq]=${course1.id}&filter[user_id][_eq]=${instructor.id}&limit=1&fields=id`
+    );
+    if (Array.isArray(link1) && link1.length > 0) {
+      log("–", "Instructor ↔ Course 1 link exists");
+    } else {
+      await post("/items/courses_instructors", {
+        course_id: course1.id,
+        user_id: instructor.id,
+      });
       log("✓", "Linked instructor → Course 1");
-    } catch { log("–", "Instructor ↔ Course 1 link exists"); }
+    }
   }
   if (course2) {
-    try {
-      await post("/items/courses_instructors", { course_id: course2.id, user_id: instructor.id });
+    const link2 = await get(
+      `/items/courses_instructors?filter[course_id][_eq]=${course2.id}&filter[user_id][_eq]=${instructor.id}&limit=1&fields=id`
+    );
+    if (Array.isArray(link2) && link2.length > 0) {
+      log("–", "Instructor ↔ Course 2 link exists");
+    } else {
+      await post("/items/courses_instructors", {
+        course_id: course2.id,
+        user_id: instructor.id,
+      });
       log("✓", "Linked instructor → Course 2");
-    } catch { log("–", "Instructor ↔ Course 2 link exists"); }
+    }
   }
 
   // ── Modules & Lessons for Course 1 ──
@@ -1899,18 +1991,39 @@ async function seedData() {
 
   // ── Enrollment ──
   if (course1 && student) {
-    try {
-      await post("/items/enrollments", { user_id: student.id, course_id: course1.id, status: "active", enrolled_at: new Date().toISOString() });
+    const existingEnrollment = await get(
+      `/items/enrollments?filter[user_id][_eq]=${student.id}&filter[course_id][_eq]=${course1.id}&limit=1&fields=id`
+    );
+    if (Array.isArray(existingEnrollment) && existingEnrollment.length > 0) {
+      log("–", "Enrollment exists");
+    } else {
+      await post("/items/enrollments", {
+        user_id: student.id,
+        course_id: course1.id,
+        status: "active",
+        enrolled_at: new Date().toISOString(),
+      });
       log("✓", "Student enrolled in Course 1");
-    } catch { log("–", "Enrollment exists"); }
+    }
   }
 
   // ── Review ──
   if (course1 && student) {
-    try {
-      await post("/items/reviews", { user_id: student.id, course_id: course1.id, rating: 5, comment: "Khóa học rất hay và dễ hiểu. Giảng viên giải thích rõ ràng!", status: "approved" });
+    const existingReview = await get(
+      `/items/reviews?filter[user_id][_eq]=${student.id}&filter[course_id][_eq]=${course1.id}&limit=1&fields=id`
+    );
+    if (Array.isArray(existingReview) && existingReview.length > 0) {
+      log("–", "Review exists");
+    } else {
+      await post("/items/reviews", {
+        user_id: student.id,
+        course_id: course1.id,
+        rating: 5,
+        comment: "Khóa học rất hay và dễ hiểu. Giảng viên giải thích rõ ràng!",
+        status: "approved",
+      });
       log("✓", "Student review for Course 1");
-    } catch { log("–", "Review exists"); }
+    }
   }
 }
 
@@ -2019,3 +2132,4 @@ main().catch((err) => {
   console.error("\n  ✗ Bootstrap failed:", err.message);
   process.exit(1);
 });
+

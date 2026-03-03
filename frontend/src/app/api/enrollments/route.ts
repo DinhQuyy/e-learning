@@ -5,6 +5,7 @@ import {
   notifyStudentEnrollmentSuccess,
 } from "@/lib/notifications-helper";
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
+import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,103 +14,92 @@ export async function POST(request: NextRequest) {
 
     if (!course_id) {
       return NextResponse.json(
-        { error: "Thiếu thông tin khoá học" },
+        { error: "Thieu thong tin khoa hoc" },
         { status: 400 }
       );
     }
 
-    // Get current user ID
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json(
-        { error: "Không xác định được người dùng" },
+        { error: "Khong xac dinh duoc nguoi dung" },
         { status: 401 }
       );
     }
 
-    // Check if already enrolled
-    const checkRes = await directusFetch(
-      `/items/enrollments?filter[course_id][_eq]=${course_id}&filter[user_id][_eq]=${userId}&limit=1`
-    );
+    const enrollmentResult = await createOrGetEnrollment({
+      userId,
+      courseId: course_id,
+    });
 
-    if (!checkRes.ok) {
+    if (!enrollmentResult.created) {
+      if (enrollmentResult.duplicatesRemoved > 0) {
+        await recalculateCourseEnrollments(course_id);
+      }
+
       return NextResponse.json(
-        { error: "Không thể kiểm tra trạng thái đăng ký" },
-        { status: 500 }
-      );
-    }
-
-    const checkData = await checkRes.json();
-
-    if (checkData.data && checkData.data.length > 0) {
-      return NextResponse.json(
-        { error: "Bạn đã đăng ký khoá học này rồi", enrollment: checkData.data[0] },
+        {
+          error: "Ban da dang ky khoa hoc nay roi",
+          enrollment: enrollmentResult.enrollment,
+        },
         { status: 409 }
       );
     }
 
-    // Create enrollment
-    const createRes = await directusFetch("/items/enrollments", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        course_id,
-        status: "active",
-        progress_percentage: 0,
-        enrolled_at: new Date().toISOString(),
-      }),
-    });
-
-    if (!createRes.ok) {
-      const errData = await createRes.json();
-      return NextResponse.json(
-        { error: errData.errors?.[0]?.message || "Không thể đăng ký khoá học" },
-        { status: 500 }
-      );
-    }
-
-    const createData = await createRes.json();
+    const createdEnrollment = enrollmentResult.enrollment;
 
     // Send notifications (non-blocking)
     try {
-      // Get current user info
       const meRes = await directusFetch("/users/me?fields=id,first_name,last_name,email");
-      // Get course info with instructor
       const courseRes = await directusFetch(
         `/items/courses/${course_id}?fields=id,title,slug,instructors.user_id`
       );
+
       if (meRes.ok && courseRes.ok) {
         const meData = await meRes.json();
         const courseData = await courseRes.json();
         const student = meData.data;
         const course = courseData.data;
-        const studentName = [student.first_name, student.last_name].filter(Boolean).join(" ") || student.email;
+        const studentName =
+          [student.first_name, student.last_name].filter(Boolean).join(" ") ||
+          student.email;
 
-        // Notify student
-        notifyStudentEnrollmentSuccess(student.id, course.title, course.slug).catch(() => {});
+        notifyStudentEnrollmentSuccess(
+          student.id,
+          course.title,
+          course.slug
+        ).catch(() => {});
 
-        // Notify instructors
         const instructors = course.instructors ?? [];
         for (const inst of instructors) {
-          const instructorId = typeof inst.user_id === "string" ? inst.user_id : inst.user_id?.id;
+          const instructorId =
+            typeof inst.user_id === "string" ? inst.user_id : inst.user_id?.id;
           if (instructorId) {
-            notifyInstructorNewEnrollment(instructorId, studentName, course.title, course_id).catch(() => {});
+            notifyInstructorNewEnrollment(
+              instructorId,
+              studentName,
+              course.title,
+              course_id
+            ).catch(() => {});
           }
         }
       }
     } catch {
-      // Non-critical, ignore
+      // Non-critical
     }
 
-    // Update course total_enrollments with fresh count
-    await recalculateCourseEnrollments(course_id);
+    if (enrollmentResult.created || enrollmentResult.duplicatesRemoved > 0) {
+      await recalculateCourseEnrollments(course_id);
+    }
 
-    return NextResponse.json({ data: createData.data }, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Lỗi hệ thống" },
-      { status: 500 }
-    );
+    return NextResponse.json({ data: createdEnrollment }, { status: 201 });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Loi he thong";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -120,15 +110,12 @@ export async function GET() {
     );
 
     if (res.status === 401) {
-      return NextResponse.json(
-        { error: "Chưa đăng nhập" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Chua dang nhap" }, { status: 401 });
     }
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Không thể tải danh sách khoá học" },
+        { error: "Khong the tai danh sach khoa hoc" },
         { status: 500 }
       );
     }
@@ -136,9 +123,6 @@ export async function GET() {
     const data = await res.json();
     return NextResponse.json({ data: data.data });
   } catch {
-    return NextResponse.json(
-      { error: "Lỗi hệ thống" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
   }
 }

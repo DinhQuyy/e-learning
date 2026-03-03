@@ -14,9 +14,10 @@ import {
 
 export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, Download } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import Link from "next/link";
 import { CourseStudentsTable } from "./course-students-table";
+import { ExportStudentsButton } from "./export-students-button";
 
 export default async function CourseStudentsPage({
   params,
@@ -53,9 +54,9 @@ export default async function CourseStudentsPage({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Danh sach hoc vien</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Danh sách học viên</h1>
             <p className="text-muted-foreground">
-              {visibleStudents.length} hoc vien da dang ky
+              {visibleStudents.length} học viên đã đăng ký
             </p>
           </div>
         </div>
@@ -63,13 +64,10 @@ export default async function CourseStudentsPage({
         <div className="flex gap-2">
           <Link href={`/instructor/courses/${courseId}/edit`}>
             <Button variant="outline" size="sm">
-              Thong tin khoa hoc
+              Thông tin khóa học
             </Button>
           </Link>
-          <Button variant="outline" size="sm" disabled>
-            <Download className="mr-2 size-4" />
-            Xuat du lieu
-          </Button>
+          <ExportStudentsButton courseId={courseId} students={visibleStudents} />
         </div>
       </div>
 
@@ -79,16 +77,16 @@ export default async function CourseStudentsPage({
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Users className="size-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              Chua co hoc vien nao dang ky khoa hoc nay.
+              Chưa có học viên nào đăng ký khóa học này.
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Hoc vien</CardTitle>
+            <CardTitle>Học viên</CardTitle>
             <CardDescription>
-              Danh sach tat ca hoc vien da dang ky khoa hoc
+              Danh sách tất cả học viên đã đăng ký khóa học
             </CardDescription>
           </CardHeader>
           <CardContent>

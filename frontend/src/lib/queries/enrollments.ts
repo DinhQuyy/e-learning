@@ -1,9 +1,32 @@
 import { directusUrl } from "@/lib/directus";
 import type { Enrollment, Progress } from "@/types";
 
+function getCourseId(enrollment: Enrollment): string | null {
+  const course = enrollment.course_id;
+  if (!course) return null;
+  if (typeof course === "string") return course;
+  return typeof course.id === "string" ? course.id : null;
+}
+
+function dedupeLatestEnrollments(enrollments: Enrollment[]): Enrollment[] {
+  const seen = new Set<string>();
+  const deduped: Enrollment[] = [];
+
+  for (const enrollment of enrollments) {
+    const courseId = getCourseId(enrollment);
+    const key = courseId ? `course:${courseId}` : `enrollment:${enrollment.id}`;
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    deduped.push(enrollment);
+  }
+
+  return deduped;
+}
+
 export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-date_created`,
+    `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at,-date_created,-id`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -14,11 +37,12 @@ export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   );
 
   if (!res.ok) {
-    throw new Error("Không thể tải danh sách khoá học");
+    throw new Error("Khong the tai danh sach khoa hoc");
   }
 
   const data = await res.json();
-  return data.data;
+  const enrollments = (data.data ?? []) as Enrollment[];
+  return dedupeLatestEnrollments(enrollments);
 }
 
 export async function getEnrollmentByCourse(
@@ -26,7 +50,7 @@ export async function getEnrollmentByCourse(
   courseId: string
 ): Promise<Enrollment | null> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&limit=1`,
+    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&sort=-enrolled_at,-date_created,-id&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -49,7 +73,7 @@ export async function getEnrollmentByCourseSlug(
   courseSlug: string
 ): Promise<Enrollment | null> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][slug][_eq]=${courseSlug}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&limit=1`,
+    `${directusUrl}/items/enrollments?filter[course_id][slug][_eq]=${courseSlug}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&sort=-enrolled_at,-date_created,-id&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

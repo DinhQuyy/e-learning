@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -100,10 +100,23 @@ const getAssetId = (value: string | null | undefined): string | null => {
   return null;
 };
 
+const toAbsoluteAssetUrl = (value: string | null | undefined): string => {
+  if (!value) return "";
+  const assetId = getAssetId(value);
+  if (!assetId) return value;
+
+  const assetPath = `/api/assets/${assetId}`;
+  if (typeof window === "undefined") return assetPath;
+  return new URL(assetPath, window.location.origin).toString();
+};
+
 export default function EditCoursePage() {
   const router = useRouter();
   const params = useParams();
   const courseId = params.id as string;
+  const [activeTab, setActiveTab] = useState<"basic" | "content" | "media">(
+    "basic"
+  );
 
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,9 +191,16 @@ export default function EditCoursePage() {
       } else if (c.thumbnail && typeof (c.thumbnail as { id?: string }).id === "string") {
         thumbnailValue = (c.thumbnail as { id: string }).id;
       }
-      const normalizedThumbnail = thumbnailValue
-        ? `/api/assets/${thumbnailValue}`
-        : "";
+
+      let promoVideoValue = "";
+      if (typeof c.promo_video_url === "string") {
+        promoVideoValue = c.promo_video_url;
+      } else if (
+        c.promo_video_url &&
+        typeof (c.promo_video_url as { id?: string }).id === "string"
+      ) {
+        promoVideoValue = (c.promo_video_url as { id: string }).id;
+      }
 
       reset({
         title: c.title,
@@ -190,10 +210,10 @@ export default function EditCoursePage() {
         category_id: categoryId,
         level: c.level,
         language: c.language,
-        promo_video_url: c.promo_video_url || "",
+        promo_video_url: toAbsoluteAssetUrl(promoVideoValue),
         price: c.price,
         discount_price: c.discount_price ?? 0,
-        thumbnail: normalizedThumbnail,
+        thumbnail: toAbsoluteAssetUrl(thumbnailValue),
         requirements:
           c.requirements && c.requirements.length > 0
             ? c.requirements.map((r) => ({ value: r }))
@@ -267,6 +287,34 @@ export default function EditCoursePage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const onInvalid = (formErrors: FieldErrors<FormData>) => {
+    const firstErrorField = Object.keys(formErrors)[0];
+    const basicFields = new Set([
+      "title",
+      "slug",
+      "description",
+      "category_id",
+      "level",
+      "language",
+    ]);
+    const contentFields = new Set([
+      "content",
+      "requirements",
+      "what_you_learn",
+      "target_audience",
+    ]);
+
+    if (firstErrorField && basicFields.has(firstErrorField)) {
+      setActiveTab("basic");
+    } else if (firstErrorField && contentFields.has(firstErrorField)) {
+      setActiveTab("content");
+    } else {
+      setActiveTab("media");
+    }
+
+    toast.error("Form chua hop le. Vui long kiem tra lai thong tin.");
   };
 
   const handlePublish = async () => {
@@ -380,7 +428,7 @@ export default function EditCoursePage() {
             </Button>
           )}
           <Button
-            onClick={handleSubmit(onSave)}
+            onClick={handleSubmit(onSave, onInvalid)}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -413,7 +461,12 @@ export default function EditCoursePage() {
       </div>
 
       {/* Form Tabs */}
-      <Tabs defaultValue="basic">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "basic" | "content" | "media")
+        }
+      >
         <TabsList>
           <TabsTrigger value="basic">Thông tin cơ bản</TabsTrigger>
           <TabsTrigger value="content">Nội dung</TabsTrigger>
@@ -666,7 +719,9 @@ export default function EditCoursePage() {
             <CardContent className="space-y-4">
               <MediaUploader
                 value={watch("promo_video_url") || ""}
-                onChange={(val) => setValue("promo_video_url", val)}
+                onChange={(val) =>
+                  setValue("promo_video_url", toAbsoluteAssetUrl(val))
+                }
                 accept="video/*"
                 label="Video giới thiệu"
                 placeholder="https://youtube.com/watch?v=..."

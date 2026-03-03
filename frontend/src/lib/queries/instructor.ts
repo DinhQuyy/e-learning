@@ -24,6 +24,40 @@ export interface CourseStudent {
 
 type CountResult = { map: Map<string, number>; success: boolean };
 
+function getEnrollmentUserId(enrollment: Enrollment): string | null {
+  const user = enrollment.user_id as DirectusUser | string | null | undefined;
+  if (!user) return null;
+  return typeof user === "object" ? String(user.id ?? "") || null : String(user);
+}
+
+function getEnrollmentCourseId(enrollment: Enrollment): string | null {
+  const course = enrollment.course_id as Course | string | null | undefined;
+  if (!course) return null;
+  return typeof course === "object"
+    ? String((course as Course).id ?? "") || null
+    : String(course);
+}
+
+function dedupeEnrollmentsByUserCourse(enrollments: Enrollment[]): Enrollment[] {
+  const seen = new Set<string>();
+  const deduped: Enrollment[] = [];
+
+  for (const enrollment of enrollments) {
+    const userId = getEnrollmentUserId(enrollment);
+    const courseId = getEnrollmentCourseId(enrollment);
+    const key =
+      userId && courseId
+        ? `${userId}:${courseId}`
+        : `enrollment:${String(enrollment.id)}`;
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(enrollment);
+  }
+
+  return deduped;
+}
+
 function getAuthHeaders(token: string) {
   const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
   return {
@@ -74,53 +108,26 @@ async function getLessonCountsByCourse(
 
   const headers = getAuthHeaders(token);
   const result: CountResult = { map: new Map(), success: false };
+  const uniqueCourseIds = Array.from(
+    new Set(courseIds.map((id) => String(id)).filter(Boolean))
+  );
 
   try {
     const res = await fetch(
-      `${directusUrl}/items/lessons?filter[module_id.course_id][_in]=${courseIds.join(",")}&groupBy[]=module_id.course_id&aggregate[count]=id`,
+      `${directusUrl}/items/modules?filter[course_id][_in]=${uniqueCourseIds.join(",")}&fields=course_id,lessons.id&deep[lessons][_filter][status][_eq]=published&limit=-1`,
       { headers, next: { revalidate: 0 } }
     );
 
-    if (res.ok) {
-      const data = await res.json();
-      for (const item of data.data ?? []) {
-        const courseId =
-          item.module_id?.course_id ??
-          item["module_id.course_id"] ??
-          item.course_id;
+    if (!res.ok) return result;
 
-        if (courseId) {
-          result.map.set(String(courseId), Number(item.count?.id ?? 0));
-        }
-      }
-
-      result.success = true;
-      return result;
-    }
-  } catch {
-    // fall through to fallback
-  }
-
-  try {
-    const fallbackRes = await fetch(
-      `${directusUrl}/items/lessons?filter[module_id.course_id][_in]=${courseIds.join(",")}&fields=module_id.course_id&limit=-1`,
-      { headers, next: { revalidate: 0 } }
-    );
-
-    if (!fallbackRes.ok) return result;
-
-    const data = await fallbackRes.json();
-    for (const lesson of data.data ?? []) {
-      const courseId =
-        lesson.module_id?.course_id ??
-        lesson["module_id.course_id"] ??
-        lesson.course_id;
-
+    const data = await res.json();
+    for (const moduleRow of data.data ?? []) {
+      const courseId = moduleRow.course_id?.id ?? moduleRow.course_id;
       if (!courseId) continue;
-      result.map.set(
-        String(courseId),
-        (result.map.get(String(courseId)) ?? 0) + 1
-      );
+
+      const key = String(courseId);
+      const lessons = Array.isArray(moduleRow.lessons) ? moduleRow.lessons : [];
+      result.map.set(key, (result.map.get(key) ?? 0) + lessons.length);
     }
 
     result.success = true;
@@ -270,8 +277,19 @@ export async function getInstructorCourses(
   if (!junctionRes.ok) return [];
 
   const junctionData = await junctionRes.json();
-  const courseIds: string[] = (junctionData.data ?? []).map(
-    (j: { course_id: string }) => j.course_id
+  const courseIds = Array.from(
+    new Set(
+      (junctionData.data ?? [])
+        .map(
+          (j: { course_id?: string | { id?: string } | null }) =>
+            typeof j.course_id === "string"
+              ? j.course_id
+              : j.course_id?.id
+                ? String(j.course_id.id)
+                : ""
+        )
+        .filter(Boolean)
+    )
   );
 
   if (courseIds.length === 0) return [];
@@ -280,10 +298,7 @@ export async function getInstructorCourses(
   const coursesRes = await fetch(
     `${directusUrl}/items/courses?filter[id][_in]=${courseIds.join(",")}&fields=*,category_id.id,category_id.name&sort=-date_created`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(token),
       next: { revalidate: 0 },
     }
   );
@@ -295,12 +310,9 @@ export async function getInstructorCourses(
 
   // Fetch enrollment counts per course
   const enrollmentRes = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&groupBy[]=course_id&aggregate[count]=id`,
+    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&groupBy[]=course_id&aggregate[countDistinct]=user_id`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(token),
       next: { revalidate: 0 },
     }
   );
@@ -308,17 +320,26 @@ export async function getInstructorCourses(
   const enrollmentData = enrollmentRes.ok ? await enrollmentRes.json() : { data: [] };
   const enrollmentMap: Record<string, number> = {};
   for (const item of enrollmentData.data ?? []) {
-    enrollmentMap[item.course_id] = Number(Number(item.count?.id ?? 0));
+    const courseId =
+      typeof item.course_id === "string"
+        ? item.course_id
+        : item.course_id?.id
+          ? String(item.course_id.id)
+          : null;
+    if (!courseId) continue;
+    enrollmentMap[courseId] = Number(
+      item.countDistinct?.user_id ??
+        item.countdistinct?.user_id ??
+        item.count?.id ??
+        0
+    );
   }
 
   // Fetch review counts per course
   const reviewRes = await fetch(
     `${directusUrl}/items/reviews?filter[course_id][_in]=${courseIds.join(",")}&groupBy[]=course_id&aggregate[count]=id&aggregate[avg]=rating`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(token),
       next: { revalidate: 0 },
     }
   );
@@ -326,7 +347,14 @@ export async function getInstructorCourses(
   const reviewData = reviewRes.ok ? await reviewRes.json() : { data: [] };
   const reviewMap: Record<string, { count: number; avg: number }> = {};
   for (const item of reviewData.data ?? []) {
-    reviewMap[item.course_id] = {
+    const courseId =
+      typeof item.course_id === "string"
+        ? item.course_id
+        : item.course_id?.id
+          ? String(item.course_id.id)
+          : null;
+    if (!courseId) continue;
+    reviewMap[courseId] = {
       count: Number(item.count?.id ?? 0),
       avg: parseFloat(item.avg?.rating ?? "0"),
     };
@@ -373,8 +401,11 @@ export async function getRecentEnrollments(
 ): Promise<Enrollment[]> {
   if (courseIds.length === 0) return [];
 
+  const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
+  const queryLimit = Math.min(Math.max(requestedLimit * 5, requestedLimit), 200);
+
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&fields=id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons&sort=-enrolled_at&limit=${limit}`,
+    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&fields=id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons&sort=-enrolled_at&limit=${queryLimit}`,
     {
       headers: getAuthHeaders(token),
       next: { revalidate: 0 },
@@ -385,7 +416,8 @@ export async function getRecentEnrollments(
 
   const data = await res.json();
   const enrollments: Enrollment[] = data.data ?? [];
-  return enrichEnrollments(enrollments, token);
+  const deduped = dedupeEnrollmentsByUserCourse(enrollments).slice(0, requestedLimit);
+  return enrichEnrollments(deduped, token);
 }
 
 export async function getCourseStudents(
@@ -395,10 +427,7 @@ export async function getCourseStudents(
   const res = await fetch(
     `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,user_id.headline,user_id.bio,user_id.social_links,user_id.status,user_id.date_created,user_id.role.id,user_id.role.name&sort=-enrolled_at`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(token),
       next: { revalidate: 0 },
     }
   );
@@ -408,15 +437,50 @@ export async function getCourseStudents(
   const data = await res.json();
   const enrollments: Enrollment[] = data.data ?? [];
   const hydrated = await enrichEnrollments(enrollments, token);
+  const studentsMap = new Map<string, CourseStudent>();
 
-  return hydrated.map((enrollment: Enrollment) => ({
-    id: enrollment.id,
-    user: enrollment.user_id as DirectusUser,
-    enrolled_at: enrollment.enrolled_at,
-    progress_percentage: enrollment.progress_percentage,
-    status: enrollment.status,
-    last_accessed: null,
-  }));
+  for (const enrollment of hydrated) {
+    const user = enrollment.user_id;
+    if (!user || typeof user !== "object" || !user.id) continue;
+
+    const userId = String(user.id);
+    const candidate: CourseStudent = {
+      id: enrollment.id,
+      user: user as DirectusUser,
+      enrolled_at: enrollment.enrolled_at,
+      progress_percentage: enrollment.progress_percentage,
+      status: enrollment.status,
+      last_accessed: null,
+    };
+
+    const existing = studentsMap.get(userId);
+    if (!existing) {
+      studentsMap.set(userId, candidate);
+      continue;
+    }
+
+    const candidateProgress = Number(candidate.progress_percentage ?? 0);
+    const existingProgress = Number(existing.progress_percentage ?? 0);
+    if (candidateProgress > existingProgress) {
+      studentsMap.set(userId, candidate);
+      continue;
+    }
+
+    if (candidateProgress === existingProgress) {
+      const candidateTime = Date.parse(candidate.enrolled_at);
+      const existingTime = Date.parse(existing.enrolled_at);
+      if (Number.isFinite(candidateTime) && candidateTime > existingTime) {
+        studentsMap.set(userId, candidate);
+      }
+    }
+  }
+
+  return Array.from(studentsMap.values()).sort((a, b) => {
+    const aTime = Date.parse(a.enrolled_at);
+    const bTime = Date.parse(b.enrolled_at);
+    if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+    return bTime - aTime;
+  });
 }
 
 export async function getCourseReviews(

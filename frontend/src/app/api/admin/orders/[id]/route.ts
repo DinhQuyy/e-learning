@@ -1,4 +1,6 @@
 import { directusFetch } from "@/lib/directus-fetch";
+import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
+import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -25,43 +27,48 @@ export async function PATCH(
 
     if (res.status === 401) {
       return NextResponse.json(
-        { error: "Không có quyền truy cập" },
+        { error: "Khong co quyen truy cap" },
         { status: 401 }
       );
     }
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Không thể cập nhật đơn hàng" },
+        { error: "Khong the cap nhat don hang" },
         { status: res.status }
       );
     }
 
-    // If marking as success, create enrollments for all items
     if (body.status === "success") {
       try {
         const orderRes = await directusFetch(
           `/items/orders/${id}?fields=user_id,items.course_id`
         );
+
         if (orderRes.ok) {
           const orderData = await orderRes.json();
           const order = orderData.data;
-          const userId = typeof order.user_id === "string" ? order.user_id : order.user_id?.id;
+          const userId =
+            typeof order.user_id === "string" ? order.user_id : order.user_id?.id;
+          const touchedCourseIds = new Set<string>();
 
           for (const item of order.items ?? []) {
-            const courseId = typeof item.course_id === "string" ? item.course_id : item.course_id?.id;
+            const courseId =
+              typeof item.course_id === "string" ? item.course_id : item.course_id?.id;
+
             if (userId && courseId) {
-              await directusFetch(`/items/enrollments`, {
-                method: "POST",
-                body: JSON.stringify({
-                  user_id: userId,
-                  course_id: courseId,
-                  status: "active",
-                  progress_percentage: 0,
-                  enrolled_at: new Date().toISOString(),
-                }),
+              const normalizedCourseId = String(courseId);
+              touchedCourseIds.add(normalizedCourseId);
+
+              await createOrGetEnrollment({
+                userId: String(userId),
+                courseId: normalizedCourseId,
               }).catch(() => {});
             }
+          }
+
+          for (const courseId of touchedCourseIds) {
+            await recalculateCourseEnrollments(courseId);
           }
         }
       } catch {
@@ -72,9 +79,6 @@ export async function PATCH(
     const data = await res.json();
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json(
-      { error: "Lỗi hệ thống" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
   }
 }

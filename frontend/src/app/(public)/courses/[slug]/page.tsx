@@ -160,6 +160,24 @@ export default async function CourseDetailPage({
         ) / 10
       : Number(course.average_rating ?? 0);
 
+  const ratingCounts = approvedReviews.reduce<Record<number, number>>(
+    (acc, review) => {
+      acc[review.rating] = (acc[review.rating] ?? 0) + 1;
+      return acc;
+    },
+    { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  );
+
+  const ratingDistribution = [5, 4, 3, 2, 1].map((star) => {
+    const count = ratingCounts[star] ?? 0;
+    const percentage =
+      approvedReviews.length > 0
+        ? Math.round((count / approvedReviews.length) * 100)
+        : 0;
+
+    return { star, percentage };
+  });
+
   const enrollmentCount =
     (course as { enrollment_count?: number }).enrollment_count ??
     course.total_enrollments ??
@@ -476,17 +494,15 @@ export default async function CourseDetailPage({
                   </span>
                 </div>
 
-                {/* Rating Bars (Placeholder - logic needed to calculate distribution) */}
+                {/* Rating Bars */}
                 <div className="flex-1 space-y-2 self-center">
-                  {[5, 4, 3, 2, 1].map((star) => (
+                  {ratingDistribution.map(({ star, percentage }) => (
                     <div key={star} className="flex items-center gap-3 text-sm">
                       <div className="w-12 h-2 rounded-full overflow-hidden bg-muted">
-                        {/* Mock percent for UI demo */}
                         <div
                           className="h-full bg-zinc-400"
                           style={{
-                            width:
-                              star === 5 ? "70%" : star === 4 ? "20%" : "5%",
+                            width: `${percentage}%`,
                           }}
                         />
                       </div>
@@ -497,7 +513,7 @@ export default async function CourseDetailPage({
                         showValue={false}
                       />
                       <span className="text-xs text-muted-foreground w-8 text-right">
-                        {star === 5 ? "70%" : star === 4 ? "20%" : "5%"}
+                        {percentage}%
                       </span>
                     </div>
                   ))}

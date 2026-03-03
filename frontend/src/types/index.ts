@@ -109,6 +109,17 @@ export interface Enrollment {
   progress_percentage: number;
   completed_at: string | null;
   date_created: string;
+  certificate?: string | Certificate | null;
+}
+
+export interface Certificate {
+  id: string;
+  user_id: string | DirectusUser;
+  course_id: string | Course;
+  enrollment_id: string | Enrollment;
+  certificate_code: string;
+  issued_at: string | null;
+  date_created: string;
 }
 
 export interface Progress {
@@ -228,6 +239,7 @@ export interface Schema {
   modules: Module[];
   lessons: Lesson[];
   enrollments: Enrollment[];
+  certificates: Certificate[];
   progress: Progress[];
   reviews: Review[];
   quizzes: Quiz[];

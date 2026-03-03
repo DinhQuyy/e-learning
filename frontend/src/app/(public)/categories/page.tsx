@@ -46,9 +46,9 @@ export default async function CategoriesPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Danh muc khoa hoc</h1>
+        <h1 className="text-3xl font-bold">Danh mục khóa học</h1>
         <p className="mt-2 text-muted-foreground">
-          Chon danh muc ban quan tam de bat dau hoc tap
+          Chọn danh mục bạn quan tâm để bắt đầu học tập
         </p>
       </div>
 

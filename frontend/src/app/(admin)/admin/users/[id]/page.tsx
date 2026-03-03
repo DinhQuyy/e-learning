@@ -125,57 +125,30 @@ async function getLessonCountsByCourse(
   };
 
   const result: CountResult = { map: new Map(), success: false };
+  const uniqueCourseIds = Array.from(
+    new Set(courseIds.map((id) => String(id)).filter(Boolean))
+  );
 
   try {
     const res = await fetch(
-      `${directusUrl}/items/lessons?filter[module_id.course_id][_in]=${courseIds.join(",")}&groupBy[]=module_id.course_id&aggregate[count]=id`,
+      `${directusUrl}/items/modules?filter[course_id][_in]=${uniqueCourseIds.join(",")}&fields=course_id,lessons.id&deep[lessons][_filter][status][_eq]=published&limit=-1`,
       { headers, next: { revalidate: 0 } }
     );
 
-    if (res.ok) {
-      const data = await res.json();
-      for (const item of data.data ?? []) {
-        const courseId =
-          item.module_id?.course_id ??
-          item["module_id.course_id"] ??
-          item.course_id;
+    if (!res.ok) return result;
 
-        const count = Number(item.count?.id ?? 0);
-        if (courseId) {
-          result.map.set(String(courseId), count);
-        }
-      }
-
-      result.success = true;
-      return result;
-    }
-  } catch {
-    // ignore and fall through to fallback
-  }
-
-  try {
-    const fallbackRes = await fetch(
-      `${directusUrl}/items/lessons?filter[module_id.course_id][_in]=${courseIds.join(",")}&fields=module_id.course_id&limit=-1`,
-      { headers, next: { revalidate: 0 } }
-    );
-
-    if (!fallbackRes.ok) return result;
-
-    const data = await fallbackRes.json();
-    for (const lesson of data.data ?? []) {
-      const courseId =
-        lesson.module_id?.course_id ??
-        lesson["module_id.course_id"] ??
-        lesson.course_id;
-
+    const data = await res.json();
+    for (const moduleRow of data.data ?? []) {
+      const courseId = moduleRow.course_id?.id ?? moduleRow.course_id;
       if (!courseId) continue;
-      result.map.set(
-        String(courseId),
-        (result.map.get(String(courseId)) ?? 0) + 1
-      );
+
+      const key = String(courseId);
+      const lessons = Array.isArray(moduleRow.lessons) ? moduleRow.lessons : [];
+      result.map.set(key, (result.map.get(key) ?? 0) + lessons.length);
     }
 
     result.success = true;
+    return result;
   } catch {
     // ignore
   }

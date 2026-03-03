@@ -212,11 +212,18 @@ export default async function MyCoursesPage() {
                         </div>
                       )}
 
-                      <Link href={`/learn/${course.slug}`}>
-                        <Button variant="outline" className="w-full mt-2" size="sm">
-                          Xem lại khoá học
-                        </Button>
-                      </Link>
+                      <div className="mt-2 grid gap-2">
+                        <Link href={`/learn/${course.slug}`}>
+                          <Button variant="outline" className="w-full" size="sm">
+                            Xem lại khóa học
+                          </Button>
+                        </Link>
+                        <Link href={`/my-certificates/enrollment/${enrollment.id}`}>
+                          <Button className="w-full" size="sm">
+                            Xem chứng chỉ
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -228,3 +235,4 @@ export default async function MyCoursesPage() {
     </div>
   );
 }
+

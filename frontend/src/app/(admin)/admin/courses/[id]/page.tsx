@@ -92,26 +92,28 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
   const course = courseData.data;
   if (!course) notFound();
 
-  const instructors = Array.from(
-    new Map(
+  type InstructorSummary = {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string;
+    avatar: string | null;
+  };
+
+  const instructors: InstructorSummary[] = Array.from(
+    new Map<string, InstructorSummary>(
       (course.instructors ?? [])
         .map((ci: { user_id: unknown }) => ci.user_id)
         .filter(
           (
-            u
-          ): u is {
-            id: string;
-            first_name: string | null;
-            last_name: string | null;
-            email: string;
-            avatar: string | null;
-          } =>
+            u: unknown
+          ): u is InstructorSummary =>
             !!u &&
             typeof u === "object" &&
             typeof (u as { id?: unknown }).id === "string" &&
             typeof (u as { email?: unknown }).email === "string"
         )
-        .map((inst) => [inst.id, inst] as const)
+        .map((inst: InstructorSummary) => [inst.id, inst] as const)
     ).values()
   );
 
@@ -538,36 +540,24 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                 <CardTitle>Giảng viên</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {instructors.map(
-                  (inst: {
-                    id: string;
-                    first_name: string | null;
-                    last_name: string | null;
-                    email: string;
-                    avatar: string | null;
-                  }) => (
-                    <Link
-                      key={inst.id}
-                      href={`/admin/users/${inst.id}`}
-                      className="flex items-center gap-3 rounded-md p-2 hover:bg-muted"
-                    >
-                      <div className="flex size-10 items-center justify-center rounded-full bg-muted text-sm font-medium">
-                        {(inst.first_name?.[0] ?? "") +
-                          (inst.last_name?.[0] ?? "")}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {[inst.first_name, inst.last_name]
-                            .filter(Boolean)
-                            .join(" ") || inst.email}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {inst.email}
-                        </p>
-                      </div>
-                    </Link>
-                  )
-                )}
+                {instructors.map((inst) => (
+                  <Link
+                    key={inst.id}
+                    href={`/admin/users/${inst.id}`}
+                    className="flex items-center gap-3 rounded-md p-2 hover:bg-muted"
+                  >
+                    <div className="flex size-10 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                      {(inst.first_name?.[0] ?? "") + (inst.last_name?.[0] ?? "")}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {[inst.first_name, inst.last_name].filter(Boolean).join(" ") ||
+                          inst.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{inst.email}</p>
+                    </div>
+                  </Link>
+                ))}
               </CardContent>
             </Card>
           )}

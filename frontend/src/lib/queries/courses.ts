@@ -135,6 +135,8 @@ interface GetCoursesParams {
   search?: string;
   category?: string;
   level?: string;
+  price?: string;
+  rating?: number;
   sort?: string;
 }
 
@@ -147,6 +149,8 @@ function getSortField(sort: string): string[] {
   switch (sort) {
     case "newest":
       return ["-date_created"];
+    case "oldest":
+      return ["date_created"];
     case "popular":
       return ["-total_enrollments"];
     case "rating":
@@ -166,6 +170,8 @@ export async function getCourses({
   search,
   category,
   level,
+  price,
+  rating,
   sort = "newest",
 }: GetCoursesParams = {}): Promise<GetCoursesResult> {
   const filter: Record<string, unknown> = {
@@ -187,6 +193,16 @@ export async function getCourses({
 
   if (level && level !== "all") {
     filter.level = { _eq: level };
+  }
+
+  if (price === "free") {
+    filter.price = { _eq: 0 };
+  } else if (price === "paid") {
+    filter.price = { _gt: 0 };
+  }
+
+  if (typeof rating === "number" && !Number.isNaN(rating) && rating > 0) {
+    filter.average_rating = { _gte: rating };
   }
 
   try {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
 import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
@@ -12,7 +12,7 @@ export async function POST(
 
     const currentUserId = await getCurrentUserId();
     if (!currentUserId) {
-      return NextResponse.json({ error: "Chua dang nhap" }, { status: 401 });
+      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     }
 
     const { success } = await request.json();
@@ -22,18 +22,18 @@ export async function POST(
     );
 
     if (orderRes.status === 401) {
-      return NextResponse.json({ error: "Chua dang nhap" }, { status: 401 });
+      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     }
 
     if (!orderRes.ok) {
-      return NextResponse.json({ error: "Khong tim thay don hang" }, { status: 404 });
+      return NextResponse.json({ error: "Không tìm thấy đơn hàng" }, { status: 404 });
     }
 
     const orderData = await orderRes.json();
     const order = orderData.data;
 
     if (order.status !== "pending") {
-      return NextResponse.json({ error: "Don hang da duoc xu ly" }, { status: 400 });
+      return NextResponse.json({ error: "Đơn hàng đã được xử lý" }, { status: 400 });
     }
 
     const newStatus = success ? "success" : "failed";
@@ -73,6 +73,6 @@ export async function POST(
 
     return NextResponse.json({ data: { ...order, status: newStatus } });
   } catch {
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

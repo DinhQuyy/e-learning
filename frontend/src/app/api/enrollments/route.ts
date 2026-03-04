@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import {
   notifyInstructorNewEnrollment,
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!course_id) {
       return NextResponse.json(
-        { error: "Thieu thong tin khoa hoc" },
+        { error: "Thiếu thông tin khóa học" },
         { status: 400 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json(
-        { error: "Khong xac dinh duoc nguoi dung" },
+        { error: "Không xác định được người dùng" },
         { status: 401 }
       );
     }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "Ban da dang ky khoa hoc nay roi",
+          error: "Bạn đã đăng ký khóa học này rồi",
           enrollment: enrollmentResult.enrollment,
         },
         { status: 409 }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const message =
       error instanceof Error && error.message
         ? error.message
-        : "Loi he thong";
+        : "Lỗi hệ thống";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -110,12 +110,12 @@ export async function GET() {
     );
 
     if (res.status === 401) {
-      return NextResponse.json({ error: "Chua dang nhap" }, { status: 401 });
+      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     }
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Khong the tai danh sach khoa hoc" },
+        { error: "Không thể tải danh sách khóa học" },
         { status: 500 }
       );
     }
@@ -123,6 +123,6 @@ export async function GET() {
     const data = await res.json();
     return NextResponse.json({ data: data.data });
   } catch {
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

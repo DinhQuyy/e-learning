@@ -210,11 +210,12 @@ async function enrichEnrollments(
         ? course.id
         : (course as string | undefined);
 
-    const totalLessons =
+    const totalLessonsRaw =
       (courseId && lessonResult.map.get(courseId)) ??
       (course && typeof course === "object"
         ? Number((course as Course).total_lessons ?? 0)
         : 0);
+    const totalLessons = Number(totalLessonsRaw);
 
     const completedLessons =
       completedResult.map.get(enrollment.id) ??
@@ -222,8 +223,8 @@ async function enrichEnrollments(
 
     const computedProgress =
       completedLessons !== null &&
-      totalLessons > 0 &&
-      Number.isFinite(totalLessons)
+      Number.isFinite(totalLessons) &&
+      totalLessons > 0
         ? Math.min(100, Math.round((completedLessons / totalLessons) * 100))
         : null;
 

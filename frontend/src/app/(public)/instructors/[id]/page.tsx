@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { readUser, readItems } from "@directus/sdk";
 import {
@@ -19,7 +19,7 @@ import { CourseCard } from "@/components/features/course-card";
 import { directus, getAssetUrl } from "@/lib/directus";
 import type { DirectusUser, Course } from "@/types";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface InstructorPageProps {
   params: Promise<{ id: string }>;
@@ -118,7 +118,7 @@ export async function generateMetadata({
   const { id } = await params;
   const instructor = await getInstructor(id);
   if (!instructor) {
-    return { title: "Khong tim thay giang vien" };
+    return { title: "Không tìm thấy giảng viên" };
   }
   const name =
     [instructor.first_name, instructor.last_name].filter(Boolean).join(" ") ||
@@ -126,7 +126,7 @@ export async function generateMetadata({
   return {
     title: name,
     description:
-      instructor.headline || `Trang ca nhan cua giang vien ${name}.`,
+      instructor.headline || `Trang cá nhân của giảng viên ${name}.`,
   };
 }
 
@@ -154,7 +154,6 @@ export default async function InstructorPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Profile Header */}
       <Card className="mb-8">
         <CardContent className="p-6 sm:p-8">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
@@ -175,13 +174,13 @@ export default async function InstructorPage({
               <div className="mt-3 flex items-center justify-center gap-4 text-sm text-muted-foreground sm:justify-start">
                 <span className="flex items-center gap-1">
                   <BookOpen className="size-4" />
-                  {courses.length} khoa hoc
+                  {courses.length} khóa học
                 </span>
               </div>
               {instructor.bio && (
                 <>
                   <Separator className="my-4" />
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                     {instructor.bio}
                   </p>
                 </>
@@ -221,10 +220,9 @@ export default async function InstructorPage({
         </CardContent>
       </Card>
 
-      {/* Courses */}
       <div>
         <h2 className="mb-6 text-xl font-bold">
-          Khoa hoc cua {instructor.first_name || name}
+          Khóa học của {instructor.first_name || name}
         </h2>
         {courses.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -236,7 +234,7 @@ export default async function InstructorPage({
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <BookOpen className="size-12 text-muted-foreground/30" />
             <p className="mt-4 text-muted-foreground">
-              Giang vien chua co khoa hoc nao.
+              Giảng viên chưa có khóa học nào.
             </p>
           </div>
         )}

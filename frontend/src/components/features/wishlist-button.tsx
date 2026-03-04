@@ -42,15 +42,27 @@ export function WishlistButton({ courseId, className }: WishlistButtonProps) {
     e.preventDefault();
     e.stopPropagation();
     if (loading) return;
+    const previousState = isWishlisted;
+    const optimisticState = !previousState;
+
+    setIsWishlisted(optimisticState);
     setLoading(true);
     try {
       const res = await apiPost("/api/wishlist", { course_id: courseId });
       if (res.ok) {
         const json = await res.json();
-        setIsWishlisted(json.action === "added");
+        if (typeof json.removed === "boolean") {
+          setIsWishlisted(!json.removed);
+        } else if (typeof json.action === "string") {
+          setIsWishlisted(json.action === "added");
+        } else {
+          setIsWishlisted(optimisticState);
+        }
+      } else {
+        setIsWishlisted(previousState);
       }
     } catch {
-      // ignore
+      setIsWishlisted(previousState);
     } finally {
       setLoading(false);
     }

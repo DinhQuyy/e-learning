@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Poppins } from "next/font/google";
+import { BookOpen, ChevronRight } from "lucide-react";
 import { getCourses } from "@/lib/queries/courses";
 import { getCategories } from "@/lib/queries/categories";
-import { CourseCard } from "@/components/features/course-card";
 import { CourseFilters } from "./course-filters";
+import { CourseToolbar } from "./course-toolbar";
 import { CoursePagination } from "./course-pagination";
-import { BookOpen } from "lucide-react";
+import { CourseGridCard } from "./course-grid-card";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+const poppins = Poppins({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
-  title: "Khoá học",
-  description: "Khám phá tất cả các khoá học trực tuyến chất lượng cao.",
+  title: "Khóa học",
+  description: "Danh sách khóa học trực tuyến chất lượng cao.",
 };
 
 interface CoursesPageProps {
@@ -19,9 +27,14 @@ interface CoursesPageProps {
     search?: string;
     category?: string;
     level?: string;
+    price?: string;
+    rating?: string;
     sort?: string;
+    view?: string;
   }>;
 }
+
+const COURSES_PER_PAGE = 9;
 
 export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   const params = await searchParams;
@@ -29,54 +42,124 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   const search = params.search || "";
   const category = params.category || "";
   const level = params.level || "";
+  const price = params.price || "";
+  const rating = params.rating || "";
   const sort = params.sort || "newest";
+  const view = params.view === "list" ? "list" : "grid";
+
+  const ratingNumber = Number(rating);
 
   const [coursesResult, categories] = await Promise.all([
-    getCourses({ page, limit: 12, search, category, level, sort }),
+    getCourses({
+      page,
+      limit: COURSES_PER_PAGE,
+      search,
+      category,
+      level,
+      price,
+      rating: Number.isNaN(ratingNumber) ? undefined : ratingNumber,
+      sort,
+    }),
     getCategories(),
   ]);
 
-  const totalPages = Math.ceil(coursesResult.total / 12);
+  const totalPages = Math.ceil(coursesResult.total / COURSES_PER_PAGE);
+  const startIndex =
+    coursesResult.total === 0 ? 0 : (page - 1) * COURSES_PER_PAGE + 1;
+  const endIndex = Math.min(page * COURSES_PER_PAGE, coursesResult.total);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Khoá học</h1>
-        <p className="mt-2 text-muted-foreground">
-          {coursesResult.total > 0
-            ? `Tìm thấy ${coursesResult.total} khoá học`
-            : "Khám phá các khoá học tuyệt vời"}
-        </p>
-      </div>
+    <div className={`${poppins.className} min-h-screen bg-[#f6f9ff] text-slate-900`}>
+      <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-[#eef3ff] via-[#f7f9ff] to-white">
+        <div className="absolute -left-28 top-8 size-64 rounded-full bg-[#2f57ef]/10 blur-3xl" />
+        <div className="absolute -right-24 top-10 size-64 rounded-full bg-[#7c8cff]/10 blur-3xl" />
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-10 sm:px-6 lg:px-8 lg:pb-12 lg:pt-12">
+          <ul className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <li>
+              <Link href="/" className="transition-colors hover:text-[#2f57ef]">
+                Trang chủ
+              </Link>
+            </li>
+            <li aria-hidden="true">
+              <ChevronRight className="size-4" />
+            </li>
+            <li className="font-medium text-slate-700">Danh sách khóa học</li>
+          </ul>
 
-      <CourseFilters
-        categories={categories}
-        currentCategory={category}
-        currentLevel={level}
-        currentSort={sort}
-      />
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Danh sách khóa học
+              </h1>
+              <p className="mt-2 text-base text-slate-600">
+                Khám phá lộ trình học thực chiến, cập nhật thường xuyên theo nhu cầu.
+              </p>
+            </div>
+            <span className="inline-flex w-fit items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#2f57ef] shadow-sm ring-1 ring-[#2f57ef]/15">
+              {coursesResult.total} khóa học
+            </span>
+          </div>
 
-      {coursesResult.data.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {coursesResult.data.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
+          <div className="mt-8">
+            <CourseToolbar
+              currentSort={sort}
+              currentView={view}
+              totalCourses={coursesResult.total}
+              startIndex={startIndex}
+              endIndex={endIndex}
+            />
+          </div>
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <BookOpen className="size-16 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold">
-            Không tìm thấy khoá học
-          </h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm để tìm khoá học phù hợp.
-          </p>
-        </div>
-      )}
+      </section>
 
-      {totalPages > 1 && (
-        <CoursePagination currentPage={page} totalPages={totalPages} />
-      )}
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+          <CourseFilters
+            categories={categories}
+            currentSearch={search}
+            currentCategory={category}
+            currentLevel={level}
+            currentPrice={price}
+            currentRating={rating}
+          />
+
+          <div>
+            {coursesResult.data.length > 0 ? (
+              <div
+                className={
+                  view === "list"
+                    ? "flex flex-col gap-5"
+                    : "grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+                }
+              >
+                {coursesResult.data.map((course, index) => (
+                  <CourseGridCard
+                    key={course.id}
+                    course={course}
+                    variant={view}
+                    priority={index < 3}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_20px_45px_-35px_rgba(15,23,42,0.55)]">
+                <BookOpen className="mx-auto size-10 text-slate-300" />
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">
+                  Không tìm thấy khóa học
+                </h3>
+                <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                  Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem thêm kết quả
+                  phù hợp.
+                </p>
+              </div>
+            )}
+
+            {totalPages > 1 ? (
+              <CoursePagination currentPage={page} totalPages={totalPages} />
+            ) : null}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

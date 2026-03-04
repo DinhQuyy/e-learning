@@ -1,18 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import {
-  CheckCircle,
-  PlayCircle,
-  FileText,
-  ChevronDown,
-} from "lucide-react";
-import type { Course, Module, Lesson } from "@/types";
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { CheckCircle, ChevronDown, FileText, PlayCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import type { Course, Lesson, Module } from "@/types";
 
 interface CourseSidebarProps {
   course: Course;
@@ -30,39 +24,34 @@ function formatDuration(seconds: number): string {
   if (!seconds) return "";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  if (mins === 0) return `${secs}s`;
+  if (mins === 0) return `${secs} giây`;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 export function CourseSidebar({
   course,
-  currentLessonSlug: _currentLessonSlug,
+  currentLessonSlug,
   completedLessonIds,
-  totalLessons,
-  completedCount,
 }: CourseSidebarProps) {
   const pathname = usePathname();
   const modules = (course.modules || []) as Module[];
+  const pathParts = pathname.split("/").filter(Boolean);
+  const activeLessonSlug = pathParts[pathParts.length - 1] || currentLessonSlug;
 
-  // Determine the active lesson from pathname
-  const pathParts = pathname.split("/");
-  const activeLessonSlug = pathParts[pathParts.length - 1] || "";
-
-  // Track which modules are expanded
   const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
-    // Expand the module that contains the current lesson
     const set = new Set<string>();
     for (const mod of modules) {
       const lessons = (mod.lessons || []) as Lesson[];
-      if (lessons.some((l) => l.slug === activeLessonSlug)) {
+      if (lessons.some((lesson) => lesson.slug === activeLessonSlug)) {
         set.add(mod.id);
         break;
       }
     }
-    // If none found, expand the first module
+
     if (set.size === 0 && modules.length > 0) {
       set.add(modules[0].id);
     }
+
     return set;
   });
 
@@ -78,70 +67,54 @@ export function CourseSidebar({
     });
   };
 
-  const progressPercent =
-    totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-
   return (
     <div className="flex h-full flex-col">
-      {/* Progress Header */}
-      <div className="border-b p-4 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Tiến độ khoá học</span>
-          <span className="font-medium">{progressPercent}%</span>
-        </div>
-        <Progress value={progressPercent} />
-        <p className="text-xs text-muted-foreground">
-          {completedCount}/{totalLessons} bài học hoàn thành
-        </p>
-      </div>
+    
 
-      {/* Module List */}
       <ScrollArea className="flex-1">
-        <div className="py-2">
+        <div className="space-y-2 p-3">
           {modules.map((mod, modIdx) => {
             const lessons = (mod.lessons || []) as Lesson[];
             const isExpanded = expandedModules.has(mod.id);
-            const moduleCompleted = lessons.every((l) =>
-              completedLessonIds.includes(l.id)
-            );
-            const moduleLessonsCompleted = lessons.filter((l) =>
-              completedLessonIds.includes(l.id)
+            const moduleLessonsCompleted = lessons.filter((lesson) =>
+              completedLessonIds.includes(lesson.id)
             ).length;
+            const moduleCompleted =
+              lessons.length > 0 && moduleLessonsCompleted === lessons.length;
 
             return (
-              <div key={mod.id}>
-                {/* Module Header */}
+              <div key={mod.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <button
                   onClick={() => toggleModule(mod.id)}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                  className={cn(
+                    "flex w-full items-center gap-2 px-3 py-3 text-left transition-colors",
+                    isExpanded ? "bg-[#f8faff]" : "hover:bg-slate-50"
+                  )}
                 >
                   <ChevronDown
                     className={cn(
-                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      "size-4 shrink-0 text-slate-500 transition-transform",
                       !isExpanded && "-rotate-90"
                     )}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {modIdx + 1}. {mod.title}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {modIdx + 1}. {mod.title || `Chương ${modIdx + 1}`}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500">
                       {moduleLessonsCompleted}/{lessons.length} bài học
                     </p>
                   </div>
-                  {moduleCompleted && lessons.length > 0 && (
-                    <CheckCircle className="size-4 text-green-600 shrink-0" />
-                  )}
+                  {moduleCompleted ? (
+                    <CheckCircle className="size-4 shrink-0 text-emerald-600" />
+                  ) : null}
                 </button>
 
-                {/* Lessons */}
-                {isExpanded && (
-                  <div className="pb-2">
+                {isExpanded ? (
+                  <div className="space-y-1 border-t border-slate-100 p-2">
                     {lessons.map((lesson) => {
                       const isActive = lesson.slug === activeLessonSlug;
-                      const isLessonCompleted = completedLessonIds.includes(
-                        lesson.id
-                      );
+                      const isLessonCompleted = completedLessonIds.includes(lesson.id);
                       const LessonIcon = getLessonIcon(lesson.type);
 
                       return (
@@ -149,28 +122,28 @@ export function CourseSidebar({
                           key={lesson.id}
                           href={`/learn/${course.slug}/${lesson.slug}`}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-2 pl-10 text-sm transition-colors",
+                            "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors",
                             isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                              ? "bg-[#eef3ff] text-[#2f57ef]"
+                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                           )}
                         >
                           {isLessonCompleted ? (
-                            <CheckCircle className="size-4 text-green-600 shrink-0" />
+                            <CheckCircle className="size-4 shrink-0 text-emerald-600" />
                           ) : (
                             <LessonIcon className="size-4 shrink-0" />
                           )}
-                          <span className="flex-1 truncate">{lesson.title}</span>
-                          {lesson.duration > 0 && (
-                            <span className="text-xs text-muted-foreground shrink-0">
+                          <span className="flex-1 truncate font-medium">{lesson.title}</span>
+                          {lesson.duration > 0 ? (
+                            <span className="shrink-0 text-[11px] text-slate-500">
                               {formatDuration(lesson.duration)}
                             </span>
-                          )}
+                          ) : null}
                         </Link>
                       );
                     })}
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })}

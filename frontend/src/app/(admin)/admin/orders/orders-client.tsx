@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   CheckCircle,
   XCircle,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   Package,
@@ -28,9 +29,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { apiFetch, apiPatch } from "@/lib/api-fetch";
+import { apiDelete, apiFetch, apiPatch } from "@/lib/api-fetch";
 
 interface OrderData {
   id: string;
@@ -95,6 +97,7 @@ export function AdminOrdersClient() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [actionOrderId, setActionOrderId] = useState<string | null>(null);
 
   const currentPage = Number(searchParams.get("page")) || 1;
   const status = searchParams.get("status") || "all";
@@ -138,6 +141,7 @@ export function AdminOrdersClient() {
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    setActionOrderId(orderId);
     try {
       const res = await apiPatch(`/api/admin/orders/${orderId}`, { status: newStatus });
       if (res.ok) {
@@ -146,12 +150,43 @@ export function AdminOrdersClient() {
             ? "Đơn hàng đã được xác nhận"
             : "Đơn hàng đã bị huỷ"
         );
-        fetchOrders();
+        await fetchOrders();
       } else {
         toast.error("Không thể cập nhật đơn hàng");
       }
     } catch {
       toast.error("Lỗi hệ thống");
+    } finally {
+      setActionOrderId(null);
+    }
+  };
+
+  const handleDeleteOrder = async (order: OrderData) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa đơn hàng "${order.order_number}"?`)) {
+      return;
+    }
+
+    setActionOrderId(order.id);
+    try {
+      const res = await apiDelete(`/api/admin/orders/${order.id}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        toast.error(error?.error ?? "Không thể xóa đơn hàng");
+        return;
+      }
+
+      toast.success("Đã xóa đơn hàng");
+
+      if (orders.length === 1 && currentPage > 1) {
+        router.push(buildUrl({ page: String(currentPage - 1) }));
+        return;
+      }
+
+      await fetchOrders();
+    } catch {
+      toast.error("Lỗi hệ thống");
+    } finally {
+      setActionOrderId(null);
     }
   };
 
@@ -242,15 +277,21 @@ export function AdminOrdersClient() {
                     })}
                   </TableCell>
                   <TableCell>
-                    {order.status === "pending" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={actionOrderId === order.id}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {order.status === "pending" && (
+                          <>
                           <DropdownMenuItem
+                            disabled={actionOrderId === order.id}
                             onClick={() =>
                               handleStatusUpdate(order.id, "success")
                             }
@@ -259,6 +300,7 @@ export function AdminOrdersClient() {
                             Xác nhận thanh toán
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            disabled={actionOrderId === order.id}
                             onClick={() =>
                               handleStatusUpdate(order.id, "cancelled")
                             }
@@ -266,9 +308,19 @@ export function AdminOrdersClient() {
                             <XCircle className="mr-2 h-4 w-4 text-red-600" />
                             Huỷ đơn
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={actionOrderId === order.id}
+                          onClick={() => handleDeleteOrder(order)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Xóa đơn
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

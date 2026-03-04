@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +15,7 @@ interface SearchInputProps {
 }
 
 export function SearchInput({
-  placeholder = "Tim kiem khoa hoc...",
+  placeholder = "Tìm kiếm khóa học...",
   className,
   paramKey = "search",
   autoFocus = false,
@@ -97,7 +97,7 @@ export function SearchInput({
           size="icon-xs"
           className="absolute right-2 top-1/2 -translate-y-1/2"
           onClick={handleClear}
-          aria-label="Xoa tim kiem"
+          aria-label="Xóa tìm kiếm"
         >
           <X className="size-3.5" />
         </Button>

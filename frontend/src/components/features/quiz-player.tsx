@@ -172,7 +172,7 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
 
   const handleSubmit = useCallback(async () => {
     if (isOutOfAttempts) {
-      toast.error("Bạn đã hết lượt làm quiz này");
+      toast.error("Bạn đã hết lượt làm bài kiểm tra này");
       return;
     }
 
@@ -199,7 +199,7 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
       if (timerRef.current) clearInterval(timerRef.current);
 
       if (quizResult.is_passed) {
-        toast.success("Chúc mừng! Bạn đã đạt quiz.");
+        toast.success("Chúc mừng! Bạn đã đạt bài kiểm tra.");
       } else {
         toast.error("Bạn chưa đạt. Hãy thử lại!");
       }
@@ -317,11 +317,11 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
             size="lg"
             disabled={isOutOfAttempts || isLoadingAttempts}
           >
-            {isOutOfAttempts ? "Đã hết lượt" : "Bắt đầu làm Quiz"}
+            {isOutOfAttempts ? "Đã hết lượt" : "Bắt đầu làm bài kiểm tra"}
           </Button>
           {isOutOfAttempts && (
             <p className="text-xs text-destructive">
-              Bạn đã dùng hết lượt làm quiz này.
+              Bạn đã dùng hết lượt làm bài kiểm tra này.
             </p>
           )}
         </div>

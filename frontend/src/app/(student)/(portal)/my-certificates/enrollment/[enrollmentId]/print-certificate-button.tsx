@@ -7,7 +7,7 @@ export function PrintCertificateButton() {
   return (
     <Button
       variant="outline"
-      className="print:hidden"
+      className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 print:hidden"
       onClick={() => window.print()}
     >
       <Printer className="mr-2 size-4" />
@@ -15,4 +15,3 @@ export function PrintCertificateButton() {
     </Button>
   );
 }
-

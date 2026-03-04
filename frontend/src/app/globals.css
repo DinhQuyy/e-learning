@@ -124,3 +124,111 @@
     @apply bg-background text-foreground;
   }
 }
+
+.learnify-home {
+  --learnify-primary: #2f57ef;
+  --learnify-secondary: #b966e7;
+  --learnify-heading: #192335;
+  --learnify-body: #6b7385;
+}
+
+.learnify-home .learnify-hero {
+  background:
+    radial-gradient(circle at 10% 20%, rgb(47 87 239 / 14%) 0%, transparent 45%),
+    radial-gradient(circle at 85% 20%, rgb(185 102 231 / 15%) 0%, transparent 48%),
+    linear-gradient(180deg, #f7f9ff 0%, #fff 70%);
+}
+
+.learnify-home .learnify-btn-gradient {
+  color: #fff;
+  border: 0;
+  background-image: linear-gradient(
+    to right,
+    var(--learnify-primary),
+    var(--learnify-secondary),
+    var(--learnify-secondary),
+    var(--learnify-primary)
+  );
+  background-size: 220% auto;
+  box-shadow: 0 12px 24px rgb(47 87 239 / 28%);
+  transition: background-position 0.35s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.learnify-home .learnify-btn-gradient:hover {
+  background-position: right center;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgb(47 87 239 / 33%);
+}
+
+.learnify-home .learnify-soft-card {
+  box-shadow: 0 10px 28px rgb(15 23 42 / 7%);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.learnify-home .learnify-soft-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgb(15 23 42 / 12%);
+}
+
+.learnify-home .learnify-newsletter {
+  background:
+    radial-gradient(circle at 80% 15%, rgb(47 87 239 / 14%) 0%, transparent 36%),
+    linear-gradient(90deg, rgb(47 87 239 / 10%), rgb(185 102 231 / 12%));
+  border: 1px solid rgb(47 87 239 / 12%);
+}
+
+@keyframes learnify-float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.learnify-home .learnify-float {
+  animation: learnify-float 7s ease-in-out infinite;
+}
+
+.learnify-portal .learnify-portal-card {
+  box-shadow: 0 14px 34px rgb(15 23 42 / 9%);
+}
+
+.learnify-portal .learnify-portal-mobile-nav {
+  margin-bottom: 0.25rem;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.dark .learnify-home {
+  --learnify-heading: #f8fafc;
+  --learnify-body: #cbd5e1;
+}
+
+.dark .learnify-home .learnify-hero {
+  background:
+    radial-gradient(circle at 12% 20%, rgb(47 87 239 / 22%) 0%, transparent 45%),
+    radial-gradient(circle at 88% 24%, rgb(185 102 231 / 18%) 0%, transparent 50%),
+    linear-gradient(180deg, rgb(15 23 42 / 65%) 0%, transparent 68%);
+}
+
+.dark .learnify-home .learnify-newsletter {
+  border-color: rgb(148 163 184 / 35%);
+  background:
+    radial-gradient(circle at 80% 12%, rgb(47 87 239 / 22%) 0%, transparent 34%),
+    linear-gradient(90deg, rgb(15 23 42 / 82%), rgb(30 41 59 / 82%));
+}
+
+.dark .learnify-portal .learnify-portal-card {
+  box-shadow: 0 14px 34px rgb(2 6 23 / 36%);
+}

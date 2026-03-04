@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback } from "react";
 import { jsPDF } from "jspdf";
@@ -13,9 +13,9 @@ type Props = {
 };
 
 const statusLabelMap: Record<string, string> = {
-  active: "Dang hoc",
-  completed: "Hoan thanh",
-  dropped: "Da bo",
+  active: "Đang học",
+  completed: "Hoàn thành",
+  dropped: "Đã bỏ",
 };
 
 function formatDate(value: string): string {
@@ -64,17 +64,17 @@ export function ExportStudentsButton({ courseId, students }: Props) {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("Course Students Report", 40, 40);
+    doc.text("Báo cáo học viên khóa học", 40, 40);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Course ID: ${courseId}`, 40, 58);
-    doc.text(`Generated at: ${generatedAt.toLocaleString("vi-VN")}`, 40, 74);
-    doc.text(`Total students: ${students.length}`, 40, 90);
+    doc.text(`Mã khóa học: ${courseId}`, 40, 58);
+    doc.text(`Thời gian tạo: ${generatedAt.toLocaleString("vi-VN")}`, 40, 74);
+    doc.text(`Tổng học viên: ${students.length}`, 40, 90);
 
     autoTable(doc, {
       startY: 110,
-      head: [["No", "Name", "Email", "Phone", "Enrolled", "Progress (%)", "Status"]],
+      head: [["STT", "Họ tên", "Email", "Số điện thoại", "Ngày ghi danh", "Tiến độ (%)", "Trạng thái"]],
       body: rows,
       styles: {
         font: "helvetica",
@@ -101,7 +101,7 @@ export function ExportStudentsButton({ courseId, students }: Props) {
         const pageNumber = doc.getCurrentPageInfo().pageNumber;
         const pageSize = doc.internal.pageSize;
         doc.setFontSize(9);
-        doc.text(`Page ${pageNumber}`, pageSize.getWidth() - 80, pageSize.getHeight() - 20);
+        doc.text(`Trang ${pageNumber}`, pageSize.getWidth() - 80, pageSize.getHeight() - 20);
       },
     });
 

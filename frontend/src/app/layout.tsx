@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     template: "%s | E-Learning",
   },
   description:
-    "Nen tang hoc truc tuyen hang dau Viet Nam. Hoc moi thu, moi luc, moi noi voi cac khoa hoc chat luong cao.",
-  keywords: ["hoc truc tuyen", "e-learning", "khoa hoc online", "giao duc"],
+    "Nền tảng học trực tuyến hàng đầu Việt Nam. Học mọi thứ, mọi lúc, mọi nơi với các khóa học chất lượng cao.",
+  keywords: ["học trực tuyến", "e-learning", "khóa học online", "giáo dục"],
 };
 
 export default function RootLayout({

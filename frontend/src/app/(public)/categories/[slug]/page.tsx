@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BookOpen } from "lucide-react";
 import { getCategoryBySlug } from "@/lib/queries/categories";
@@ -6,7 +6,7 @@ import { getCoursesByCategory } from "@/lib/queries/courses";
 import { CourseCard } from "@/components/features/course-card";
 import { CategoryPagination } from "./category-pagination";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface CategoryDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -19,12 +19,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const category = await getCategoryBySlug(slug);
   if (!category) {
-    return { title: "Khong tim thay danh muc" };
+    return { title: "Không tìm thấy danh mục" };
   }
   return {
     title: category.name,
     description:
-      category.description || `Cac khoa hoc thuoc danh muc ${category.name}.`,
+      category.description || `Các khóa học thuộc danh mục ${category.name}.`,
   };
 }
 
@@ -52,9 +52,7 @@ export default async function CategoryDetailPage({
         {category.description && (
           <p className="mt-2 text-muted-foreground">{category.description}</p>
         )}
-        <p className="mt-1 text-sm text-muted-foreground">
-          {result.total} khoa hoc
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{result.total} khóa học</p>
       </div>
 
       {result.data.length > 0 ? (
@@ -67,10 +65,10 @@ export default async function CategoryDetailPage({
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <BookOpen className="size-16 text-muted-foreground/30" />
           <h3 className="mt-4 text-lg font-semibold">
-            Chua co khoa hoc nao trong danh muc nay
+            Chưa có khóa học nào trong danh mục này
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Cac khoa hoc se som duoc cap nhat.
+            Các khóa học sẽ sớm được cập nhật.
           </p>
         </div>
       )}

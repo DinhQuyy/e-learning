@@ -1,20 +1,18 @@
-import { requireRole, getUserDisplayName } from "@/lib/dal";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { BookOpen, DollarSign, Star, Users } from "lucide-react";
+import { getUserDisplayName, requireRole } from "@/lib/dal";
+import { getAssetUrl } from "@/lib/directus";
 import {
   getInstructorCourses,
   getInstructorStats,
-  getRecentEnrollments,
   getRatingDistribution,
+  getRecentEnrollments,
 } from "@/lib/queries/instructor";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-export const dynamic = 'force-dynamic';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -23,17 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import {
-  BookOpen,
-  Users,
-  Star,
-  DollarSign,
-} from "lucide-react";
-import { getAssetUrl } from "@/lib/directus";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-import type { DirectusUser, Course } from "@/types";
+import type { Course, DirectusUser } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("vi-VN", {
@@ -48,111 +38,106 @@ export default async function InstructorDashboard() {
   const displayName = getUserDisplayName(user);
   const stats = await getInstructorStats(token);
   const courses = await getInstructorCourses(token);
-  const courseIds = courses.map((c) => c.id);
+  const courseIds = courses.map((course) => course.id);
   const recentEnrollments = await getRecentEnrollments(token, courseIds, 10);
 
-  // Aggregate rating distribution across all courses
   const allRatingDistributions = await Promise.all(
-    courseIds.map((id) => getRatingDistribution(token, id))
+    courseIds.map((id) => getRatingDistribution(token, id)),
   );
+
   const ratingDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const dist of allRatingDistributions) {
+  for (const distribution of allRatingDistributions) {
     for (const key of [1, 2, 3, 4, 5] as const) {
-      ratingDistribution[key] += dist[key] ?? 0;
+      ratingDistribution[key] += distribution[key] ?? 0;
     }
   }
-  const totalRatings = Object.values(ratingDistribution).reduce(
-    (a, b) => a + b,
-    0
-  );
+  const totalRatings = Object.values(ratingDistribution).reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Dashboard Giảng viên
-        </h1>
-        <p className="text-muted-foreground">
-          Xin chào, {displayName}! Đây là tổng quan hoạt động của bạn.
+      <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.35)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f57ef]">
+          Bảng điều khiển giảng viên
         </p>
-      </div>
+        <h2 className="mt-2 text-2xl font-bold text-slate-900">{displayName}</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Theo dõi tăng trưởng lớp học và hiệu suất khóa học của bạn.
+        </p>
+      </section>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Tổng khoá học</CardDescription>
-            <BookOpen className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCourses}</div>
-            <p className="text-xs text-muted-foreground">khoá học đã tạo</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Tổng học viên</CardDescription>
-            <Users className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStudents}</div>
-            <p className="text-xs text-muted-foreground">học viên đã đăng ký</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Đánh giá trung bình</CardDescription>
-            <Star className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.averageRating > 0
-                ? stats.averageRating.toFixed(1)
-                : "--"}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#eef3ff] to-[#f5f8ff] shadow-[0_14px_30px_-24px_rgba(47,87,239,0.6)]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-600">Tổng khóa học</span>
+              <BookOpen className="size-4 text-[#2f57ef]" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              trên thang 5 sao
+            <p className="mt-3 text-3xl font-extrabold text-slate-900">{stats.totalCourses}</p>
+            <p className="mt-1 text-xs text-slate-500">khóa học đã tạo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#ecfdf3] to-[#f4fff8] shadow-[0_14px_30px_-24px_rgba(16,185,129,0.55)]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-600">Tổng học viên</span>
+              <Users className="size-4 text-emerald-600" />
+            </div>
+            <p className="mt-3 text-3xl font-extrabold text-slate-900">{stats.totalStudents}</p>
+            <p className="mt-1 text-xs text-slate-500">học viên đã đăng ký</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#fff7e6] to-[#fffaf0] shadow-[0_14px_30px_-24px_rgba(245,158,11,0.55)]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-600">Đánh giá TB</span>
+              <Star className="size-4 text-amber-500" />
+            </div>
+            <p className="mt-3 text-3xl font-extrabold text-slate-900">
+              {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "--"}
             </p>
+            <p className="mt-1 text-xs text-slate-500">trên thang điểm 5</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardDescription>Doanh thu</CardDescription>
-            <DollarSign className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalRevenue)}
+        <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#f6efff] to-[#fbf6ff] shadow-[0_14px_30px_-24px_rgba(185,102,231,0.55)]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-600">Doanh thu</span>
+              <DollarSign className="size-4 text-[#a855f7]" />
             </div>
-            <p className="text-xs text-muted-foreground">ước tính tổng doanh thu</p>
+            <p className="mt-3 text-3xl font-extrabold text-slate-900">
+              {formatCurrency(stats.totalRevenue)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">ước tính toàn bộ khóa học</p>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Enrollments Table */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Đăng ký gần đây</CardTitle>
-            <CardDescription>
-              Học viên mới đăng ký các khoá học của bạn
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentEnrollments.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                Chưa có học viên đăng ký
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.35)]">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Đăng ký gần đây</h3>
+              <p className="text-sm text-slate-500">
+                Học viên mới đăng ký các khóa học của bạn
               </p>
-            ) : (
+            </div>
+            <Badge variant="secondary">{recentEnrollments.length} bản ghi</Badge>
+          </div>
+
+          {recentEnrollments.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">
+              Chưa có học viên đăng ký.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Học viên</TableHead>
-                    <TableHead>Khoá học</TableHead>
+                    <TableHead>Khóa học</TableHead>
                     <TableHead>Ngày đăng ký</TableHead>
                     <TableHead>Tiến độ</TableHead>
                   </TableRow>
@@ -182,42 +167,30 @@ export default async function InstructorDashboard() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Avatar className="size-8">
-                              <AvatarImage
-                                src={getAssetUrl(studentAvatar)}
-                                alt={studentName}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {studentInitials}
-                              </AvatarFallback>
+                              <AvatarImage src={getAssetUrl(studentAvatar)} alt={studentName} />
+                              <AvatarFallback className="text-xs">{studentInitials}</AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">
-                              {studentName}
-                            </span>
+                            <span className="text-sm font-medium">{studentName}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm">
+                          <span className="line-clamp-2 text-sm">
                             {typeof course === "object"
                               ? course.title
-                              : `Khoá học #${course}`}
+                              : `Khóa học #${course}`}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {format(
-                              new Date(enrollment.enrolled_at),
-                              "dd/MM/yyyy",
-                              { locale: vi }
-                            )}
+                          <span className="text-sm text-slate-500">
+                            {format(new Date(enrollment.enrolled_at), "dd/MM/yyyy", {
+                              locale: vi,
+                            })}
                           </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Progress
-                              value={enrollment.progress_percentage}
-                              className="h-2 w-16"
-                            />
-                            <span className="text-xs text-muted-foreground">
+                            <Progress value={enrollment.progress_percentage} className="h-2 w-20" />
+                            <span className="text-xs text-slate-500">
                               {Math.round(enrollment.progress_percentage)}%
                             </span>
                           </div>
@@ -227,49 +200,38 @@ export default async function InstructorDashboard() {
                   })}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Rating Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Phân bố đánh giá</CardTitle>
-            <CardDescription>
-              {totalRatings > 0
-                ? `Tổng ${totalRatings} đánh giá`
-                : "Chưa có đánh giá"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[5, 4, 3, 2, 1].map((star) => {
-                const count = ratingDistribution[star] ?? 0;
-                const percentage =
-                  totalRatings > 0
-                    ? Math.round((count / totalRatings) * 100)
-                    : 0;
-                return (
-                  <div key={star} className="flex items-center gap-2">
-                    <span className="w-8 text-sm font-medium text-right">
-                      {star}
-                      <Star className="inline ml-0.5 size-3 text-yellow-500 fill-yellow-500" />
-                    </span>
-                    <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-yellow-500 transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <span className="w-10 text-xs text-muted-foreground text-right">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.35)]">
+          <h3 className="text-lg font-bold text-slate-900">Phân bố đánh giá</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {totalRatings > 0 ? `Tổng ${totalRatings} đánh giá` : "Chưa có đánh giá"}
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = ratingDistribution[star] ?? 0;
+              const percentage = totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0;
+
+              return (
+                <div key={star} className="flex items-center gap-2">
+                  <span className="w-8 text-right text-sm font-semibold text-slate-600">
+                    {star}
+                  </span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-amber-500"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <span className="w-10 text-right text-xs text-slate-500">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );

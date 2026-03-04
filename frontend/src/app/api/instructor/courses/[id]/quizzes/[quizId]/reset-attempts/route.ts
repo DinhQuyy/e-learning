@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { directusUrl } from "@/lib/directus";
 
@@ -67,13 +67,13 @@ export async function POST(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json({ error: "Chua xac thuc." }, { status: 401 });
+      return NextResponse.json({ error: "Chưa xác thực." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap." },
+        { error: "Không có quyền truy cập." },
         { status: 403 }
       );
     }
@@ -81,7 +81,7 @@ export async function POST(
     const isQuizInCourse = await verifyQuizInCourse(courseId, quizId);
     if (!isQuizInCourse) {
       return NextResponse.json(
-        { error: "Khong tim thay quiz trong khoa hoc nay." },
+        { error: "Không tìm thấy quiz trong khóa học này." },
         { status: 404 }
       );
     }
@@ -91,7 +91,7 @@ export async function POST(
 
     if (!targetUserId) {
       return NextResponse.json(
-        { error: "Thieu ID hoc vien can reset." },
+        { error: "Thiếu ID học viên cần reset." },
         { status: 400 }
       );
     }
@@ -102,7 +102,7 @@ export async function POST(
 
     if (!attemptsRes.ok) {
       return NextResponse.json(
-        { error: "Khong the tai luot lam quiz cua hoc vien." },
+        { error: "Không thể tải lượt làm quiz của học viên." },
         { status: attemptsRes.status }
       );
     }
@@ -112,7 +112,7 @@ export async function POST(
 
     if (attempts.length === 0) {
       return NextResponse.json({
-        message: "Hoc vien chua co luot lam quiz de reset.",
+        message: "Học viên chưa có lượt làm quiz để reset.",
         deleted_count: 0,
       });
     }
@@ -129,7 +129,7 @@ export async function POST(
         .join(",");
       return NextResponse.json(
         {
-          error: `Reset chua hoan tat. Xoa thanh cong ${attempts.length - failedCount}/${attempts.length} luot.`,
+          error: `Reset chưa hoàn tất. Xóa thành công ${attempts.length - failedCount}/${attempts.length} lượt.`,
           detail: `delete_statuses=${statusList || "unknown"}`,
         },
         { status: 500 }
@@ -137,11 +137,11 @@ export async function POST(
     }
 
     return NextResponse.json({
-      message: `Da reset ${attempts.length} luot lam quiz cho hoc vien.`,
+      message: `Đã reset ${attempts.length} lượt làm quiz cho học viên.`,
       deleted_count: attempts.length,
     });
   } catch (error) {
     console.error("POST reset quiz attempts error:", error);
-    return NextResponse.json({ error: "Loi he thong." }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống." }, { status: 500 });
   }
 }

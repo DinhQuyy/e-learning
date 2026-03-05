@@ -1,4 +1,4 @@
-import { directusFetch } from "@/lib/directus-fetch";
+import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -162,6 +162,82 @@ async function resolveRoleId(roleValue: unknown): Promise<string | null> {
   return match?.id ?? null;
 }
 
+function extractDirectusMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const maybeErrors = (payload as { errors?: Array<{ message?: unknown }> }).errors;
+  const firstMessage = maybeErrors?.[0]?.message;
+  return typeof firstMessage === "string" && firstMessage.trim()
+    ? firstMessage
+    : null;
+}
+
+async function nullifyReferences(
+  endpoint: string,
+  filterQuery: string,
+  data: Record<string, null>
+) {
+  const listRes = await directusFetch(
+    `/${endpoint}?fields=id&limit=-1&${filterQuery}`
+  );
+
+  if (listRes.status === 404) return;
+
+  if (!listRes.ok) {
+    const details = await listRes.json().catch(() => ({}));
+    const message =
+      extractDirectusMessage(details) ?? `Khong the tai du lieu ${endpoint}`;
+    throw new Error(message);
+  }
+
+  const listJson = await listRes.json().catch(() => ({}));
+  const keys = Array.isArray(listJson?.data)
+    ? listJson.data
+        .map((item: { id?: unknown }) => item.id)
+        .filter((value: unknown): value is string => typeof value === "string")
+    : [];
+
+  if (keys.length === 0) return;
+
+  const updateRes = await directusFetch(`/${endpoint}`, {
+    method: "PATCH",
+    body: JSON.stringify({ keys, data }),
+  });
+
+  if (updateRes.status === 404) return;
+
+  if (!updateRes.ok) {
+    const details = await updateRes.json().catch(() => ({}));
+    const message =
+      extractDirectusMessage(details) ?? `Khong the cap nhat ${endpoint}`;
+    throw new Error(message);
+  }
+}
+
+async function prepareUserDeletion(userId: string) {
+  const encodedUserId = encodeURIComponent(userId);
+
+  await nullifyReferences(
+    "files",
+    `filter[_or][0][uploaded_by][_eq]=${encodedUserId}&filter[_or][1][modified_by][_eq]=${encodedUserId}`,
+    { uploaded_by: null, modified_by: null }
+  );
+  await nullifyReferences(
+    "notifications",
+    `filter[sender][_eq]=${encodedUserId}`,
+    { sender: null }
+  );
+  await nullifyReferences(
+    "comments",
+    `filter[user_updated][_eq]=${encodedUserId}`,
+    { user_updated: null }
+  );
+  await nullifyReferences(
+    "versions",
+    `filter[user_updated][_eq]=${encodedUserId}`,
+    { user_updated: null }
+  );
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -169,31 +245,50 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    // Soft-delete: set status to suspended
+    const currentUserId = await getCurrentUserId();
+    if (currentUserId && currentUserId === id) {
+      return NextResponse.json(
+        { error: "Khong the tu xoa tai khoan dang dang nhap" },
+        { status: 400 }
+      );
+    }
+
+    await prepareUserDeletion(id);
+
     const res = await directusFetch(`/users/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "suspended" }),
+      method: "DELETE",
     });
 
     if (res.status === 401) {
       return NextResponse.json(
-        { error: "Không có quyền truy cập" },
+        { error: "Khong co quyen truy cap" },
         { status: 401 }
       );
     }
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      const reason = extractDirectusMessage(error);
       return NextResponse.json(
-        { error: "Không thể xoá người dùng", details: error },
+        {
+          error: reason
+            ? `Khong the xoa nguoi dung: ${reason}`
+            : "Khong the xoa nguoi dung",
+          details: error,
+        },
         { status: res.status }
       );
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { error: "Lỗi hệ thống" },
+      {
+        error:
+          error instanceof Error && error.message
+            ? error.message
+            : "Loi he thong",
+      },
       { status: 500 }
     );
   }

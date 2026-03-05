@@ -199,11 +199,19 @@ export function AdminUsersClient({
     if (!confirm(`Bạn có chắc chắn muốn xoá người dùng "${userName(user)}"?`)) return;
     try {
       const res = await apiDelete(`/api/admin/users/${user.id}`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        const message =
+          payload && typeof payload.error === "string"
+            ? payload.error
+            : "Không thể xoá người dùng";
+        toast.error(message);
+        return;
+      }
       toast.success("Đã xoá người dùng");
       router.refresh();
     } catch {
-      toast.error("Có lỗi xảy ra khi xoá");
+      toast.error("Lỗi kết nối khi xoá");
     }
   };
 

@@ -9,13 +9,17 @@ export interface PortalHeroStat {
 
 interface PortalHeroProps {
   roleLabel: string;
-  displayName: string;
+  displayName?: string | null;
   avatar: string | null;
   subtitle?: string;
   stats: PortalHeroStat[];
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null | undefined): string {
+  if (!name || typeof name !== "string") {
+    return "";
+  }
+
   return name
     .split(" ")
     .filter(Boolean)
@@ -31,6 +35,11 @@ export function PortalHero({
   subtitle,
   stats,
 }: PortalHeroProps) {
+  const safeDisplayName =
+    typeof displayName === "string" && displayName.trim().length > 0
+      ? displayName
+      : "User";
+
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-r from-[#2f57ef] via-[#667eea] to-[#b966e7] p-6 text-white shadow-[0_24px_55px_-35px_rgba(47,87,239,0.75)] sm:p-8">
       <div className="pointer-events-none absolute -left-10 -top-14 size-56 rounded-full bg-white/20 blur-2xl" />
@@ -40,9 +49,9 @@ export function PortalHero({
       <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="size-20 border-2 border-white/70 shadow-lg">
-            <AvatarImage src={getAssetUrl(avatar)} alt={displayName} />
+            <AvatarImage src={getAssetUrl(avatar)} alt={safeDisplayName} />
             <AvatarFallback className="text-lg font-semibold text-slate-900">
-              {getInitials(displayName) || "U"}
+              {getInitials(safeDisplayName) || "U"}
             </AvatarFallback>
           </Avatar>
 
@@ -50,7 +59,7 @@ export function PortalHero({
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
               {roleLabel}
             </p>
-            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{displayName}</h1>
+            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{safeDisplayName}</h1>
             <p className="mt-1 text-sm text-white/85">
               {subtitle || "Theo dõi tiến độ và quản lý hoạt động học tập tại đây."}
             </p>

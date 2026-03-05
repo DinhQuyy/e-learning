@@ -33,7 +33,7 @@ import type { Metadata } from "next";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Dashboard - Quản trị hệ thống",
+  title: "Tổng quan - Quản trị hệ thống",
 };
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");

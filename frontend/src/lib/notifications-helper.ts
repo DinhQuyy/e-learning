@@ -112,3 +112,69 @@ export async function notifyStudentEnrollmentSuccess(
     link: `/learn/${courseSlug}`,
   });
 }
+
+export async function notifyInstructorApplicationStatus(
+  userId: string,
+  status: "APPROVED" | "REJECTED" | "NEEDS_INFO",
+  adminNote?: string | null,
+) {
+  if (status === "APPROVED") {
+    return createNotification({
+      userId,
+      title: "Duyet ho so giang vien",
+      message:
+        "Ho so cua ban da duoc duyet. Ban co the dang nhap vao Instructor Portal ngay bay gio.",
+      type: "success",
+      link: "/instructor/dashboard",
+    });
+  }
+
+  if (status === "NEEDS_INFO") {
+    return createNotification({
+      userId,
+      title: "Can bo sung ho so giang vien",
+      message: adminNote
+        ? `Admin yeu cau bo sung: ${adminNote}`
+        : "Ho so cua ban can bo sung them thong tin. Vui long cap nhat va gui lai.",
+      type: "warning",
+      link: "/become-instructor",
+    });
+  }
+
+  return createNotification({
+    userId,
+    title: "Ho so giang vien bi tu choi",
+    message: adminNote
+      ? `Ly do: ${adminNote}`
+      : "Ho so cua ban chua du dieu kien duyet.",
+    type: "warning",
+    link: "/become-instructor",
+  });
+}
+
+export async function notifyInstructorReactivationStatus(
+  userId: string,
+  status: "APPROVED" | "REJECTED",
+  adminNote?: string | null,
+) {
+  if (status === "APPROVED") {
+    return createNotification({
+      userId,
+      title: "Yeu cau kich hoat lai da duoc duyet",
+      message:
+        "Quyen Instructor da duoc bat lai. Ban co the vao Instructor Portal ngay bay gio.",
+      type: "success",
+      link: "/instructor/dashboard",
+    });
+  }
+
+  return createNotification({
+    userId,
+    title: "Yeu cau kich hoat lai bi tu choi",
+    message: adminNote
+      ? `Ly do: ${adminNote}`
+      : "Admin da tu choi yeu cau kich hoat lai Instructor.",
+    type: "warning",
+    link: "/become-instructor",
+  });
+}

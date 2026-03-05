@@ -30,7 +30,7 @@ export default function AdminErrorPage({ error, reset }: ErrorPageProps) {
               variant="outline"
               onClick={() => (window.location.href = "/admin/dashboard")}
             >
-              Về Dashboard
+              Về trang tổng quan
             </Button>
           </div>
         </CardContent>

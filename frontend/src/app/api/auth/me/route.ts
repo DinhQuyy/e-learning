@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
+import { cookies } from "next/headers";
+
+const isProduction = process.env.NODE_ENV === "production";
 
 export async function GET() {
   try {
@@ -35,6 +38,17 @@ export async function GET() {
     }
 
     const meData = await meRes.json();
+    const rawRole: string = meData.data?.role?.name?.toLowerCase() || "student";
+    const roleName = rawRole === "administrator" ? "admin" : rawRole;
+
+    const cookieStore = await cookies();
+    cookieStore.set("user_role", roleName, {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 604800,
+    });
 
     return NextResponse.json({ user: meData.data });
   } catch (error) {

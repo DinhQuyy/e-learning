@@ -7,6 +7,7 @@ import {
   Bell,
   BookOpen,
   ClipboardList,
+  GraduationCap,
   Heart,
   LayoutDashboard,
   PlusCircle,
@@ -32,6 +33,7 @@ const iconMap: Record<PortalNavIcon, React.ComponentType<{ className?: string }>
   notifications: Bell,
   cart: ShoppingCart,
   reviews: Star,
+  "instructor-application": GraduationCap,
   "new-course": PlusCircle,
 };
 

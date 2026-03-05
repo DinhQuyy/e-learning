@@ -238,7 +238,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       ? role.name.toLowerCase() === "administrator"
         ? "Admin"
         : role.name
-      : "Student";
+      : "Học viên";
 
   // Fetch enrollments for the user
   const enrollmentsRes = await fetch(

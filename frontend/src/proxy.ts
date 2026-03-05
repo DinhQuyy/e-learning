@@ -4,6 +4,14 @@ const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
 const isProduction = process.env.NODE_ENV === "production";
 
+const ROLE_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: isProduction,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 604800, // 7 days
+};
+
 const publicPaths = [
   "/",
   "/courses",
@@ -19,6 +27,46 @@ function isPublicPath(pathname: string): boolean {
   return publicPaths.some(
     (path) => pathname === path || pathname.startsWith(path + "/"),
   );
+}
+
+function normalizeRoleName(raw: string | null | undefined): string {
+  const value = (raw || "").toLowerCase().trim();
+  return value === "administrator" ? "admin" : value || "student";
+}
+
+function hasPortalAccess(
+  pathname: string,
+  role: string | null | undefined,
+): boolean {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (pathname.startsWith("/admin")) {
+    return normalizedRole === "admin";
+  }
+
+  if (pathname.startsWith("/instructor")) {
+    return normalizedRole === "instructor" || normalizedRole === "admin";
+  }
+
+  return true;
+}
+
+async function resolveRoleFromAccessToken(
+  accessToken: string,
+): Promise<string | null> {
+  try {
+    const meRes = await fetch(`${DIRECTUS_URL}/users/me?fields=role.name`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!meRes.ok) return null;
+
+    const meData = await meRes.json().catch(() => null);
+    const rawRole: string | undefined = meData?.data?.role?.name;
+    return normalizeRoleName(rawRole);
+  } catch {
+    return null;
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -56,17 +104,22 @@ export async function proxy(request: NextRequest) {
     return handleMissingAccessToken(request);
   }
 
-  // Role-based access control
-  if (pathname.startsWith("/admin") && userRole !== "admin") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // Role-based access control with stale-cookie self-heal:
+  // after role changes (e.g. student -> instructor), cookie can lag behind token.
+  if (!hasPortalAccess(pathname, userRole)) {
+    const roleFromToken = await resolveRoleFromAccessToken(token);
 
-  if (
-    pathname.startsWith("/instructor") &&
-    userRole !== "instructor" &&
-    userRole !== "admin"
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    if (roleFromToken && hasPortalAccess(pathname, roleFromToken)) {
+      const response = NextResponse.next();
+      response.cookies.set("user_role", roleFromToken, ROLE_COOKIE_OPTIONS);
+      return response;
+    }
+
+    const response = NextResponse.redirect(new URL("/dashboard", request.url));
+    if (roleFromToken) {
+      response.cookies.set("user_role", roleFromToken, ROLE_COOKIE_OPTIONS);
+    }
+    return response;
   }
 
   return NextResponse.next();
@@ -138,11 +191,7 @@ async function handleMissingAccessToken(
             maxAge: 604800, // 7 days
           });
           response.cookies.set("user_role", roleName, {
-            httpOnly: false,
-            secure: isProduction,
-            sameSite: "lax",
-            path: "/",
-            maxAge: 604800, // 7 days
+            ...ROLE_COOKIE_OPTIONS,
           });
           return response;
         }

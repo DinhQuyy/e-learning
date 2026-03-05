@@ -14,6 +14,8 @@ import {
   Menu,
   ChevronDown,
   Shield,
+  FileCheck2,
+  RotateCcw,
 } from "lucide-react";
 import { LogoutButton } from "@/components/features/logout-button";
 import { cn } from "@/lib/utils";
@@ -37,7 +39,7 @@ import { useState } from "react";
 const navItems = [
   {
     href: "/admin/dashboard",
-    label: "Dashboard",
+    label: "Tổng quan",
     icon: LayoutDashboard,
   },
   {
@@ -47,7 +49,7 @@ const navItems = [
   },
   {
     href: "/admin/courses",
-    label: "Khoá học",
+    label: "Khóa học",
     icon: BookOpen,
   },
   {
@@ -66,6 +68,16 @@ const navItems = [
     icon: ShoppingBag,
   },
   {
+    href: "/admin/instructor-applications",
+    label: "Đăng ký giảng viên",
+    icon: FileCheck2,
+  },
+  {
+    href: "/admin/instructor-reactivations",
+    label: "Kích hoạt lại GV",
+    icon: RotateCcw,
+  },
+  {
     href: "/admin/reports",
     label: "Báo cáo",
     icon: BarChart3,
@@ -77,14 +89,15 @@ const navItems = [
   },
 ];
 
-// Proper Vietnamese labels using Unicode
 const navLabels: Record<string, string> = {
-  "/admin/dashboard": "Dashboard",
+  "/admin/dashboard": "Tổng quan",
   "/admin/users": "Người dùng",
-  "/admin/courses": "Khoá học",
+  "/admin/courses": "Khóa học",
   "/admin/categories": "Danh mục",
   "/admin/reviews": "Đánh giá",
   "/admin/orders": "Đơn hàng",
+  "/admin/instructor-applications": "Đăng ký giảng viên",
+  "/admin/instructor-reactivations": "Kích hoạt lại GV",
   "/admin/reports": "Báo cáo",
   "/admin/settings": "Cài đặt",
 };
@@ -115,7 +128,7 @@ function SidebarNav({ onNavClick }: { onNavClick?: () => void }) {
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
               isActive
                 ? "border-l-4 border-blue-400 bg-slate-800 text-white"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white",
             )}
           >
             <Icon className="h-5 w-5 shrink-0" />
@@ -139,10 +152,8 @@ export function AdminSidebar({
       <div className="flex h-16 items-center gap-3 px-6">
         <Shield className="h-7 w-7 text-blue-400" />
         <div>
-          <h2 className="text-sm font-bold text-white">
-            Quản trị hệ thống
-          </h2>
-          <p className="text-xs text-slate-400">E-Learning Admin</p>
+          <h2 className="text-sm font-bold text-white">Quản trị hệ thống</h2>
+          <p className="text-xs text-slate-400">Bảng quản trị E-Learning</p>
         </div>
       </div>
       <Separator className="bg-slate-700" />
@@ -189,16 +200,18 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-900 lg:flex">
         {renderSidebarContent()}
       </aside>
 
-      {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-slate-900 px-4 lg:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-slate-800">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-slate-800"
+            >
               <Menu className="h-5 w-5" />
               <span className="sr-only">Menu</span>
             </Button>
@@ -214,9 +227,7 @@ export function AdminSidebar({
         </Sheet>
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-blue-400" />
-          <span className="text-sm font-bold text-white">
-            Quản trị hệ thống
-          </span>
+          <span className="text-sm font-bold text-white">Quản trị hệ thống</span>
         </div>
       </div>
     </>

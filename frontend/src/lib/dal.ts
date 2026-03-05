@@ -73,8 +73,17 @@ export function getUserRole(user: DirectusUser): string {
 }
 
 export function getUserDisplayName(user: DirectusUser): string {
-  if (user.first_name || user.last_name) {
-    return [user.first_name, user.last_name].filter(Boolean).join(" ");
+  const fullName = [user.first_name, user.last_name]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ");
+
+  if (fullName) {
+    return fullName;
   }
-  return user.email;
+
+  if (typeof user.email === "string" && user.email.trim().length > 0) {
+    return user.email;
+  }
+
+  return "User";
 }

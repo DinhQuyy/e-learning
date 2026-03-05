@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -347,6 +348,20 @@ export default function ProfilePage() {
           Quản lý thông tin cá nhân của bạn
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tro thanh giang vien</CardTitle>
+          <CardDescription>
+            Nop ho so de duoc xet duyet quyen Instructor.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href="/become-instructor">Mo trang dang ky giang vien</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Avatar Section */}
       <Card>

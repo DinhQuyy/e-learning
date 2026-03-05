@@ -8,6 +8,7 @@ export interface DirectusUser {
   avatar: string | null;
   role: string | DirectusRole;
   status: string;
+  instructor_state?: "NONE" | "APPROVED" | "SUSPENDED" | "REVOKED" | null;
   bio: string | null;
   phone: string | null;
   headline: string | null;
@@ -193,6 +194,61 @@ export interface Notification {
   date_created: string;
 }
 
+export type InstructorApplicationTrack = "PORTFOLIO" | "DEMO" | "DOCUMENT";
+export type InstructorApplicationStatus =
+  | "PENDING"
+  | "NEEDS_INFO"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED";
+export type InstructorReactivationStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED";
+export type InstructorState = "NONE" | "APPROVED" | "SUSPENDED" | "REVOKED";
+
+export interface InstructorApplication {
+  id: string;
+  user_id: string | DirectusUser;
+  track: InstructorApplicationTrack;
+  expertise_categories: string[] | null;
+  expertise_description: string;
+  portfolio_links: string[] | null;
+  demo_video_link: string | null;
+  course_outline: string | null;
+  document_urls: string[] | null;
+  terms_accepted: boolean;
+  status: InstructorApplicationStatus;
+  admin_note: string | null;
+  reviewed_by: string | DirectusUser | null;
+  reviewed_at: string | null;
+  date_created: string;
+  date_updated: string | null;
+}
+
+export interface ApplicationHistory {
+  id: string;
+  application_id: string | InstructorApplication;
+  from_status: InstructorApplicationStatus | null;
+  to_status: InstructorApplicationStatus;
+  changed_by: string | DirectusUser | null;
+  note: string | null;
+  date_created: string;
+}
+
+export interface InstructorReactivationRequest {
+  id: string;
+  user_id: string | DirectusUser;
+  status: InstructorReactivationStatus;
+  reason: string | null;
+  admin_note: string | null;
+  reviewed_by: string | DirectusUser | null;
+  reviewed_at: string | null;
+  date_created: string;
+  date_updated: string | null;
+}
+
 // E-Commerce types
 export interface CartItem {
   id: string;
@@ -247,6 +303,9 @@ export interface Schema {
   quiz_answers: QuizAnswer[];
   quiz_attempts: QuizAttempt[];
   notifications: Notification[];
+  instructor_applications: InstructorApplication[];
+  application_history: ApplicationHistory[];
+  instructor_reactivation_requests: InstructorReactivationRequest[];
   cart_items: CartItem[];
   wishlists: WishlistItem[];
   orders: Order[];

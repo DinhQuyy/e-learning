@@ -8,6 +8,7 @@ export type PortalNavIcon =
   | "notifications"
   | "cart"
   | "reviews"
+  | "instructor-application"
   | "new-course";
 
 export interface PortalNavItem {
@@ -25,6 +26,11 @@ export const studentPortalNavItems: PortalNavItem[] = [
   { label: "Đơn hàng", href: "/orders", icon: "orders" },
   { label: "Thông báo", href: "/notifications", icon: "notifications" },
   { label: "Giỏ hàng", href: "/cart", icon: "cart" },
+  {
+    label: "Trở thành giảng viên",
+    href: "/become-instructor",
+    icon: "instructor-application",
+  },
 ];
 
 export const instructorPortalNavItems: PortalNavItem[] = [

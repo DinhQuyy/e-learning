@@ -256,22 +256,32 @@ export async function getReportData(token: string) {
 
   for (const course of instructorCourses) {
     const instructors = course.instructors ?? [];
+    const uniqueInstructorIds = new Set<string>();
+    const totalEnrollments = Number(course.total_enrollments ?? 0);
+    const normalizedEnrollments = Number.isFinite(totalEnrollments)
+      ? totalEnrollments
+      : 0;
+    const averageRating = Number(course.average_rating ?? 0);
+    const normalizedRating = Number.isFinite(averageRating) ? averageRating : 0;
+
     for (const inst of instructors) {
       const user = inst.user_id;
       if (!user || typeof user === "string") continue;
+      if (uniqueInstructorIds.has(user.id)) continue;
+      uniqueInstructorIds.add(user.id);
       const existing = instructorMap.get(user.id);
       if (existing) {
         existing.coursesCount += 1;
-        existing.totalStudents += course.total_enrollments ?? 0;
-        existing.totalRating += course.average_rating ?? 0;
+        existing.totalStudents += normalizedEnrollments;
+        existing.totalRating += normalizedRating;
       } else {
         instructorMap.set(user.id, {
           id: user.id,
           name: [user.first_name, user.last_name].filter(Boolean).join(" ") || "N/A",
           avatar: user.avatar ?? null,
           coursesCount: 1,
-          totalStudents: course.total_enrollments ?? 0,
-          totalRating: course.average_rating ?? 0,
+          totalStudents: normalizedEnrollments,
+          totalRating: normalizedRating,
         });
       }
     }

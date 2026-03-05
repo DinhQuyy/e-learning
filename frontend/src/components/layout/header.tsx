@@ -73,6 +73,49 @@ function hasParent(parent: unknown): boolean {
   return false;
 }
 
+function getSafeInitials(user: {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+}): string {
+  const first =
+    typeof user.first_name === "string" ? user.first_name.trim() : "";
+  const last = typeof user.last_name === "string" ? user.last_name.trim() : "";
+  const email = typeof user.email === "string" ? user.email.trim() : "";
+
+  const fromName = `${first[0] ?? ""}${last[0] ?? ""}`.trim();
+  if (fromName) {
+    return fromName.toUpperCase();
+  }
+
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  return "U";
+}
+
+function getSafeDisplayName(user: {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+}): string {
+  const first =
+    typeof user.first_name === "string" ? user.first_name.trim() : "";
+  const last = typeof user.last_name === "string" ? user.last_name.trim() : "";
+  const fullName = [first, last].filter(Boolean).join(" ");
+
+  if (fullName) {
+    return fullName;
+  }
+
+  if (typeof user.email === "string" && user.email.trim().length > 0) {
+    return user.email;
+  }
+
+  return "User";
+}
+
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -108,16 +151,12 @@ export function Header() {
     router.refresh();
   };
 
-  const userInitials = user
-    ? (user.first_name && user.last_name
-        ? `${user.first_name[0]}${user.last_name[0]}`
-        : user.email.slice(0, 2)
-      ).toUpperCase()
-    : "";
-
-  const userDisplayName = user
-    ? [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email
-    : "";
+  const userInitials = user ? getSafeInitials(user) : "";
+  const userDisplayName = user ? getSafeDisplayName(user) : "";
+  const userEmail =
+    user && typeof user.email === "string" && user.email.trim().length > 0
+      ? user.email
+      : "";
   const dashboardPath = getDashboardPath(role);
 
   const topCategories = useMemo(() => {
@@ -303,7 +342,9 @@ export function Header() {
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userDisplayName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {userEmail || "Khong co email"}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

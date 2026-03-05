@@ -160,8 +160,25 @@ async function addUserFields() {
     {
       field: "phone",
       type: "string",
-      meta: { interface: "input", note: "Số điện thoại" },
+      meta: { interface: "input", note: "So dien thoai" },
       schema: { max_length: 20 },
+    },
+    {
+      field: "instructor_state",
+      type: "string",
+      meta: {
+        interface: "select-dropdown",
+        note: "Trang thai tu cach giang vien",
+        options: {
+          choices: [
+            { text: "None", value: "NONE" },
+            { text: "Approved", value: "APPROVED" },
+            { text: "Suspended", value: "SUSPENDED" },
+            { text: "Revoked", value: "REVOKED" }
+          ]
+        }
+      },
+      schema: { max_length: 20, default_value: "NONE" }
     },
     {
       field: "headline",
@@ -1276,6 +1293,282 @@ async function createCollections() {
 
   // ── 4.10 cart_items ──
   await createCollection("cart_items", { icon: "shopping_cart", note: "Giỏ hàng" });
+  // -- 4.14 instructor_applications --
+  await createCollection("instructor_applications", {
+    icon: "how_to_reg",
+    note: "Don dang ky tro thanh giang vien",
+  });
+  await addField("instructor_applications", {
+    field: "user_id",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      required: true,
+      note: "Nguoi nop don",
+    },
+    schema: { is_nullable: false },
+  });
+  await addField("instructor_applications", {
+    field: "track",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Track xet duyet",
+      options: {
+        choices: [
+          { text: "Portfolio", value: "PORTFOLIO" },
+          { text: "Demo", value: "DEMO" },
+          { text: "Document", value: "DOCUMENT" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "PORTFOLIO", is_nullable: false },
+  });
+  await addField("instructor_applications", {
+    field: "expertise_categories",
+    type: "json",
+    meta: {
+      interface: "input-code",
+      options: { language: "json" },
+      note: "Linh vuc chuyen mon (JSON array)",
+    },
+    schema: {},
+  });
+  await addField("instructor_applications", {
+    field: "expertise_description",
+    type: "text",
+    meta: { interface: "input-multiline", required: true, note: "Mo ta chuyen mon" },
+    schema: { is_nullable: false },
+  });
+  await addField("instructor_applications", {
+    field: "portfolio_links",
+    type: "json",
+    meta: {
+      interface: "input-code",
+      options: { language: "json" },
+      note: "Danh sach portfolio links",
+    },
+    schema: {},
+  });
+  await addField("instructor_applications", {
+    field: "demo_video_link",
+    type: "string",
+    meta: { interface: "input", note: "Link video day thu" },
+    schema: { max_length: 500 },
+  });
+  await addField("instructor_applications", {
+    field: "course_outline",
+    type: "text",
+    meta: { interface: "input-multiline", note: "De cuong khoa hoc" },
+    schema: {},
+  });
+  await addField("instructor_applications", {
+    field: "document_urls",
+    type: "json",
+    meta: {
+      interface: "input-code",
+      options: { language: "json" },
+      note: "Tai lieu dinh kem",
+    },
+    schema: {},
+  });
+  await addField("instructor_applications", {
+    field: "terms_accepted",
+    type: "boolean",
+    meta: { interface: "boolean", note: "Da dong y dieu khoan?" },
+    schema: { default_value: false },
+  });
+  await addField("instructor_applications", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trang thai don",
+      options: {
+        choices: [
+          { text: "Pending", value: "PENDING" },
+          { text: "Needs info", value: "NEEDS_INFO" },
+          { text: "Approved", value: "APPROVED" },
+          { text: "Rejected", value: "REJECTED" },
+          { text: "Cancelled", value: "CANCELLED" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "PENDING", is_nullable: false },
+  });
+  await addField("instructor_applications", {
+    field: "admin_note",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Ghi chu admin" },
+    schema: {},
+  });
+  await addField("instructor_applications", {
+    field: "reviewed_by",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      note: "Admin review",
+    },
+    schema: { is_nullable: true },
+  });
+  await addField("instructor_applications", {
+    field: "reviewed_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thoi diem review" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "instructor_applications",
+    field: "user_id",
+    related_collection: "directus_users",
+    meta: { one_field: "instructor_applications" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "instructor_applications",
+    field: "reviewed_by",
+    related_collection: "directus_users",
+    schema: { on_delete: "SET NULL" },
+  });
+  log("âœ“", "Fields & relations: instructor_applications");
+
+  // -- 4.15 application_history --
+  await createCollection("application_history", {
+    icon: "history",
+    note: "Lich su thay doi trang thai don Instructor",
+  });
+  await addField("application_history", {
+    field: "application_id",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      required: true,
+      note: "Don lien quan",
+    },
+    schema: { is_nullable: false },
+  });
+  await addField("application_history", {
+    field: "from_status",
+    type: "string",
+    meta: { interface: "input", note: "Trang thai cu" },
+    schema: { max_length: 20 },
+  });
+  await addField("application_history", {
+    field: "to_status",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Trang thai moi" },
+    schema: { max_length: 20, is_nullable: false },
+  });
+  await addField("application_history", {
+    field: "changed_by",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      note: "Nguoi thay doi",
+    },
+    schema: { is_nullable: true },
+  });
+  await addField("application_history", {
+    field: "note",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Ghi chu" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "application_history",
+    field: "application_id",
+    related_collection: "instructor_applications",
+    meta: { one_field: "history_entries" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "application_history",
+    field: "changed_by",
+    related_collection: "directus_users",
+    schema: { on_delete: "SET NULL" },
+  });
+  log("âœ“", "Fields & relations: application_history");
+
+  // -- 4.16 instructor_reactivation_requests --
+  await createCollection("instructor_reactivation_requests", {
+    icon: "restart_alt",
+    note: "Yeu cau kich hoat lai quyen Instructor",
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "user_id",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      required: true,
+      note: "Nguoi gui yeu cau",
+    },
+    schema: { is_nullable: false },
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trang thai yeu cau",
+      options: {
+        choices: [
+          { text: "Pending", value: "PENDING" },
+          { text: "Approved", value: "APPROVED" },
+          { text: "Rejected", value: "REJECTED" },
+          { text: "Cancelled", value: "CANCELLED" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "PENDING", is_nullable: false },
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "reason",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Ly do yeu cau" },
+    schema: {},
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "admin_note",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Ghi chu admin" },
+    schema: {},
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "reviewed_by",
+    type: "uuid",
+    meta: {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      note: "Admin review",
+    },
+    schema: { is_nullable: true },
+  });
+  await addField("instructor_reactivation_requests", {
+    field: "reviewed_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thoi diem review" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "instructor_reactivation_requests",
+    field: "user_id",
+    related_collection: "directus_users",
+    meta: { one_field: "instructor_reactivation_requests" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "instructor_reactivation_requests",
+    field: "reviewed_by",
+    related_collection: "directus_users",
+    schema: { on_delete: "SET NULL" },
+  });
+  log("?", "Fields & relations: instructor_reactivation_requests");
+
   await addField("cart_items", {
     field: "user_id",
     type: "uuid",
@@ -1577,7 +1870,7 @@ async function setPermissions() {
   // Student: own profile
   await perm(S, "directus_users", "read", {
     permissions: { id: { _eq: "$CURRENT_USER" } },
-    fields: ["id", "first_name", "last_name", "email", "avatar", "role", "status", "bio", "phone", "headline", "social_links", "date_created"],
+    fields: ["id", "first_name", "last_name", "email", "avatar", "role", "status", "instructor_state", "bio", "phone", "headline", "social_links", "date_created"],
   });
   await perm(S, "directus_users", "update", {
     permissions: { id: { _eq: "$CURRENT_USER" } },
@@ -1600,6 +1893,38 @@ async function setPermissions() {
 
   // Student: read roles (for role.name expansion)
   await perm(S, "directus_roles", "read", { fields: ["id", "name"] });
+
+  // Student: instructor applications (own)
+  await perm(S, "instructor_applications", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
+  await perm(S, "instructor_applications", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
+  await perm(S, "instructor_applications", "update", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: ["track", "expertise_categories", "expertise_description", "portfolio_links", "demo_video_link", "course_outline", "document_urls", "terms_accepted", "status"],
+  });
+
+  // Student: application history (own)
+  await perm(S, "application_history", "create", {
+    fields: "*",
+    validation: { changed_by: { _eq: "$CURRENT_USER" } },
+  });
+  await perm(S, "application_history", "read", {
+    permissions: { application_id: { user_id: { _eq: "$CURRENT_USER" } } },
+    fields: "*",
+  });
+
+  // Student: instructor reactivation requests (own)
+  await perm(S, "instructor_reactivation_requests", "create", {
+    fields: "*",
+    validation: { user_id: { _eq: "$CURRENT_USER" } },
+  });
+  await perm(S, "instructor_reactivation_requests", "read", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: "*",
+  });
+  await perm(S, "instructor_reactivation_requests", "update", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: ["status", "reason"],
+  });
 
   // Student: cart (own)
   await perm(S, "cart_items", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
@@ -1650,7 +1975,7 @@ async function setPermissions() {
         },
       ],
     },
-    fields: ["id", "first_name", "last_name", "email", "avatar", "role", "status", "bio", "phone", "headline", "social_links", "date_created"],
+    fields: ["id", "first_name", "last_name", "email", "avatar", "role", "status", "instructor_state", "bio", "phone", "headline", "social_links", "date_created"],
   });
   await perm(I, "directus_users", "update", {
     permissions: { id: { _eq: "$CURRENT_USER" } },
@@ -1757,6 +2082,19 @@ async function setPermissions() {
   // Instructor: read roles (for role.name expansion)
   await perm(I, "directus_roles", "read", { fields: ["id", "name"] });
 
+  // Instructor: own instructor applications/history
+  await perm(I, "instructor_applications", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
+  await perm(I, "application_history", "read", {
+    permissions: { application_id: { user_id: { _eq: "$CURRENT_USER" } } },
+    fields: "*",
+  });
+
+  // Instructor: own reactivation requests
+  await perm(I, "instructor_reactivation_requests", "read", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: "*",
+  });
+
   // Instructor: cart (own)
   await perm(I, "cart_items", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
   await perm(I, "cart_items", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
@@ -1804,6 +2142,7 @@ async function seedData() {
       first_name: "Nguyễn",
       last_name: "Văn A",
       role: ROLE_INSTRUCTOR,
+      instructor_state: "APPROVED",
       bio: "Giảng viên lập trình với hơn 5 năm kinh nghiệm.",
       headline: "Senior Web Developer",
       phone: "0901234567",
@@ -2132,4 +2471,5 @@ main().catch((err) => {
   console.error("\n  ✗ Bootstrap failed:", err.message);
   process.exit(1);
 });
+
 

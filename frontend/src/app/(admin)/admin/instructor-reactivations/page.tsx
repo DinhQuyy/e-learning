@@ -112,10 +112,10 @@ export default function AdminInstructorReactivationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Kích hoạt lại giảng viên
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Quản lý yêu cầu cấp lại quyền giảng viên cho người dùng đã từng được
           duyệt.
         </p>
@@ -131,7 +131,7 @@ export default function AdminInstructorReactivationsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-500" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -158,7 +158,7 @@ export default function AdminInstructorReactivationsPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-muted-foreground">
+            <div className="flex items-center justify-center py-10 text-gray-500">
               <Loader2 className="mr-2 size-4 animate-spin" /> Đang tải dữ
               liệu...
             </div>
@@ -176,7 +176,7 @@ export default function AdminInstructorReactivationsPage() {
               <TableBody>
                 {filteredRows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="py-8 text-center text-gray-500">
                       Không có yêu cầu nào phù hợp.
                     </TableCell>
                   </TableRow>
@@ -195,7 +195,7 @@ export default function AdminInstructorReactivationsPage() {
                       <TableCell>
                         <div className="font-medium">{user}</div>
                         {typeof item.user_id === "object" && item.user_id?.email && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-gray-500">
                             {item.user_id.email}
                           </div>
                         )}
@@ -206,7 +206,7 @@ export default function AdminInstructorReactivationsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[320px]">
-                        <div className="line-clamp-2 text-sm text-muted-foreground">
+                        <div className="line-clamp-2 text-sm text-gray-500">
                           {item.reason || "--"}
                         </div>
                       </TableCell>

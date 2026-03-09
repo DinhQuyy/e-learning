@@ -124,6 +124,7 @@ Query modules in `lib/queries/`: `courses.ts`, `categories.ts`, `instructor.ts`,
 | `lib/directus-fetch.ts` | Server-side fetch wrapper for API routes — auto token, auto refresh on 401, `getCurrentUserId()`, `getDirectusError()` |
 | `lib/api-fetch.ts` | Client-side fetch wrapper — 401 retry with refresh mutex, `apiGet/Post/Patch/Delete()` helpers |
 | `lib/dal.ts` | Data Access Layer — `getSession()`, `requireAuth()`, `requireRole()`, `getUserRole()` |
+| `lib/validations.ts` | Shared API input validation — `sanitizePagination()`, `sanitizeSearch()`, `isValidCourseStatus()`, `isValidOrderStatus()`, `isValidReviewStatus()`, `isValidSlug()` |
 | `lib/notifications-helper.ts` | Helper to create Directus notifications from API routes |
 | `middleware.ts` | Route protection, role-based redirects, token refresh with anti-loop (`_refreshed` param) |
 | `stores/auth-store.ts` | Zustand store for client-side auth state |
@@ -174,6 +175,31 @@ React Hook Form + Zod v4 + `@hookform/resolvers`. Note: Zod v4 uses `message` in
 
 ### Toast Notifications
 Use `sonner` (not the deprecated shadcn `toast` component).
+
+## Admin Panel
+
+### Features
+- **Dashboard**: 6 stat cards, revenue/enrollment/course-status charts (Recharts), quick actions, activity feeds
+- **Users**: Table with bulk actions (activate/suspend), CSV export, case-insensitive search, role/status filters
+- **Courses**: Table with bulk actions (publish/archive), CSV export, search, status tabs, pending badge
+- **Orders**: Table with status tabs, CSV export, order detail page (`/admin/orders/[id]`) with timeline + actions
+- **Categories**: CRUD with slug uniqueness check, circular parent_id detection
+- **Reviews**: Status moderation (approve/reject/hide)
+- **Reports**: Revenue summary cards, enrollment trend + rating distribution charts, popular courses + top instructors tables
+
+### Admin UI Conventions
+- Use explicit gray color classes (`text-gray-900`, `text-gray-500`, `text-gray-700`) instead of CSS variables (`text-muted-foreground`, `text-foreground`) for reliable contrast on all displays
+- Table headers: `bg-gray-100`, `text-gray-700 font-semibold text-xs uppercase tracking-wider`
+- Outline buttons: always add `border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700`
+- Page titles: `text-2xl font-bold tracking-tight text-gray-900`
+- Search uses `_icontains` (case-insensitive) for Directus filters
+- Refresh buttons use `useTransition()` + `router.push("/admin/<page>")` to reset all filters
+
+### Admin Charts (Recharts)
+- `dashboard-charts.tsx`: RevenueChart (BarChart), EnrollmentChart (LineChart), CourseStatusChart (PieChart donut)
+- `report-charts.tsx`: EnrollmentTrendChart (LineChart), RatingDistributionChart (horizontal BarChart)
+- All chart components are `"use client"` since Recharts requires client-side rendering
+- Revenue query functions in `lib/queries/admin.ts`: `getRevenueStats()`, `getEnrollmentTrend()`, `getCourseStatusDistribution()`
 
 ## Environment Variables
 

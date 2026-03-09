@@ -78,10 +78,10 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Cài đặt hệ thống
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Cấu hình và tuỳ chỉnh nền tảng học trực tuyến
         </p>
       </div>
@@ -131,13 +131,13 @@ export default function AdminSettingsPage() {
               <Label>Logo</Label>
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg border bg-gray-50">
-                  <Server className="h-8 w-8 text-muted-foreground" />
+                  <Server className="h-8 w-8 text-gray-500" />
                 </div>
                 <div>
                   <Button type="button" variant="outline" size="sm">
                     Tải lên logo
                   </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-gray-500">
                     PNG, JPG, SVG. Tối đa 2MB.
                   </p>
                 </div>
@@ -226,7 +226,7 @@ export default function AdminSettingsPage() {
                 <Label htmlFor="maintenance_mode" className="cursor-pointer">
                   Bật chế độ bảo trì
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   Khi bật, người dùng sẽ thấy thông báo bảo trì thay vì trang chủ
                 </p>
               </div>
@@ -252,7 +252,7 @@ export default function AdminSettingsPage() {
 
         {/* Save */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Một số cài đặt nâng cao được quản lý qua{" "}
             <span className="font-medium">Directus Admin UI</span>.
           </p>

@@ -137,7 +137,7 @@ export default function AdminInstructorReactivationDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-gray-500" />
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function AdminInstructorReactivationDetailPage() {
   if (!requestData) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">Không tìm thấy yêu cầu.</p>
+        <p className="text-sm text-gray-500">Không tìm thấy yêu cầu.</p>
         <Button asChild variant="outline">
           <Link href="/admin/instructor-reactivations">Quay lại danh sách</Link>
         </Button>
@@ -157,10 +157,10 @@ export default function AdminInstructorReactivationDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Chi tiết yêu cầu kích hoạt lại
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-500">
             Duyệt hoặc từ chối yêu cầu cấp lại quyền giảng viên.
           </p>
         </div>
@@ -186,13 +186,13 @@ export default function AdminInstructorReactivationDetailPage() {
             <p className="font-medium">Người gửi</p>
             <p>{requesterName}</p>
             {typeof requestData.user_id === "object" && requestData.user_id?.email && (
-              <p className="text-muted-foreground">{requestData.user_id.email}</p>
+              <p className="text-gray-500">{requestData.user_id.email}</p>
             )}
           </div>
 
           <div>
             <p className="font-medium">Lý do yêu cầu</p>
-            <p className="whitespace-pre-wrap text-muted-foreground">
+            <p className="whitespace-pre-wrap text-gray-500">
               {requestData.reason || "--"}
             </p>
           </div>
@@ -200,7 +200,7 @@ export default function AdminInstructorReactivationDetailPage() {
           {requestData.admin_note && (
             <div>
               <p className="font-medium">Ghi chú quản trị hiện tại</p>
-              <p className="whitespace-pre-wrap text-muted-foreground">
+              <p className="whitespace-pre-wrap text-gray-500">
                 {requestData.admin_note}
               </p>
             </div>
@@ -246,7 +246,7 @@ export default function AdminInstructorReactivationDetailPage() {
           </div>
 
           {isFinalStatus ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Yêu cầu này đã kết thúc. Không thể duyệt lại.
             </p>
           ) : (

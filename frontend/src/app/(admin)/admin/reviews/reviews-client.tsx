@@ -24,7 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getAssetUrl } from "@/lib/directus";
-import { apiFetch, apiPatch, apiDelete } from "@/lib/api-fetch";
+import { apiPatch, apiDelete } from "@/lib/api-fetch";
 
 interface ReviewData {
   id: number;
@@ -202,14 +202,14 @@ export function ReviewModerationClient({
                   ))}
                 </div>
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-500">
                 {formatDistanceToNow(new Date(review.date_created), {
                   addSuffix: true,
                   locale: vi,
                 })}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Khoá học:{" "}
               <span className="font-medium text-foreground">
                 {review.course_id?.title ?? "---"}
@@ -275,10 +275,10 @@ export function ReviewModerationClient({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Kiểm duyệt đánh giá
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Quản lý và kiểm duyệt đánh giá khoá học từ học viên
         </p>
       </div>
@@ -350,7 +350,7 @@ export function ReviewModerationClient({
             </CardHeader>
             <CardContent className="space-y-3">
               {pendingReviews.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground">
+                <p className="py-8 text-center text-gray-500">
                   Không có đánh giá nào chờ duyệt.
                 </p>
               ) : (
@@ -371,7 +371,7 @@ export function ReviewModerationClient({
             </CardHeader>
             <CardContent className="space-y-3">
               {approvedReviews.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground">
+                <p className="py-8 text-center text-gray-500">
                   Không có đánh giá nào đã duyệt.
                 </p>
               ) : (
@@ -392,7 +392,7 @@ export function ReviewModerationClient({
             </CardHeader>
             <CardContent className="space-y-3">
               {hiddenReviews.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground">
+                <p className="py-8 text-center text-gray-500">
                   Không có đánh giá nào bị ẩn.
                 </p>
               ) : (

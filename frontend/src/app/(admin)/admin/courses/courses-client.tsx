@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -17,7 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Download,
 } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +43,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getAssetUrl } from "@/lib/directus";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiPatch } from "@/lib/api-fetch";
 
 type CourseStatus = "draft" | "review" | "published" | "archived";
@@ -126,6 +129,9 @@ export function AdminCoursesClient({
   const router = useRouter();
   const searchParamsHook = useSearchParams();
   const [searchValue, setSearchValue] = useState(search);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const buildUrl = useCallback(
     (overrides: Record<string, string>) => {
@@ -194,6 +200,43 @@ export function AdminCoursesClient({
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === courses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(courses.map((c) => c.id)));
+    }
+  };
+
+  const handleBulkAction = async (action: "published" | "archived" | "draft") => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map((id) =>
+          apiPatch(`/api/admin/courses/${id}`, { status: action })
+        )
+      );
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      toast.success(`Đã cập nhật ${succeeded}/${selectedIds.size} khoá học`);
+      setSelectedIds(new Set());
+      router.refresh();
+    } catch {
+      toast.error("Có lỗi xảy ra");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleStatusChange = async (
     courseId: string,
     newStatus: CourseStatus
@@ -213,30 +256,75 @@ export function AdminCoursesClient({
     }
   };
 
+  const handleExportCSV = () => {
+    if (courses.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const header = "Tiêu đề,Giảng viên,Danh mục,Trạng thái,Học viên,Đánh giá,Nổi bật\n";
+    const rows = courses.map((c) => {
+      const instructor = getInstructorName(c);
+      const category = c.category_id?.name ?? "";
+      const rating = Number(c.average_rating ?? 0).toFixed(1);
+      const featured = c.is_featured ? "Có" : "Không";
+      return `"${c.title}","${instructor}","${category}","${c.status}",${c.total_enrollments ?? 0},${rating},"${featured}"`;
+    });
+    const csv = "\uFEFF" + header + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `courses-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Đã xuất file CSV");
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Quản lý khoá học
-        </h1>
-        <p className="text-muted-foreground">
-          Tổng cộng {totalCount} khoá học
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Quản lý khoá học
+          </h1>
+          <p className="text-gray-500">
+            Tổng cộng {totalCount} khoá học
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isPending}
+            onClick={() => {
+              setSearchValue("");
+              startTransition(() => router.push("/admin/courses"));
+            }}
+            className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <RefreshCcw className={`mr-2 h-4 w-4 transition-transform ${isPending ? "animate-spin" : ""}`} />
+            {isPending ? "Đang tải..." : "Làm mới"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700">
+            <Download className="mr-2 h-4 w-4" />
+            Xuất CSV
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Tìm kiếm theo tiêu đề..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-9"
+            className="pl-9 border-gray-300 text-gray-900 placeholder:text-gray-400"
           />
         </div>
-        <Button onClick={handleSearch}>Tìm kiếm</Button>
+        <Button onClick={handleSearch} className="bg-gray-900 text-white hover:bg-gray-800">Tìm kiếm</Button>
       </div>
 
       {/* Status Tabs */}
@@ -257,34 +345,80 @@ export function AdminCoursesClient({
         </TabsList>
       </Tabs>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium">
+            Đã chọn {selectedIds.size} khoá học
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={bulkLoading}
+            onClick={() => handleBulkAction("published")}
+          >
+            <CheckCircle className="mr-1 h-4 w-4 text-green-600" />
+            Duyệt
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={bulkLoading}
+            onClick={() => handleBulkAction("archived")}
+          >
+            <Archive className="mr-1 h-4 w-4" />
+            Lưu trữ
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Bỏ chọn
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">Ảnh</TableHead>
-              <TableHead>Tiêu đề</TableHead>
-              <TableHead>Giảng viên</TableHead>
-              <TableHead>Danh mục</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Học viên</TableHead>
-              <TableHead>Đánh giá</TableHead>
-              <TableHead className="w-12">Hành động</TableHead>
+            <TableRow className="bg-gray-100 hover:bg-gray-100">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={courses.length > 0 && selectedIds.size === courses.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
+              <TableHead className="w-16 text-gray-700 font-semibold text-xs uppercase tracking-wider">Ảnh</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Tiêu đề</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Giảng viên</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Danh mục</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Trạng thái</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Học viên</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Đánh giá</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {courses.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
-                  className="py-12 text-center text-muted-foreground"
+                  colSpan={9}
+                  className="py-12 text-center text-gray-400"
                 >
                   Không tìm thấy khoá học nào.
                 </TableCell>
               </TableRow>
             )}
             {courses.map((course) => (
-              <TableRow key={course.id}>
+              <TableRow key={course.id} className="hover:bg-gray-50/50">
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(course.id)}
+                    onCheckedChange={() => toggleSelect(course.id)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="h-10 w-16 overflow-hidden rounded bg-gray-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -297,7 +431,7 @@ export function AdminCoursesClient({
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium">{course.title}</p>
+                    <p className="font-medium text-gray-900">{course.title}</p>
                     {course.is_featured && (
                       <Badge
                         variant="outline"
@@ -309,20 +443,20 @@ export function AdminCoursesClient({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm text-gray-600">
                   {getInstructorName(course)}
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm text-gray-600">
                   {course.category_id?.name ?? "---"}
                 </TableCell>
                 <TableCell>{getStatusBadge(course.status)}</TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm text-gray-700 font-medium">
                   {course.total_enrollments ?? 0}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <StarIcon className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm">
+                    <span className="text-sm text-gray-700">
                       {Number(course.average_rating ?? 0).toFixed(1)}
                     </span>
                   </div>
@@ -414,13 +548,14 @@ export function AdminCoursesClient({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Trang {currentPage} / {totalPages}
           </p>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
               disabled={currentPage <= 1}
               onClick={() =>
                 router.push(buildUrl({ page: String(currentPage - 1) }))
@@ -432,6 +567,7 @@ export function AdminCoursesClient({
             <Button
               variant="outline"
               size="sm"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
               disabled={currentPage >= totalPages}
               onClick={() =>
                 router.push(buildUrl({ page: String(currentPage + 1) }))

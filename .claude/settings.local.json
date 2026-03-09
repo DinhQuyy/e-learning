@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /c/Users/Admin/Downloads/e-learning/frontend/*.ts)",
+      "Bash(npm install recharts)",
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(ls /c/Users/Admin/Downloads/e-learning/frontend/src/app/\\\\\\(admin\\\\\\)/admin/orders/)",
+      "Bash(while read f)",
+      "Bash(do sed -i 's/text-muted-foreground/text-gray-500/g' \"$f\")",
+      "Bash(done)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx next lint)",
+      "Bash(npx eslint src/ --max-warnings=100)",
+      "Bash(npx eslint src/app/\\\\\\(admin\\\\\\) src/app/api/admin src/lib/queries/admin.ts src/lib/validations.ts src/components/ui/checkbox.tsx --max-warnings=100)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders"
+    ]
+  }
+}

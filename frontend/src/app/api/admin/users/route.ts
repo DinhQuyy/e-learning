@@ -1,22 +1,24 @@
 import { directusFetch } from "@/lib/directus-fetch";
+import { sanitizePagination, sanitizeSearch } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 20;
-  const search = searchParams.get("search") || "";
+  const { limit, offset } = sanitizePagination(
+    searchParams.get("page"),
+    searchParams.get("limit")
+  );
+  const search = sanitizeSearch(searchParams.get("search"));
   const role = searchParams.get("role") || "";
   const status = searchParams.get("status") || "";
-  const offset = (page - 1) * limit;
 
   const filterParts: string[] = [];
 
   if (search) {
     filterParts.push(
-      `filter[_or][0][first_name][_contains]=${encodeURIComponent(search)}`,
-      `filter[_or][1][last_name][_contains]=${encodeURIComponent(search)}`,
-      `filter[_or][2][email][_contains]=${encodeURIComponent(search)}`
+      `filter[_or][0][first_name][_icontains]=${encodeURIComponent(search)}`,
+      `filter[_or][1][last_name][_icontains]=${encodeURIComponent(search)}`,
+      `filter[_or][2][email][_icontains]=${encodeURIComponent(search)}`
     );
   }
 

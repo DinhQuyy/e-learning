@@ -22,7 +22,7 @@ export default async function AdminCoursesPage({ searchParams }: PageProps) {
   const { token } = await requireAuth();
   const params = await searchParams;
 
-  const page = Number(params.page) || 1;
+  const page = Math.max(1, Number(params.page) || 1);
   const search = params.search || "";
   const status = params.status || "all";
 

@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/dal";
-import { getReportData } from "@/lib/queries/admin";
+import { getReportData, getRevenueStats } from "@/lib/queries/admin";
 import { getAssetUrl } from "@/lib/directus";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -19,21 +19,32 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
-import { Star, TrendingUp, Trophy, BarChart3 } from "lucide-react";
+import { Star, Trophy, DollarSign } from "lucide-react";
 import type { Metadata } from "next";
+import {
+  EnrollmentTrendChart,
+  RatingDistributionChart,
+} from "./report-charts";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Báo cáo & Thống kê - Quản trị",
 };
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
+const priceFormatter = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
 
 export default async function AdminReportsPage() {
   const { token } = await requireAuth();
-  const reportData = await getReportData(token);
+  const [reportData, revenueStats] = await Promise.all([
+    getReportData(token),
+    getRevenueStats(token),
+  ]);
 
   // Process enrollment trends by month (last 6 months)
   const now = new Date();
@@ -52,12 +63,10 @@ export default async function AdminReportsPage() {
     ).length;
 
     monthlyEnrollments.push({
-      month: format(monthDate, "MMMM yyyy", { locale: vi }),
+      month: format(monthDate, "MMM yy", { locale: vi }),
       count,
     });
   }
-
-  const maxEnrollment = Math.max(...monthlyEnrollments.map((m) => m.count), 1);
 
   // Rating distribution
   const totalReviews = reportData.ratingDistribution.reduce(
@@ -65,64 +74,103 @@ export default async function AdminReportsPage() {
     0
   );
 
+  const ratingChartData = [5, 4, 3, 2, 1].map((rating) => {
+    const ratingData = reportData.ratingDistribution.find(
+      (r: { rating: number }) => r.rating === rating
+    );
+    const count = ratingData?.count ?? 0;
+    return {
+      rating,
+      count,
+      percentage: totalReviews > 0 ? (count / totalReviews) * 100 : 0,
+    };
+  });
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Báo cáo & Thống kê
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Phân tích dữ liệu và xu hướng của nền tảng
         </p>
       </div>
 
-      {/* Enrollment Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Xu hướng ghi danh
-          </CardTitle>
-          <CardDescription>
-            Số lượng ghi danh trong 6 tháng gần nhất
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tháng</TableHead>
-                <TableHead>Số lượng</TableHead>
-                <TableHead className="w-1/2">Biểu đồ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {monthlyEnrollments.map((item) => (
-                <TableRow key={item.month}>
-                  <TableCell className="font-medium capitalize">
-                    {item.month}
-                  </TableCell>
-                  <TableCell>
-                    {numberFormatter.format(item.count)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress
-                        value={(item.count / maxEnrollment) * 100}
-                        className="h-3"
-                      />
-                      <span className="w-12 text-right text-xs text-muted-foreground">
-                        {Math.round((item.count / maxEnrollment) * 100)}%
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Revenue Summary Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-emerald-50 p-2.5 dark:bg-emerald-950/30">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tổng doanh thu</p>
+                <p className="text-xl font-bold">
+                  {priceFormatter.format(revenueStats.totalRevenue)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-blue-50 p-2.5 dark:bg-blue-950/30">
+                <DollarSign className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tháng này</p>
+                <p className="text-xl font-bold">
+                  {priceFormatter.format(revenueStats.currentMonthRevenue)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-gray-50 p-2.5 dark:bg-gray-950/30">
+                <DollarSign className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tháng trước</p>
+                <p className="text-xl font-bold">
+                  {priceFormatter.format(revenueStats.lastMonthRevenue)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-purple-50 p-2.5 dark:bg-purple-950/30">
+                <Star className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tổng đơn hàng</p>
+                <p className="text-xl font-bold">
+                  {numberFormatter.format(revenueStats.totalOrders)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <EnrollmentTrendChart data={monthlyEnrollments} />
+        <RatingDistributionChart
+          data={ratingChartData}
+          totalReviews={totalReviews}
+        />
+      </div>
+
+      {/* Tables Row */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Popular Courses */}
         <Card>
@@ -137,7 +185,7 @@ export default async function AdminReportsPage() {
           </CardHeader>
           <CardContent>
             {reportData.popularCourses.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
+              <p className="py-8 text-center text-gray-500">
                 Chưa có dữ liệu.
               </p>
             ) : (
@@ -162,10 +210,10 @@ export default async function AdminReportsPage() {
                       index: number
                     ) => (
                       <TableRow key={course.id}>
-                        <TableCell className="font-bold text-muted-foreground">
+                        <TableCell className="font-bold text-gray-500">
                           {index + 1}
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="max-w-48 truncate font-medium">
                           {course.title}
                         </TableCell>
                         <TableCell>
@@ -203,7 +251,7 @@ export default async function AdminReportsPage() {
           </CardHeader>
           <CardContent>
             {reportData.topInstructors.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
+              <p className="py-8 text-center text-gray-500">
                 Chưa có dữ liệu.
               </p>
             ) : (
@@ -214,7 +262,7 @@ export default async function AdminReportsPage() {
                     <TableHead>Giảng viên</TableHead>
                     <TableHead>Khoá học</TableHead>
                     <TableHead>Học viên</TableHead>
-                    <TableHead>TB đánh giá</TableHead>
+                    <TableHead>TB</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -231,7 +279,7 @@ export default async function AdminReportsPage() {
                       index: number
                     ) => (
                       <TableRow key={instructor.id}>
-                        <TableCell className="font-bold text-muted-foreground">
+                        <TableCell className="font-bold text-gray-500">
                           {index + 1}
                         </TableCell>
                         <TableCell>
@@ -271,52 +319,6 @@ export default async function AdminReportsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Rating Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Phân bố đánh giá
-          </CardTitle>
-          <CardDescription>
-            Tổng quan đánh giá toàn nền tảng ({numberFormatter.format(totalReviews)}{" "}
-            đánh giá đã duyệt)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[5, 4, 3, 2, 1].map((rating) => {
-              const ratingData = reportData.ratingDistribution.find(
-                (r: { rating: number }) => r.rating === rating
-              );
-              const count = ratingData?.count ?? 0;
-              const percentage =
-                totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-
-              return (
-                <div key={rating} className="flex items-center gap-3">
-                  <div className="flex w-20 items-center gap-1">
-                    <span className="text-sm font-medium">{rating}</span>
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  </div>
-                  <div className="flex-1">
-                    <Progress value={percentage} className="h-3" />
-                  </div>
-                  <div className="w-24 text-right">
-                    <span className="text-sm font-medium">
-                      {numberFormatter.format(count)}
-                    </span>
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

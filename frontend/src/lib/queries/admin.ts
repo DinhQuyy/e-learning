@@ -69,9 +69,9 @@ export async function getUsers(token: string, params: GetUsersParams = {}) {
 
   if (search) {
     filterParts.push(
-      `filter[_or][0][first_name][_contains]=${encodeURIComponent(search)}` +
-        `&filter[_or][1][last_name][_contains]=${encodeURIComponent(search)}` +
-        `&filter[_or][2][email][_contains]=${encodeURIComponent(search)}`
+      `filter[_or][0][first_name][_icontains]=${encodeURIComponent(search)}` +
+        `&filter[_or][1][last_name][_icontains]=${encodeURIComponent(search)}` +
+        `&filter[_or][2][email][_icontains]=${encodeURIComponent(search)}`
     );
   }
 
@@ -139,7 +139,7 @@ export async function getAllCourses(
 
   if (search) {
     filterParts.push(
-      `filter[title][_contains]=${encodeURIComponent(search)}`
+      `filter[title][_icontains]=${encodeURIComponent(search)}`
     );
   }
 
@@ -301,6 +301,152 @@ export async function getReportData(token: string) {
     ratingDistribution: ratingDistRes,
     topInstructors,
   };
+}
+
+export async function getRevenueStats(token: string) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  // Get all successful orders from last 12 months
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const ordersRes = await fetch(
+    `${directusUrl}/items/orders?fields=id,total_amount,paid_at,date_created&filter[status][_eq]=success&filter[paid_at][_gte]=${twelveMonthsAgo.toISOString()}&sort=-paid_at&limit=1000`,
+    { headers, next: { revalidate: 0 } }
+  );
+
+  const orders = ordersRes.ok ? (await ordersRes.json()).data ?? [] : [];
+
+  // Calculate monthly revenue
+  const monthlyRevenue: Record<string, number> = {};
+  let totalRevenue = 0;
+  let currentMonthRevenue = 0;
+  let lastMonthRevenue = 0;
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
+
+  for (const order of orders) {
+    const amount = Number(order.total_amount ?? 0);
+    if (!Number.isFinite(amount)) continue;
+    totalRevenue += amount;
+
+    const date = new Date(order.paid_at || order.date_created);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] ?? 0) + amount;
+
+    if (monthKey === currentMonthKey) currentMonthRevenue += amount;
+    if (monthKey === lastMonthKey) lastMonthRevenue += amount;
+  }
+
+  // Build last 6 months array for chart
+  const monthlyChart = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+    monthlyChart.push({
+      month: monthNames[d.getMonth()],
+      revenue: monthlyRevenue[key] ?? 0,
+    });
+  }
+
+  const revenueChange = lastMonthRevenue > 0
+    ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+    : currentMonthRevenue > 0 ? 100 : 0;
+
+  return {
+    totalRevenue,
+    currentMonthRevenue,
+    lastMonthRevenue,
+    revenueChange,
+    monthlyChart,
+    totalOrders: orders.length,
+  };
+}
+
+export async function getEnrollmentTrend(token: string) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const res = await fetch(
+    `${directusUrl}/items/enrollments?fields=id,enrolled_at&filter[enrolled_at][_gte]=${sixMonthsAgo.toISOString()}&sort=-enrolled_at&limit=1000`,
+    { headers, next: { revalidate: 0 } }
+  );
+
+  const enrollments = res.ok ? (await res.json()).data ?? [] : [];
+
+  const now = new Date();
+  const monthlyCount: Record<string, number> = {};
+
+  for (const e of enrollments) {
+    const date = new Date(e.enrolled_at);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthlyCount[key] = (monthlyCount[key] ?? 0) + 1;
+  }
+
+  const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+  const trend = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    trend.push({
+      month: monthNames[d.getMonth()],
+      enrollments: monthlyCount[key] ?? 0,
+    });
+  }
+
+  return trend;
+}
+
+export async function getCourseStatusDistribution(token: string) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  const statuses = ["draft", "review", "published", "archived"];
+  const results = await Promise.all(
+    statuses.map(async (status) => {
+      const res = await fetch(
+        `${directusUrl}/items/courses?aggregate[count]=id&filter[status][_eq]=${status}`,
+        { headers, next: { revalidate: 0 } }
+      );
+      if (!res.ok) return { status, count: 0 };
+      const data = await res.json();
+      return { status, count: Number(data.data?.[0]?.count?.id ?? 0) };
+    })
+  );
+
+  const labelMap: Record<string, string> = {
+    draft: "Bản nháp",
+    review: "Chờ duyệt",
+    published: "Đã xuất bản",
+    archived: "Lưu trữ",
+  };
+
+  const colorMap: Record<string, string> = {
+    draft: "#94a3b8",
+    review: "#f59e0b",
+    published: "#22c55e",
+    archived: "#6b7280",
+  };
+
+  return results.map((r) => ({
+    name: labelMap[r.status] ?? r.status,
+    value: r.count,
+    fill: colorMap[r.status] ?? "#8884d8",
+  }));
 }
 
 export async function getLatestEnrollments(token: string, limit: number = 5) {

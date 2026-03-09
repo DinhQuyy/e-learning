@@ -21,7 +21,7 @@ export default function AdminErrorPage({ error, reset }: ErrorPageProps) {
         <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
           <AlertTriangle className="size-12 text-destructive/60" />
           <h2 className="text-xl font-bold">Đã xảy ra lỗi</h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-gray-500 text-sm">
             Không thể tải trang này. Vui lòng thử lại.
           </p>
           <div className="flex gap-3">

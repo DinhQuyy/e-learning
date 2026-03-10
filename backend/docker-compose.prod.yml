@@ -1,6 +1,6 @@
 services:
   database:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_DB: elearning
@@ -19,6 +19,43 @@ services:
       resources:
         limits:
           memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elearning-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks:
+      - elearning-network
+    deploy:
+      resources:
+        limits:
+          memory: 6G
 
   directus:
     image: directus/directus:11
@@ -57,8 +94,108 @@ services:
         limits:
           memory: 1G
 
+  ai-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-api
+    restart: always
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      PG_HOST: database
+      PG_PORT: "5432"
+      PG_DB: elearning
+      PG_USER: directus
+      PG_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      AI_INTERNAL_KEY: ${AI_INTERNAL_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL}
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL}
+      LLM_MAX_TOKENS_HELPDESK: ${LLM_MAX_TOKENS_HELPDESK:-320}
+      LLM_MAX_TOKENS_REFERENCES: ${LLM_MAX_TOKENS_REFERENCES:-360}
+      LLM_MAX_TOKENS_MENTOR: ${LLM_MAX_TOKENS_MENTOR:-260}
+      LLM_MAX_TOKENS_ASSIGNMENT: ${LLM_MAX_TOKENS_ASSIGNMENT:-320}
+      LLM_MAX_TOKENS_REPAIR: ${LLM_MAX_TOKENS_REPAIR:-420}
+      RESPONSE_CACHE_TTL_SEC: ${RESPONSE_CACHE_TTL_SEC:-300}
+      STYLE_EXAMPLES_CACHE_TTL_SEC: ${STYLE_EXAMPLES_CACHE_TTL_SEC:-300}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-20}
+      STRICT_QA_ONLY: ${STRICT_QA_ONLY:-false}
+      STRICT_QA_MODES: ${STRICT_QA_MODES:-helpdesk,references}
+      STRICT_QA_SOURCE_TYPES: ${STRICT_QA_SOURCE_TYPES:-custom_qa}
+      STRICT_QA_MIN_CHUNKS: ${STRICT_QA_MIN_CHUNKS:-1}
+      STRICT_QA_MAX_DISTANCE: ${STRICT_QA_MAX_DISTANCE:-0.45}
+      STRICT_QA_MIN_TOKEN_OVERLAP: ${STRICT_QA_MIN_TOKEN_OVERLAP:-0.4}
+      STRICT_QA_LOOKUP_TTL_SEC: ${STRICT_QA_LOOKUP_TTL_SEC:-300}
+      STRICT_QA_REFUSE_MESSAGE: "${STRICT_QA_REFUSE_MESSAGE:-Cau hoi nam ngoai bo du lieu da duoc phe duyet. Vui long lien he admin de bo sung.}"
+    ports:
+      - "8090:8090"
+    networks:
+      - elearning-network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-worker
+    restart: always
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      PG_HOST: database
+      PG_PORT: "5432"
+      PG_DB: elearning
+      PG_USER: directus
+      PG_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      AI_INTERNAL_KEY: ${AI_INTERNAL_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL}
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL}
+      LLM_MAX_TOKENS_HELPDESK: ${LLM_MAX_TOKENS_HELPDESK:-320}
+      LLM_MAX_TOKENS_REFERENCES: ${LLM_MAX_TOKENS_REFERENCES:-360}
+      LLM_MAX_TOKENS_MENTOR: ${LLM_MAX_TOKENS_MENTOR:-260}
+      LLM_MAX_TOKENS_ASSIGNMENT: ${LLM_MAX_TOKENS_ASSIGNMENT:-320}
+      LLM_MAX_TOKENS_REPAIR: ${LLM_MAX_TOKENS_REPAIR:-420}
+      RESPONSE_CACHE_TTL_SEC: ${RESPONSE_CACHE_TTL_SEC:-300}
+      STYLE_EXAMPLES_CACHE_TTL_SEC: ${STYLE_EXAMPLES_CACHE_TTL_SEC:-300}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-20}
+      STRICT_QA_ONLY: ${STRICT_QA_ONLY:-false}
+      STRICT_QA_MODES: ${STRICT_QA_MODES:-helpdesk,references}
+      STRICT_QA_SOURCE_TYPES: ${STRICT_QA_SOURCE_TYPES:-custom_qa}
+      STRICT_QA_MIN_CHUNKS: ${STRICT_QA_MIN_CHUNKS:-1}
+      STRICT_QA_MAX_DISTANCE: ${STRICT_QA_MAX_DISTANCE:-0.45}
+      STRICT_QA_MIN_TOKEN_OVERLAP: ${STRICT_QA_MIN_TOKEN_OVERLAP:-0.4}
+      STRICT_QA_LOOKUP_TTL_SEC: ${STRICT_QA_LOOKUP_TTL_SEC:-300}
+      STRICT_QA_REFUSE_MESSAGE: "${STRICT_QA_REFUSE_MESSAGE:-Cau hoi nam ngoai bo du lieu da duoc phe duyet. Vui long lien he admin de bo sung.}"
+    networks:
+      - elearning-network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
 volumes:
   pgdata:
+  redisdata:
+  ollama_data:
 
 networks:
   elearning-network:

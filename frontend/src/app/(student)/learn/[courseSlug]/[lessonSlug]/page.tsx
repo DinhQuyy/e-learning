@@ -258,7 +258,13 @@ export default async function LessonPage({
             ) : null}
           </CardHeader>
           <CardContent className="p-5 sm:p-6">
-            <QuizPlayer quiz={lesson.quizzes[0]} />
+            <QuizPlayer
+              quiz={lesson.quizzes[0]}
+              context={{
+                courseId: course.id,
+                lessonId: lesson.id,
+              }}
+            />
           </CardContent>
         </Card>
       ) : null}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { sendLearningEventSafe } from "@/lib/ai-events";
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +36,7 @@ export async function POST(
 
     // Fetch quiz with questions and correct answers
     const quizRes = await directusFetch(
-      `/items/quizzes/${quizId}?fields=*,questions.id,questions.question_text,questions.question_type,questions.explanation,questions.points,questions.sort,questions.answers.id,questions.answers.answer_text,questions.answers.is_correct,questions.answers.sort`
+      `/items/quizzes/${quizId}?fields=*,lesson_id.id,lesson_id.module_id.course_id.id,questions.id,questions.question_text,questions.question_type,questions.explanation,questions.points,questions.sort,questions.answers.id,questions.answers.answer_text,questions.answers.is_correct,questions.answers.sort`
     );
 
     if (quizRes.status === 401) {
@@ -128,6 +129,7 @@ export async function POST(
 
     const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
     const isPassed = score >= (quiz.passing_score ?? 70);
+    const nowIso = new Date().toISOString();
 
     // Create quiz attempt record
     const attemptRes = await directusFetch("/items/quiz_attempts", {
@@ -136,10 +138,10 @@ export async function POST(
         quiz_id: quizId,
         user_id: userId,
         score,
-        is_passed: isPassed,
+        passed: isPassed,
         answers,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
+        started_at: nowIso,
+        finished_at: nowIso,
       }),
     });
 
@@ -155,6 +157,25 @@ export async function POST(
     }
 
     const attemptData = await attemptRes.json();
+    const courseId =
+      quiz?.lesson_id?.module_id?.course_id?.id ??
+      quiz?.lesson_id?.module_id?.course_id ??
+      null;
+
+    if (courseId) {
+      await sendLearningEventSafe({
+        user_id: userId,
+        course_id: String(courseId),
+        lesson_id: quiz?.lesson_id?.id ?? quiz?.lesson_id ?? null,
+        event_type: "quiz_attempt",
+        duration_sec: 0,
+        metadata: {
+          quiz_id: quizId,
+          score,
+          passed: isPassed,
+        },
+      });
+    }
 
     return NextResponse.json({
       data: {

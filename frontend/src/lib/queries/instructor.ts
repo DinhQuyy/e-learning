@@ -23,6 +23,18 @@ export interface CourseStudent {
 }
 
 type CountResult = { map: Map<string, number>; success: boolean };
+const IN_FILTER_CHUNK_SIZE = 60;
+
+function chunkIds(ids: string[], chunkSize: number = IN_FILTER_CHUNK_SIZE): string[][] {
+  const unique = Array.from(new Set(ids.map((id) => String(id)).filter(Boolean)));
+  if (unique.length === 0) return [];
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    chunks.push(unique.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
 
 function getEnrollmentUserId(enrollment: Enrollment): string | null {
   const user = enrollment.user_id as DirectusUser | string | null | undefined;
@@ -167,6 +179,43 @@ async function fetchUsersByIds(
   return map;
 }
 
+async function getInstructorRevenueByCourseIds(
+  courseIds: string[],
+  token: string
+): Promise<number> {
+  const chunks = chunkIds(courseIds);
+  if (chunks.length === 0) return 0;
+
+  let totalRevenue = 0;
+
+  for (const chunk of chunks) {
+    const params = new URLSearchParams();
+    params.set("filter[course_id][_in]", chunk.join(","));
+    params.set("filter[order_id][status][_eq]", "success");
+    params.append("aggregate[sum]", "price");
+
+    try {
+      const res = await fetch(`${directusUrl}/items/order_items?${params.toString()}`, {
+        headers: getAuthHeaders(token),
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const sumValue = data?.data?.[0]?.sum?.price ?? 0;
+      const revenue = Number(sumValue);
+      if (Number.isFinite(revenue)) {
+        totalRevenue += revenue;
+      }
+    } catch {
+      // keep best-effort behavior and continue other chunks
+    }
+  }
+
+  return totalRevenue;
+}
+
 async function enrichEnrollments(
   enrollments: Enrollment[],
   token: string
@@ -295,77 +344,114 @@ export async function getInstructorCourses(
 
   if (courseIds.length === 0) return [];
 
-  // Fetch courses with related data
-  const coursesRes = await fetch(
-    `${directusUrl}/items/courses?filter[id][_in]=${courseIds.join(",")}&fields=*,category_id.id,category_id.name&sort=-date_created`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
+  const headers = getAuthHeaders(token);
+  const courseIdChunks = chunkIds(courseIds);
+
+  // Fetch courses with related data (chunked to avoid long query strings)
+  const courseChunkResults = await Promise.all(
+    courseIdChunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[id][_in]", chunk.join(","));
+      params.set("fields", "*,category_id.id,category_id.name");
+      params.set("sort", "-date_created");
+      params.set("limit", "-1");
+
+      const res = await fetch(`${directusUrl}/items/courses?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return [] as Course[];
+      const payload = await res.json();
+      return (payload?.data ?? []) as Course[];
+    })
   );
 
-  if (!coursesRes.ok) return [];
+  const courses = courseChunkResults
+    .flat()
+    .sort((a, b) => {
+      const aTime = Date.parse(String(a.date_created ?? ""));
+      const bTime = Date.parse(String(b.date_created ?? ""));
+      if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+      return bTime - aTime;
+    });
 
-  const coursesData = await coursesRes.json();
-  const courses: Course[] = coursesData.data ?? [];
+  if (courses.length === 0) return [];
 
-  // Fetch enrollment counts per course
-  const enrollmentRes = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&groupBy[]=course_id&aggregate[countDistinct]=user_id`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
-  );
-
-  const enrollmentData = enrollmentRes.ok ? await enrollmentRes.json() : { data: [] };
   const enrollmentMap: Record<string, number> = {};
-  for (const item of enrollmentData.data ?? []) {
-    const courseId =
-      typeof item.course_id === "string"
-        ? item.course_id
-        : item.course_id?.id
-          ? String(item.course_id.id)
-          : null;
-    if (!courseId) continue;
-    enrollmentMap[courseId] = Number(
-      item.countDistinct?.user_id ??
-        item.countdistinct?.user_id ??
-        item.count?.id ??
-        0
-    );
-  }
+  await Promise.all(
+    courseIdChunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[course_id][_in]", chunk.join(","));
+      params.append("groupBy[]", "course_id");
+      params.append("aggregate[countDistinct]", "user_id");
 
-  // Fetch review counts per course
-  const reviewRes = await fetch(
-    `${directusUrl}/items/reviews?filter[course_id][_in]=${courseIds.join(",")}&groupBy[]=course_id&aggregate[count]=id&aggregate[avg]=rating`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
+      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return;
+
+      const payload = await res.json();
+      for (const item of payload?.data ?? []) {
+        const courseId =
+          typeof item.course_id === "string"
+            ? item.course_id
+            : item.course_id?.id
+              ? String(item.course_id.id)
+              : null;
+        if (!courseId) continue;
+        enrollmentMap[courseId] = Number(
+          item.countDistinct?.user_id ??
+            item.countdistinct?.user_id ??
+            item.count?.id ??
+            0
+        );
+      }
+    })
   );
 
-  const reviewData = reviewRes.ok ? await reviewRes.json() : { data: [] };
   const reviewMap: Record<string, { count: number; avg: number }> = {};
-  for (const item of reviewData.data ?? []) {
-    const courseId =
-      typeof item.course_id === "string"
-        ? item.course_id
-        : item.course_id?.id
-          ? String(item.course_id.id)
-          : null;
-    if (!courseId) continue;
-    reviewMap[courseId] = {
-      count: Number(item.count?.id ?? 0),
-      avg: parseFloat(item.avg?.rating ?? "0"),
-    };
-  }
+  await Promise.all(
+    courseIdChunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[status][_eq]", "approved");
+      params.set("filter[course_id][_in]", chunk.join(","));
+      params.append("groupBy[]", "course_id");
+      params.append("aggregate[count]", "id");
+      params.append("aggregate[avg]", "rating");
+
+      const res = await fetch(`${directusUrl}/items/reviews?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return;
+
+      const payload = await res.json();
+      for (const item of payload?.data ?? []) {
+        const courseId =
+          typeof item.course_id === "string"
+            ? item.course_id
+            : item.course_id?.id
+              ? String(item.course_id.id)
+              : null;
+        if (!courseId) continue;
+
+        reviewMap[courseId] = {
+          count: Number(item.count?.id ?? 0),
+          avg: parseFloat(item.avg?.rating ?? "0"),
+        };
+      }
+    })
+  );
 
   return courses.map((course) => ({
     ...course,
-    enrollment_count: enrollmentMap[course.id] ?? course.total_enrollments ?? 0,
+    enrollment_count: enrollmentMap[course.id] ?? 0,
     review_count: reviewMap[course.id]?.count ?? 0,
-    average_rating: reviewMap[course.id]?.avg ?? course.average_rating ?? 0,
+    average_rating: reviewMap[course.id]?.avg ?? 0,
   }));
 }
 
@@ -373,24 +459,29 @@ export async function getInstructorStats(
   token: string
 ): Promise<InstructorStats> {
   const courses = await getInstructorCourses(token);
+  const activeCourses = courses.filter((course) => course.status !== "archived");
+  const scopedCourses = activeCourses.length > 0 ? activeCourses : courses;
+  const courseIds = scopedCourses.map((course) => course.id);
 
-  const totalCourses = courses.length;
-  const totalStudents = courses.reduce(
+  const totalCourses = scopedCourses.length;
+  const totalStudents = scopedCourses.reduce(
     (acc, c) => acc + (c.enrollment_count ?? 0),
     0
   );
 
-  const coursesWithRating = courses.filter((c) => c.average_rating > 0);
+  const coursesWithRating = scopedCourses.filter(
+    (c) => Number(c.review_count ?? 0) > 0 && Number(c.average_rating ?? 0) > 0
+  );
   const averageRating =
     coursesWithRating.length > 0
-      ? coursesWithRating.reduce((acc, c) => acc + c.average_rating, 0) /
-        coursesWithRating.length
+      ? coursesWithRating.reduce(
+          (acc, c) => acc + Number(c.average_rating ?? 0) * Number(c.review_count ?? 0),
+          0
+        ) /
+        coursesWithRating.reduce((acc, c) => acc + Number(c.review_count ?? 0), 0)
       : 0;
 
-  const totalRevenue = courses.reduce((acc, c) => {
-    const price = c.discount_price ?? c.price ?? 0;
-    return acc + price * (c.enrollment_count ?? 0);
-  }, 0);
+  const totalRevenue = await getInstructorRevenueByCourseIds(courseIds, token);
 
   return { totalCourses, totalStudents, averageRating, totalRevenue };
 }
@@ -404,19 +495,41 @@ export async function getRecentEnrollments(
 
   const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
   const queryLimit = Math.min(Math.max(requestedLimit * 5, requestedLimit), 200);
+  const chunks = chunkIds(courseIds);
+  const headers = getAuthHeaders(token);
 
-  const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_in]=${courseIds.join(",")}&fields=id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons&sort=-enrolled_at&limit=${queryLimit}`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
+  const chunkResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[course_id][_in]", chunk.join(","));
+      params.set(
+        "fields",
+        "id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons"
+      );
+      params.set("sort", "-enrolled_at");
+      params.set("limit", String(queryLimit));
+
+      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return [] as Enrollment[];
+
+      const payload = await res.json();
+      return (payload?.data ?? []) as Enrollment[];
+    })
   );
 
-  if (!res.ok) return [];
+  const enrollments = chunkResults
+    .flat()
+    .sort((a, b) => {
+      const aTime = Date.parse(String(a.enrolled_at ?? a.date_created ?? ""));
+      const bTime = Date.parse(String(b.enrolled_at ?? b.date_created ?? ""));
+      if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+      return bTime - aTime;
+    });
 
-  const data = await res.json();
-  const enrollments: Enrollment[] = data.data ?? [];
   const deduped = dedupeEnrollmentsByUserCourse(enrollments).slice(0, requestedLimit);
   return enrichEnrollments(deduped, token);
 }

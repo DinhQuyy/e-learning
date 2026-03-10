@@ -1,13 +1,16 @@
-﻿import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata } from "next";
+import { Poppins } from "next/font/google";
+import { AiHelpdeskWidget } from "@/components/features/ai-helpdesk-widget";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
+const poppins = Poppins({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -29,11 +32,12 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} font-sans antialiased`}
+        className={`${poppins.variable} font-sans antialiased`}
       >
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <AiHelpdeskWidget />
             <Toaster richColors position="top-right" />
           </AuthProvider>
         </ThemeProvider>

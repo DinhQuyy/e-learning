@@ -15,6 +15,7 @@ import { getUserEnrollments } from "@/lib/queries/enrollments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { MentorPlanCard } from "@/components/features/mentor-plan-card";
 import type { Course, Lesson } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -130,6 +131,11 @@ export default async function StudentDashboard() {
   }, 0);
 
   const recentEnrollments = activeEnrollments.slice(0, 4);
+  const firstRecentCourse = recentEnrollments[0]?.course_id;
+  const mentorCourseId =
+    firstRecentCourse && typeof firstRecentCourse === "object"
+      ? ((firstRecentCourse as Course).id ?? null)
+      : null;
 
   return (
     <div className="space-y-6">
@@ -158,6 +164,8 @@ export default async function StudentDashboard() {
           </Button>
         </div>
       </section>
+
+      <MentorPlanCard courseId={mentorCourseId} />
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#eef3ff] to-[#f5f8ff] shadow-[0_14px_30px_-24px_rgba(47,87,239,0.6)]">

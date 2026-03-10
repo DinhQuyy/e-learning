@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Certificate, Course } from "@/types";
+import { DeleteCertificateButton } from "./delete-certificate-button";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +140,12 @@ export default async function MyCertificatesPage() {
                         Khóa học không khả dụng
                       </Button>
                     )}
+
+                    <DeleteCertificateButton
+                      certificateId={certificate.id}
+                      courseTitle={course?.title}
+                      className="w-full"
+                    />
                   </div>
                 </CardContent>
               </Card>

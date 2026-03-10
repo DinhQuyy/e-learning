@@ -64,7 +64,7 @@ async function fetchEnrollmentCountsByCourse(
     const params = new URLSearchParams();
     params.set("filter[course_id][_in]", courseIds.join(","));
     params.append("groupBy[]", "course_id");
-    params.append("aggregate[count]", "id");
+    params.append("aggregate[countDistinct]", "user_id");
 
     const res = await fetch(
       `${directusUrl}/items/enrollments?${params.toString()}`,
@@ -88,7 +88,12 @@ async function fetchEnrollmentCountsByCourse(
         item["course_id._eq"];
 
       if (!courseId) continue;
-      result[String(courseId)] = Number(item?.count?.id ?? 0);
+      result[String(courseId)] = Number(
+        item?.countDistinct?.user_id ??
+          item?.countdistinct?.user_id ??
+          item?.count?.id ??
+          0
+      );
     }
   } catch {
     // best effort
@@ -116,8 +121,8 @@ function mergeMetricsIntoCourses<T extends Course>(
       enrollmentMap[course.id] ??
       (typeof (course as unknown as { enrollment_count?: number })
         .enrollment_count === "number"
-        ? (course as unknown as { enrollment_count?: number }).enrollment_count
-        : Number(course.total_enrollments ?? 0));
+        ? Number((course as unknown as { enrollment_count?: number }).enrollment_count ?? 0)
+        : 0);
 
     return {
       ...course,

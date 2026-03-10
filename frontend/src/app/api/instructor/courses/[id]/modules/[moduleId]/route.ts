@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { enqueueDeleteIndex, enqueueModuleIndex } from "@/lib/ai-indexing";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 
-async function verifyOwnership(
-  userId: string,
-  courseId: string
-): Promise<boolean> {
+async function verifyOwnership(userId: string, courseId: string): Promise<boolean> {
   const res = await directusFetch(
     `/items/courses_instructors?filter[course_id][_eq]=${courseId}&filter[user_id][_eq]=${userId}&limit=1`
   );
@@ -22,18 +21,12 @@ export async function PATCH(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json(
-        { error: "Chưa xác thực." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Chua xac thuc." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json(
-        { error: "Không có quyền truy cập." },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
     }
 
     const body = await request.json();
@@ -48,16 +41,23 @@ export async function PATCH(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
-      const message =
-        errorData?.errors?.[0]?.message || "Không thể cập nhật module.";
+      const message = errorData?.errors?.[0]?.message || "Khong the cap nhat module.";
       return NextResponse.json({ error: message }, { status: res.status });
     }
 
     const data = await res.json();
+
+    await enqueueModuleIndex({
+      moduleId,
+      title: String(data.data?.title ?? body.title ?? "Module"),
+      description: String(data.data?.description ?? body.description ?? ""),
+      courseId,
+    });
+
     return NextResponse.json({ data: data.data });
   } catch (error) {
     console.error("PATCH module error:", error);
-    return NextResponse.json({ error: "Lỗi hệ thống." }, { status: 500 });
+    return NextResponse.json({ error: "Loi he thong." }, { status: 500 });
   }
 }
 
@@ -70,21 +70,14 @@ export async function DELETE(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json(
-        { error: "Chưa xác thực." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Chua xac thuc." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json(
-        { error: "Không có quyền truy cập." },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
     }
 
-    // Delete lessons belonging to this module first
     const lessonsRes = await directusFetch(
       `/items/lessons?filter[module_id][_eq]=${moduleId}&fields=id`
     );
@@ -95,24 +88,23 @@ export async function DELETE(
         await directusFetch(`/items/lessons/${lesson.id}`, {
           method: "DELETE",
         });
+        await enqueueDeleteIndex("course_lesson", String(lesson.id));
       }
     }
 
-    // Delete the module
     const res = await directusFetch(`/items/modules/${moduleId}`, {
       method: "DELETE",
     });
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: "Không thể xoá module." },
-        { status: res.status }
-      );
+      return NextResponse.json({ error: "Khong the xoa module." }, { status: res.status });
     }
 
-    return NextResponse.json({ message: "Đã xoá module thành công." });
+    await enqueueDeleteIndex("course_module", moduleId);
+
+    return NextResponse.json({ message: "Da xoa module thanh cong." });
   } catch (error) {
     console.error("DELETE module error:", error);
-    return NextResponse.json({ error: "Lỗi hệ thống." }, { status: 500 });
+    return NextResponse.json({ error: "Loi he thong." }, { status: 500 });
   }
 }

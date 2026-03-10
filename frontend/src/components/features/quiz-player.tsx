@@ -15,13 +15,20 @@ import {
   AlertCircle,
   RotateCcw,
   Trophy,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, apiPost } from "@/lib/api-fetch";
+import type { AssignmentResponse } from "@/lib/ai-schemas";
 import type { Quiz, QuizQuestion, QuizAnswer, QuizAttempt } from "@/types";
 
 interface QuizPlayerProps {
   quiz: Quiz;
+  context?: {
+    courseId: string;
+    lessonId?: string;
+  };
   onComplete?: (result: QuizResult) => void;
 }
 
@@ -45,6 +52,10 @@ interface QuestionResult {
 }
 
 type AnswerMap = Record<string, string[]>;
+type HintMeta = {
+  conversationId: string | null;
+  assistantMessageId: string | null;
+};
 
 const normalizeAnswers = (answers: unknown): AnswerMap => {
   if (!answers || typeof answers !== "object") return {};
@@ -107,7 +118,7 @@ const computeResult = (quiz: Quiz, answers: AnswerMap): QuizResult => {
   };
 };
 
-export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
+export function QuizPlayer({ quiz, context, onComplete }: QuizPlayerProps) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -117,6 +128,18 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
   );
   const [hasStarted, setHasStarted] = useState(false);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [hintByQuestion, setHintByQuestion] = useState<
+    Record<string, AssignmentResponse | null>
+  >({});
+  const [hintMetaByQuestion, setHintMetaByQuestion] = useState<Record<string, HintMeta>>({});
+  const [hintFeedbackByQuestion, setHintFeedbackByQuestion] = useState<
+    Record<string, 1 | -1 | null>
+  >({});
+  const [hintFeedbackLoadingByQuestion, setHintFeedbackLoadingByQuestion] = useState<
+    Record<string, boolean>
+  >({});
+  const [hintLoadingQuestionId, setHintLoadingQuestionId] = useState<string | null>(null);
+  const [hintError, setHintError] = useState<string | null>(null);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(
     quiz.max_attempts > 0 ? quiz.max_attempts : null
   );
@@ -169,6 +192,108 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
       return { ...prev, [key]: [...current, answerId] };
     });
   };
+
+  const requestHint = useCallback(
+    async (question: QuizQuestion) => {
+      if (!context?.courseId) {
+        setHintError("Thiếu course context cho Assignment Mode.");
+        return;
+      }
+
+      const selectedIds = answers[String(question.id)] || [];
+      const studentAttempt = selectedIds.join(", ");
+
+      setHintError(null);
+      setHintLoadingQuestionId(String(question.id));
+
+      try {
+        const res = await apiPost("/api/ai/assignment", {
+          course_id: context.courseId,
+          lesson_id: context.lessonId ?? null,
+          quiz_id: quiz.id,
+          question: question.question_text,
+          student_attempt: studentAttempt,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => null);
+          throw new Error(err?.error || "Không thể lấy gợi ý");
+        }
+
+        const payload = await res.json();
+        const aiData = payload?.data as AssignmentResponse;
+        const questionKey = String(question.id);
+
+        setHintByQuestion((prev) => ({
+          ...prev,
+          [questionKey]: aiData,
+        }));
+        setHintMetaByQuestion((prev) => ({
+          ...prev,
+          [questionKey]: {
+            conversationId:
+              typeof payload?.meta?.conversation_id === "string"
+                ? payload.meta.conversation_id
+                : null,
+            assistantMessageId:
+              typeof payload?.meta?.assistant_message_id === "string"
+                ? payload.meta.assistant_message_id
+                : null,
+          },
+        }));
+        setHintFeedbackByQuestion((prev) => ({
+          ...prev,
+          [questionKey]: null,
+        }));
+      } catch (err) {
+        setHintError(err instanceof Error ? err.message : "Lỗi không xác định");
+      } finally {
+        setHintLoadingQuestionId(null);
+      }
+    },
+    [answers, context?.courseId, context?.lessonId, quiz.id]
+  );
+
+  const submitHintFeedback = useCallback(
+    async (questionId: string, rating: 1 | -1) => {
+      const meta = hintMetaByQuestion[questionId];
+      if (!meta?.conversationId || !meta?.assistantMessageId) {
+        return;
+      }
+
+      setHintFeedbackLoadingByQuestion((prev) => ({
+        ...prev,
+        [questionId]: true,
+      }));
+
+      try {
+        const res = await apiPost("/api/ai/feedback", {
+          conversation_id: meta.conversationId,
+          assistant_message_id: meta.assistantMessageId,
+          mode: "assignment",
+          rating,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => null);
+          throw new Error(err?.error || "Khong the gui feedback");
+        }
+
+        setHintFeedbackByQuestion((prev) => ({
+          ...prev,
+          [questionId]: rating,
+        }));
+      } catch (err) {
+        setHintError(err instanceof Error ? err.message : "Gui feedback that bai");
+      } finally {
+        setHintFeedbackLoadingByQuestion((prev) => ({
+          ...prev,
+          [questionId]: false,
+        }));
+      }
+    },
+    [hintMetaByQuestion]
+  );
 
   const handleSubmit = useCallback(async () => {
     if (isOutOfAttempts) {
@@ -446,6 +571,9 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
         )}
       </div>
       <Progress value={progressPercent} />
+      {hintError ? (
+        <p className="text-xs text-red-600">{hintError}</p>
+      ) : null}
 
       {/* Questions */}
       <div className="space-y-6">
@@ -455,7 +583,12 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
             const questionAnswers = (question.answers || []).sort(
               (a: QuizAnswer, b: QuizAnswer) => a.sort - b.sort
             );
-            const selectedIds = answers[String(question.id)] || [];
+            const questionKey = String(question.id);
+            const selectedIds = answers[questionKey] || [];
+            const hintData = hintByQuestion[questionKey];
+            const hintMeta = hintMetaByQuestion[questionKey];
+            const hintFeedback = hintFeedbackByQuestion[questionKey] ?? null;
+            const hintFeedbackLoading = Boolean(hintFeedbackLoadingByQuestion[questionKey]);
 
             return (
               <Card key={question.id}>
@@ -526,6 +659,89 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
                       </div>
                     );
                   })}
+
+                  <div className="mt-2 rounded-lg border border-dashed p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Assignment Mode
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => requestHint(question)}
+                        disabled={!context?.courseId || hintLoadingQuestionId === questionKey}
+                      >
+                        {hintLoadingQuestionId === questionKey ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          "Xin goi y"
+                        )}
+                      </Button>
+                    </div>
+
+                    {hintData ? (
+                      <div className="space-y-2">
+                        {hintData.blocked ? (
+                          <p className="text-xs text-amber-700">
+                            {hintData.block_reason}
+                          </p>
+                        ) : null}
+                        {(hintData.hints ?? []).map((hint, hintIndex) => (
+                          <div key={`${question.id}-hint-${hintIndex}`} className="rounded border bg-muted/40 p-2">
+                            <p className="text-xs font-medium">{hint.hint}</p>
+                            <p className="text-xs text-muted-foreground">{hint.why}</p>
+                          </div>
+                        ))}
+                        {(hintData.self_check ?? []).length > 0 ? (
+                          <div className="rounded border bg-background p-2">
+                            <p className="text-[11px] font-semibold text-muted-foreground">Tu kiem tra</p>
+                            {(hintData.self_check ?? []).map((item, itemIndex) => (
+                              <p key={`${question.id}-check-${itemIndex}`} className="text-xs text-muted-foreground">
+                                - {item}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {hintMeta?.conversationId && hintMeta?.assistantMessageId ? (
+                          <div className="rounded border bg-background p-2">
+                            <p className="mb-2 text-[11px] text-muted-foreground">
+                              Danh gia goi y nay de AI hoc chat rieng cua ban
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={hintFeedback === 1 ? "default" : "outline"}
+                                onClick={() => submitHintFeedback(questionKey, 1)}
+                                disabled={hintFeedbackLoading}
+                                className="gap-1"
+                              >
+                                <ThumbsUp className="size-3.5" />
+                                Huu ich
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={hintFeedback === -1 ? "destructive" : "outline"}
+                                onClick={() => submitHintFeedback(questionKey, -1)}
+                                disabled={hintFeedbackLoading}
+                                className="gap-1"
+                              >
+                                <ThumbsDown className="size-3.5" />
+                                Chua huu ich
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        AI se chi tra goi y, khong tra dap an hoan chinh.
+                      </p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );

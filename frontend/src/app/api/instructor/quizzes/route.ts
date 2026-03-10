@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { enqueueQuizIndex } from "@/lib/ai-indexing";
 import { directusFetch } from "@/lib/directus-fetch";
+
+async function resolveCourseIdByLesson(lessonId: string): Promise<string | null> {
+  const res = await directusFetch(
+    `/items/lessons/${lessonId}?fields=module_id.course_id.id,module_id.course_id`
+  );
+  if (!res.ok) return null;
+  const payload = await res.json().catch(() => null);
+  return (
+    payload?.data?.module_id?.course_id?.id ??
+    payload?.data?.module_id?.course_id ??
+    null
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Create quiz
     const quizPayload = {
       title: body.title,
       description: body.description || null,
@@ -21,45 +35,44 @@ export async function POST(request: NextRequest) {
     });
 
     if (quizRes.status === 401) {
-      return NextResponse.json({ error: "Chưa xác thực." }, { status: 401 });
+      return NextResponse.json({ error: "Chua xac thuc." }, { status: 401 });
     }
 
     if (!quizRes.ok) {
       const errorData = await quizRes.json().catch(() => null);
-      const message =
-        errorData?.errors?.[0]?.message || "Không thể tạo quiz.";
+      const message = errorData?.errors?.[0]?.message || "Khong the tao quiz.";
       return NextResponse.json({ error: message }, { status: quizRes.status });
     }
 
     const quizData = await quizRes.json();
     const quiz = quizData.data;
 
-    // Create questions and answers
     const questions = body.questions ?? [];
+    const textParts: string[] = [quizPayload.title, quizPayload.description ?? ""];
+
     for (let qi = 0; qi < questions.length; qi++) {
       const q = questions[qi];
 
-      const questionRes = await directusFetch(
-        "/items/quiz_questions",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            quiz_id: quiz.id,
-            question_text: q.question_text,
-            question_type: q.question_type || "single_choice",
-            explanation: q.explanation || null,
-            sort: qi + 1,
-            points: q.points ?? 1,
-          }),
-        }
-      );
+      const questionRes = await directusFetch("/items/quiz_questions", {
+        method: "POST",
+        body: JSON.stringify({
+          quiz_id: quiz.id,
+          question_text: q.question_text,
+          question_type: q.question_type || "single_choice",
+          explanation: q.explanation || null,
+          sort: qi + 1,
+          points: q.points ?? 1,
+        }),
+      });
 
       if (!questionRes.ok) continue;
+
+      textParts.push(String(q.question_text ?? ""));
+      textParts.push(String(q.explanation ?? ""));
 
       const questionData = await questionRes.json();
       const question = questionData.data;
 
-      // Create answers for this question
       const answers = q.answers ?? [];
       for (let ai = 0; ai < answers.length; ai++) {
         const a = answers[ai];
@@ -75,9 +88,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const courseId = await resolveCourseIdByLesson(String(quizPayload.lesson_id));
+    await enqueueQuizIndex({
+      quizId: String(quiz.id),
+      title: String(quiz.title ?? quizPayload.title ?? "Quiz"),
+      content: textParts.join("\n"),
+      courseId,
+    });
+
     return NextResponse.json({ data: quiz }, { status: 201 });
   } catch (error) {
     console.error("POST quiz error:", error);
-    return NextResponse.json({ error: "Lỗi hệ thống." }, { status: 500 });
+    return NextResponse.json({ error: "Loi he thong." }, { status: 500 });
   }
 }

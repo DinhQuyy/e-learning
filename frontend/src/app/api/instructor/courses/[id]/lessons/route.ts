@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { enqueueLessonIndex } from "@/lib/ai-indexing";
 
 async function verifyOwnership(
   userId: string,
@@ -117,6 +118,14 @@ export async function POST(
     }
 
     const data = await res.json();
+    await enqueueLessonIndex({
+      lessonId: String(data.data.id),
+      title: String(data.data.title ?? lessonPayload.title ?? "Lesson"),
+      content: String(data.data.content ?? lessonPayload.content ?? lessonPayload.title ?? ""),
+      courseId,
+      status: String(data.data.status ?? lessonPayload.status ?? "draft"),
+    });
+
     return NextResponse.json({ data: data.data }, { status: 201 });
   } catch (error) {
     console.error("POST lessons error:", error);

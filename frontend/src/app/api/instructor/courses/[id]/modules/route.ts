@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { enqueueModuleIndex } from "@/lib/ai-indexing";
 
 async function verifyOwnership(
   userId: string,
@@ -120,6 +121,13 @@ export async function POST(
     }
 
     const data = await res.json();
+    await enqueueModuleIndex({
+      moduleId: String(data.data.id),
+      title: String(data.data.title ?? body.title ?? "Module"),
+      description: String(data.data.description ?? body.description ?? ""),
+      courseId,
+    });
+
     return NextResponse.json({ data: data.data }, { status: 201 });
   } catch (error) {
     console.error("POST modules error:", error);

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Star, X } from "lucide-react";
+import { ChevronRight, Search, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,98 @@ const ratingOptions = [
   { value: "2", label: "Từ 2 sao" },
 ];
 
+interface CategoryGroup {
+  parent: CategoryWithCount;
+  children: CategoryWithCount[];
+  totalCount: number;
+}
+
+function getParentId(parent: unknown): string | null {
+  if (!parent) return null;
+  if (typeof parent === "string") return parent;
+  if (typeof parent === "number") return String(parent);
+
+  if (typeof parent === "object") {
+    const id = (parent as { id?: string | number | null }).id;
+    if (typeof id === "string") return id;
+    if (typeof id === "number") return String(id);
+  }
+
+  return null;
+}
+
+function sortCategories(a: CategoryWithCount, b: CategoryWithCount) {
+  const sortA = Number(a.sort ?? 0);
+  const sortB = Number(b.sort ?? 0);
+  if (sortA !== sortB) return sortA - sortB;
+  return a.name.localeCompare(b.name, "vi");
+}
+
+function getCategoryTone(slug: string) {
+  const normalized = slug.toLowerCase();
+
+  if (normalized.includes("kinh-doanh")) {
+    return {
+      dot: "bg-emerald-500",
+      badge: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+      active: "border-emerald-300 bg-emerald-50 text-emerald-800",
+      related: "border-emerald-200/70 bg-emerald-50/50 text-emerald-700",
+      tree: "border-emerald-200/70",
+    };
+  }
+
+  if (normalized.includes("lap-trinh")) {
+    return {
+      dot: "bg-sky-500",
+      badge: "bg-sky-50 text-sky-700 ring-sky-100",
+      active: "border-sky-300 bg-sky-50 text-sky-800",
+      related: "border-sky-200/70 bg-sky-50/50 text-sky-700",
+      tree: "border-sky-200/70",
+    };
+  }
+
+  if (normalized.includes("ngoai-ngu")) {
+    return {
+      dot: "bg-violet-500",
+      badge: "bg-violet-50 text-violet-700 ring-violet-100",
+      active: "border-violet-300 bg-violet-50 text-violet-800",
+      related: "border-violet-200/70 bg-violet-50/50 text-violet-700",
+      tree: "border-violet-200/70",
+    };
+  }
+
+  if (
+    normalized.includes("phat-trien-ca-nhan") ||
+    normalized.includes("phat-trien-ban-than")
+  ) {
+    return {
+      dot: "bg-amber-500",
+      badge: "bg-amber-50 text-amber-700 ring-amber-100",
+      active: "border-amber-300 bg-amber-50 text-amber-800",
+      related: "border-amber-200/70 bg-amber-50/50 text-amber-700",
+      tree: "border-amber-200/70",
+    };
+  }
+
+  if (normalized.includes("thiet-ke")) {
+    return {
+      dot: "bg-fuchsia-500",
+      badge: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-100",
+      active: "border-fuchsia-300 bg-fuchsia-50 text-fuchsia-800",
+      related: "border-fuchsia-200/70 bg-fuchsia-50/50 text-fuchsia-700",
+      tree: "border-fuchsia-200/70",
+    };
+  }
+
+  return {
+    dot: "bg-[#2f57ef]",
+    badge: "bg-[#eef3ff] text-[#2f57ef] ring-[#dbe5ff]",
+    active: "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]",
+    related: "border-[#2f57ef]/20 bg-[#f5f8ff] text-[#3757cf]",
+    tree: "border-[#dbe5ff]",
+  };
+}
+
 export function CourseFilters({
   categories,
   currentSearch,
@@ -49,12 +141,68 @@ export function CourseFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchValue, setSearchValue] = useState(currentSearch);
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [expandedParents, setExpandedParents] = useState<
+    Record<string, boolean>
+  >({});
 
-  const visibleCategories = useMemo(
-    () => (showAllCategories ? categories : categories.slice(0, 6)),
-    [categories, showAllCategories]
-  );
+  const categoryGroups = useMemo(() => {
+    const roots: CategoryWithCount[] = [];
+    const childrenByParent = new Map<string, CategoryWithCount[]>();
+    const categoryById = new Map<string, CategoryWithCount>();
+
+    for (const category of categories) {
+      categoryById.set(category.id, category);
+
+      const parentId = getParentId(category.parent_id);
+      if (!parentId) {
+        roots.push(category);
+        continue;
+      }
+
+      const existing = childrenByParent.get(parentId) ?? [];
+      existing.push(category);
+      childrenByParent.set(parentId, existing);
+    }
+
+    const groups: CategoryGroup[] = roots.sort(sortCategories).map((parent) => {
+      const children = (childrenByParent.get(parent.id) ?? []).sort(
+        sortCategories
+      );
+      const childCount = children.reduce(
+        (sum, child) => sum + Number(child.course_count ?? 0),
+        0
+      );
+
+      return {
+        parent,
+        children,
+        totalCount: Number(parent.course_count ?? 0) + childCount,
+      };
+    });
+
+    // Handle orphan nodes (if parent category is unavailable)
+    for (const [parentId, children] of childrenByParent.entries()) {
+      if (categoryById.has(parentId)) continue;
+      for (const child of children.sort(sortCategories)) {
+        groups.push({
+          parent: child,
+          children: [],
+          totalCount: Number(child.course_count ?? 0),
+        });
+      }
+    }
+
+    return groups;
+  }, [categories]);
+
+  const activeParentId = useMemo(() => {
+    if (!currentCategory) return null;
+
+    const selected = categories.find((category) => category.slug === currentCategory);
+    if (!selected) return null;
+
+    return getParentId(selected.parent_id) ?? selected.id;
+  }, [categories, currentCategory]);
 
   const updateParam = useCallback(
     (key: string, value: string, defaultValue = "all") => {
@@ -97,9 +245,32 @@ export function CourseFilters({
     return () => clearTimeout(timeoutId);
   }, [searchValue, currentSearch, updateParam]);
 
+  useEffect(() => {
+    if (!activeParentId) return;
+    setExpandedParents((prev) =>
+      prev[activeParentId] ? prev : { ...prev, [activeParentId]: true }
+    );
+  }, [activeParentId]);
+
   const handleSingleSelect = (key: string, nextValue: string, currentValue: string) => {
     updateParam(key, currentValue === nextValue ? "all" : nextValue, "all");
   };
+
+  const toggleParent = (parentId: string) => {
+    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
+  };
+
+  const expandAllParents = () => {
+    const next: Record<string, boolean> = {};
+    for (const group of categoryGroups) {
+      if (group.children.length > 0) {
+        next[group.parent.id] = true;
+      }
+    }
+    setExpandedParents(next);
+  };
+
+  const collapseAllParents = () => setExpandedParents({});
 
   const hasActiveFilters = Boolean(
     currentSearch ||
@@ -134,56 +305,168 @@ export function CourseFilters({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <h4 className="mb-4 text-base font-semibold text-slate-900">
-          Danh mục khóa học
-        </h4>
-        <ul className="space-y-2">
-          <li>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <div className="relative border-b border-slate-200/90 bg-gradient-to-r from-[#f4f7ff] via-[#f8faff] to-white px-5 py-4">
+          <div className="pointer-events-none absolute -right-8 top-0 h-20 w-20 rounded-full bg-[#2f57ef]/10 blur-2xl" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-16 w-16 rounded-full bg-sky-300/20 blur-2xl" />
+          <div className="relative">
+            <div>
+              <h4 className="text-base font-semibold text-slate-900">
+                Danh mục khóa học
+              </h4>
+              <p className="mt-1 text-xs text-slate-500">
+                Chọn theo nhóm lĩnh vực hoặc chuyên mục chi tiết
+              </p>
+            </div>
+          </div>
+          <div className="relative mt-3 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => updateParam("category", "all", "all")}
-              className={cn(
-                "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                !currentCategory
-                  ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]"
-                  : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-              )}
+              onClick={expandAllParents}
+              className="rounded-full border border-[#2f57ef]/20 bg-white px-3 py-1 text-xs font-semibold text-[#2f57ef] transition-colors hover:bg-[#eef3ff]"
             >
-              <span>Tất cả danh mục</span>
+              Mở tất cả
             </button>
-          </li>
-          {visibleCategories.map((category) => (
-            <li key={category.id}>
+            <button
+              type="button"
+              onClick={collapseAllParents}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              Thu gọn
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4">
+          <ul className="space-y-2.5">
+            <li>
               <button
                 type="button"
-                onClick={() =>
-                  handleSingleSelect("category", category.slug, currentCategory || "all")
-                }
+                onClick={() => updateParam("category", "all", "all")}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                  currentCategory === category.slug
-                    ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]"
-                    : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  "flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-all",
+                  !currentCategory
+                    ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef] shadow-[0_10px_24px_-20px_rgba(47,87,239,0.75)]"
+                    : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
-                <span className="line-clamp-1">{category.name}</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
-                  {category.course_count}
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex size-2 rounded-full bg-[#2f57ef]" />
+                  Tất cả danh mục
                 </span>
               </button>
             </li>
-          ))}
-        </ul>
-        {categories.length > 6 ? (
-          <button
-            type="button"
-            onClick={() => setShowAllCategories((prev) => !prev)}
-            className="mt-3 text-sm font-semibold text-[#2f57ef] hover:underline"
-          >
-            {showAllCategories ? "Thu gọn" : "Xem thêm"}
-          </button>
-        ) : null}
+
+            {categoryGroups.map((group) => {
+              const parentActive = currentCategory === group.parent.slug;
+              const hasActiveChild = group.children.some(
+                (child) => child.slug === currentCategory
+              );
+              const isExpanded = Boolean(
+                expandedParents[group.parent.id] ?? hasActiveChild
+              );
+              const tone = getCategoryTone(group.parent.slug);
+
+              return (
+                <li key={group.parent.id} className="rounded-xl border border-slate-200/90 bg-white p-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {group.children.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleParent(group.parent.id)}
+                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                        aria-label={isExpanded ? "Thu gọn danh mục con" : "Mở rộng danh mục con"}
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition-transform duration-200",
+                            isExpanded && "rotate-90"
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span className="inline-flex size-8 shrink-0" aria-hidden />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (group.children.length > 0) {
+                          setExpandedParents((prev) => ({
+                            ...prev,
+                            [group.parent.id]: true,
+                          }));
+                        }
+                        handleSingleSelect(
+                          "category",
+                          group.parent.slug,
+                          currentCategory || "all"
+                        );
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition-all",
+                        parentActive
+                          ? tone.active
+                          : hasActiveChild
+                            ? tone.related
+                            : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      )}
+                    >
+                      <span className="inline-flex min-w-0 items-center gap-2.5">
+                        <span className={cn("inline-flex size-2.5 shrink-0 rounded-full", tone.dot)} />
+                        <span className="line-clamp-1 font-semibold">{group.parent.name}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-semibold ring-1",
+                          tone.badge
+                        )}
+                      >
+                        {group.totalCount}
+                      </span>
+                    </button>
+                  </div>
+
+                  {group.children.length > 0 && isExpanded ? (
+                    <ul className={cn("ml-9 mt-1.5 space-y-1.5 border-l pl-3", tone.tree)}>
+                      {group.children.map((child) => {
+                        const childActive = currentCategory === child.slug;
+                        return (
+                          <li key={child.id}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSingleSelect(
+                                  "category",
+                                  child.slug,
+                                  currentCategory || "all"
+                                )
+                              }
+                              className={cn(
+                                "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-all",
+                                childActive
+                                  ? tone.active
+                                  : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                              )}
+                            >
+                              <span className="inline-flex min-w-0 items-center gap-2">
+                                <span className="inline-flex size-1.5 shrink-0 rounded-full bg-slate-300" />
+                                <span className="line-clamp-1">{child.name}</span>
+                              </span>
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                                {child.course_count}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">

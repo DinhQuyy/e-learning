@@ -120,6 +120,7 @@ export interface Certificate {
   enrollment_id: string | Enrollment;
   certificate_code: string;
   issued_at: string | null;
+  is_deleted?: boolean;
   date_created: string;
 }
 

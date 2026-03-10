@@ -3,6 +3,7 @@ import type { Certificate } from "@/types";
 
 const CERTIFICATE_FIELDS =
   "id,certificate_code,issued_at,date_created,user_id.id,user_id.first_name,user_id.last_name,user_id.email,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,enrollment_id.id,enrollment_id";
+const ACTIVE_CERTIFICATE_FILTER = "&filter[is_deleted][_neq]=true";
 const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
 
 function buildAuthHeaders(token: string): Record<string, string> {
@@ -402,14 +403,26 @@ export async function getUserCertificates(
   const userFilter = currentUserId
     ? `&filter[user_id][_eq]=${encodeURIComponent(currentUserId)}`
     : "";
-  const res = await fetchWithTokenFallback(
+  const filteredUrl = `${directusUrl}/items/certificates?fields=${CERTIFICATE_FIELDS}${userFilter}${ACTIVE_CERTIFICATE_FILTER}&sort=-issued_at,-date_created`;
+  const legacyUrl = `${directusUrl}/items/certificates?fields=${CERTIFICATE_FIELDS}${userFilter}&sort=-issued_at,-date_created`;
+  let res = await fetchWithTokenFallback(
     token,
-    `${directusUrl}/items/certificates?fields=${CERTIFICATE_FIELDS}${userFilter}&sort=-issued_at,-date_created`,
+    filteredUrl,
     {
       next: { revalidate: 0 },
     },
     Boolean(currentUserId)
   );
+  if (!res?.ok && res?.status === 400) {
+    res = await fetchWithTokenFallback(
+      token,
+      legacyUrl,
+      {
+        next: { revalidate: 0 },
+      },
+      Boolean(currentUserId)
+    );
+  }
 
   if (!res?.ok) return [];
 
@@ -432,14 +445,26 @@ export async function getUserCertificateByEnrollmentId(
   const userFilter = currentUserId
     ? `&filter[user_id][_eq]=${encodeURIComponent(currentUserId)}`
     : "";
-  const res = await fetchWithTokenFallback(
+  const filteredUrl = `${directusUrl}/items/certificates?filter[enrollment_id][_eq]=${encodedEnrollmentId}${userFilter}${ACTIVE_CERTIFICATE_FILTER}&fields=${CERTIFICATE_FIELDS}&sort=-issued_at,-date_created&limit=1`;
+  const legacyUrl = `${directusUrl}/items/certificates?filter[enrollment_id][_eq]=${encodedEnrollmentId}${userFilter}&fields=${CERTIFICATE_FIELDS}&sort=-issued_at,-date_created&limit=1`;
+  let res = await fetchWithTokenFallback(
     token,
-    `${directusUrl}/items/certificates?filter[enrollment_id][_eq]=${encodedEnrollmentId}${userFilter}&fields=${CERTIFICATE_FIELDS}&sort=-issued_at,-date_created&limit=1`,
+    filteredUrl,
     {
       next: { revalidate: 0 },
     },
     Boolean(currentUserId)
   );
+  if (!res?.ok && res?.status === 400) {
+    res = await fetchWithTokenFallback(
+      token,
+      legacyUrl,
+      {
+        next: { revalidate: 0 },
+      },
+      Boolean(currentUserId)
+    );
+  }
 
   if (!res?.ok) return null;
   const payload = await res.json().catch(() => null);

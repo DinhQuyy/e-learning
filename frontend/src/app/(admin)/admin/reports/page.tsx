@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Star, TrendingUp, Trophy, BarChart3 } from "lucide-react";
+import { AiCustomQaUploadCard } from "@/components/features/ai-custom-qa-upload-card";
+import { Star, TrendingUp, Trophy, BarChart3, Bot } from "lucide-react";
 import type { Metadata } from "next";
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +76,102 @@ export default async function AdminReportsPage() {
           Phân tích dữ liệu và xu hướng của nền tảng
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            AI Service Metrics (24h)
+          </CardTitle>
+          <CardDescription>
+            Theo dõi hiệu năng AI helpdesk/mentor/assignment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Tổng request</p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.aiMetrics.total_requests_24h)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">P95 latency</p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.aiMetrics.p95_latency_ms)} ms
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Policy blocked</p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.aiMetrics.blocked_requests_24h)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Cache hit ratio</p>
+              <p className="text-xl font-semibold">
+                {(reportData.aiMetrics.cache_hit_ratio * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Fallback rate</p>
+              <p className="text-xl font-semibold">
+                {(reportData.aiMetrics.fallback_rate_24h * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Feedback (+ / -)</p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.aiMetrics.positive_feedback_24h)} /{" "}
+                {numberFormatter.format(reportData.aiMetrics.negative_feedback_24h)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>AI Improvement Summary</CardTitle>
+          <CardDescription>
+            So sánh trung bình {reportData.aiDailyMetrics.summary.window_days} ngày gần nhất với giai đoạn trước.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Request change</p>
+              <p className="text-xl font-semibold">
+                {reportData.aiDailyMetrics.summary.req_change_pct >= 0 ? "+" : ""}
+                {reportData.aiDailyMetrics.summary.req_change_pct.toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">P95 improvement</p>
+              <p className="text-xl font-semibold">
+                {reportData.aiDailyMetrics.summary.p95_improvement_pct >= 0 ? "+" : ""}
+                {reportData.aiDailyMetrics.summary.p95_improvement_pct.toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Fallback improvement</p>
+              <p className="text-xl font-semibold">
+                {reportData.aiDailyMetrics.summary.fallback_improvement_pct >= 0 ? "+" : ""}
+                {reportData.aiDailyMetrics.summary.fallback_improvement_pct.toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Positive feedback change</p>
+              <p className="text-xl font-semibold">
+                {reportData.aiDailyMetrics.summary.positive_feedback_change_pct >= 0 ? "+" : ""}
+                {reportData.aiDailyMetrics.summary.positive_feedback_change_pct.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AiCustomQaUploadCard />
 
       {/* Enrollment Trends */}
       <Card>

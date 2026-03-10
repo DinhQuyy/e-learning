@@ -73,7 +73,7 @@ export default async function InstructorDashboard() {
               <BookOpen className="size-4 text-[#2f57ef]" />
             </div>
             <p className="mt-3 text-3xl font-extrabold text-slate-900">{stats.totalCourses}</p>
-            <p className="mt-1 text-xs text-slate-500">khóa học đã tạo</p>
+            <p className="mt-1 text-xs text-slate-500">khóa học đang hoạt động</p>
           </CardContent>
         </Card>
 
@@ -110,7 +110,7 @@ export default async function InstructorDashboard() {
             <p className="mt-3 text-3xl font-extrabold text-slate-900">
               {formatCurrency(stats.totalRevenue)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">ước tính toàn bộ khóa học</p>
+            <p className="mt-1 text-xs text-slate-500">từ đơn hàng thành công</p>
           </CardContent>
         </Card>
       </section>

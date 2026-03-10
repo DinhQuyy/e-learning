@@ -953,6 +953,15 @@ async function createCollections() {
     },
     schema: {},
   });
+  await addField("certificates", {
+    field: "is_deleted",
+    type: "boolean",
+    meta: {
+      interface: "boolean",
+      note: "Danh dau da xoa mem",
+    },
+    schema: { is_nullable: false, default_value: false },
+  });
   await addRelation({
     collection: "certificates",
     field: "user_id",
@@ -1857,6 +1866,11 @@ async function setPermissions() {
     permissions: { user_id: { _eq: "$CURRENT_USER" } },
     fields: "*",
   });
+  await perm(S, "certificates", "update", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: ["is_deleted"],
+    validation: { is_deleted: { _eq: true } },
+  });
 
   // Student: own reviews
   await perm(S, "reviews", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
@@ -2170,11 +2184,43 @@ async function seedData() {
 
   // ── Categories ──
   const catData = [
-    { name: "Lập trình", slug: "lap-trinh", description: "Các khóa học về lập trình và phát triển phần mềm", icon: "code" },
-    { name: "Thiết kế", slug: "thiet-ke", description: "Thiết kế đồ họa, UI/UX, và sáng tạo", icon: "brush" },
-    { name: "Kinh doanh", slug: "kinh-doanh", description: "Quản trị kinh doanh và khởi nghiệp", icon: "business" },
-    { name: "Ngoại ngữ", slug: "ngoai-ngu", description: "Học ngoại ngữ và giao tiếp", icon: "translate" },
-    { name: "Phát triển cá nhân", slug: "phat-trien-ca-nhan", description: "Kỹ năng mềm và phát triển bản thân", icon: "self_improvement" },
+    { name: "Kinh doanh", slug: "kinh-doanh", description: "Kiến thức và kỹ năng vận hành, tăng trưởng doanh nghiệp", icon: "business" },
+    { name: "Lập trình", slug: "lap-trinh", description: "Phát triển phần mềm, ứng dụng và hệ thống hiện đại", icon: "code" },
+    { name: "Ngoại ngữ", slug: "ngoai-ngu", description: "Nâng cao năng lực ngôn ngữ cho học tập và công việc", icon: "translate" },
+    { name: "Phát triển bản thân", slug: "phat-trien-ca-nhan", description: "Rèn luyện tư duy, kỹ năng và hiệu suất cá nhân", icon: "self_improvement" },
+    { name: "Thiết kế", slug: "thiet-ke", description: "Kỹ năng thiết kế sáng tạo cho sản phẩm số và truyền thông", icon: "brush" },
+  ];
+
+  const childCatData = [
+    { name: "Tinh thần khởi nghiệp", slug: "kinh-doanh-tinh-than-khoi-nghiep", parent_slug: "kinh-doanh", icon: "rocket_launch", description: "Tư duy và năng lực xây dựng hành trình khởi nghiệp" },
+    { name: "Giao tiếp", slug: "kinh-doanh-giao-tiep", parent_slug: "kinh-doanh", icon: "record_voice_over", description: "Kỹ năng giao tiếp chuyên nghiệp trong môi trường kinh doanh" },
+    { name: "Quản lý", slug: "kinh-doanh-quan-ly", parent_slug: "kinh-doanh", icon: "manage_accounts", description: "Kỹ năng quản lý đội nhóm, quy trình và hiệu suất" },
+    { name: "Bán hàng", slug: "kinh-doanh-ban-hang", parent_slug: "kinh-doanh", icon: "point_of_sale", description: "Kỹ thuật bán hàng từ cơ bản đến thực chiến" },
+    { name: "Chiến lược kinh doanh", slug: "kinh-doanh-chien-luoc", parent_slug: "kinh-doanh", icon: "insights", description: "Xây dựng chiến lược cạnh tranh và tăng trưởng dài hạn" },
+
+    { name: "Phát triển web", slug: "lap-trinh-phat-trien-web", parent_slug: "lap-trinh", icon: "language", description: "Xây dựng website và ứng dụng web full-stack" },
+    { name: "Phát triển ứng dụng di động", slug: "lap-trinh-phat-trien-di-dong", parent_slug: "lap-trinh", icon: "smartphone", description: "Phát triển ứng dụng Android/iOS đa nền tảng" },
+    { name: "Ngôn ngữ lập trình", slug: "lap-trinh-ngon-ngu-lap-trinh", parent_slug: "lap-trinh", icon: "terminal", description: "Học và ứng dụng các ngôn ngữ lập trình phổ biến" },
+    { name: "Phát triển trò chơi", slug: "lap-trinh-phat-trien-tro-choi", parent_slug: "lap-trinh", icon: "sports_esports", description: "Thiết kế và phát triển game từ ý tưởng đến triển khai" },
+    { name: "Kiểm tra phần mềm", slug: "lap-trinh-kiem-thu-phan-mem", parent_slug: "lap-trinh", icon: "bug_report", description: "Manual testing, automation testing và đảm bảo chất lượng" },
+
+    { name: "Tiếng Anh giao tiếp", slug: "ngoai-ngu-tieng-anh-giao-tiep", parent_slug: "ngoai-ngu", icon: "chat", description: "Luyện phản xạ và giao tiếp tiếng Anh trong đời sống" },
+    { name: "Tiếng Anh học thuật (IELTS/TOEIC)", slug: "ngoai-ngu-ielts-toeic", parent_slug: "ngoai-ngu", icon: "school", description: "Chiến lược học và luyện đề cho IELTS, TOEIC hiệu quả" },
+    { name: "Tiếng Trung", slug: "ngoai-ngu-tieng-trung", parent_slug: "ngoai-ngu", icon: "menu_book", description: "Từ vựng, ngữ pháp và giao tiếp tiếng Trung thực tế" },
+    { name: "Tiếng Nhật", slug: "ngoai-ngu-tieng-nhat", parent_slug: "ngoai-ngu", icon: "menu_book", description: "Lộ trình học tiếng Nhật từ cơ bản đến trung cấp" },
+    { name: "Tiếng Hàn", slug: "ngoai-ngu-tieng-han", parent_slug: "ngoai-ngu", icon: "menu_book", description: "Học tiếng Hàn phục vụ du học, công việc và giao tiếp" },
+
+    { name: "Quản lý thời gian", slug: "phat-trien-ban-than-quan-ly-thoi-gian", parent_slug: "phat-trien-ca-nhan", icon: "schedule", description: "Phương pháp lập kế hoạch và tối ưu thời gian hiệu quả" },
+    { name: "Kỹ năng thuyết trình", slug: "phat-trien-ban-than-thuyet-trinh", parent_slug: "phat-trien-ca-nhan", icon: "campaign", description: "Xây dựng bài nói thuyết phục và trình bày tự tin" },
+    { name: "Tư duy phản biện", slug: "phat-trien-ban-than-tu-duy-phan-bien", parent_slug: "phat-trien-ca-nhan", icon: "psychology", description: "Phân tích vấn đề logic và ra quyết định có cơ sở" },
+    { name: "Quản lý cảm xúc", slug: "phat-trien-ban-than-quan-ly-cam-xuc", parent_slug: "phat-trien-ca-nhan", icon: "favorite", description: "Nhận diện và điều tiết cảm xúc trong học tập, công việc" },
+    { name: "Năng suất cá nhân", slug: "phat-trien-ban-than-nang-suat-ca-nhan", parent_slug: "phat-trien-ca-nhan", icon: "bolt", description: "Thiết kế hệ thống làm việc bền vững, duy trì hiệu quả cao" },
+
+    { name: "Thiết kế đồ họa", slug: "thiet-ke-do-hoa", parent_slug: "thiet-ke", icon: "palette", description: "Nguyên lý thị giác, bố cục và công cụ thiết kế đồ họa" },
+    { name: "Thiết kế UI/UX", slug: "thiet-ke-ui-ux", parent_slug: "thiet-ke", icon: "web", description: "Thiết kế giao diện và trải nghiệm người dùng hiện đại" },
+    { name: "Thiết kế 3D", slug: "thiet-ke-3d", parent_slug: "thiet-ke", icon: "view_in_ar", description: "Dựng hình, ánh sáng và kết xuất sản phẩm 3D" },
+    { name: "Motion Graphics", slug: "thiet-ke-motion-graphics", parent_slug: "thiet-ke", icon: "movie", description: "Thiết kế đồ họa chuyển động cho video và quảng cáo" },
+    { name: "Chỉnh sửa video", slug: "thiet-ke-chinh-sua-video", parent_slug: "thiet-ke", icon: "video_camera_back", description: "Biên tập video chuyên nghiệp cho nội dung số" },
   ];
 
   const categories = [];
@@ -2196,6 +2242,44 @@ async function seedData() {
     log("✓", `Category: ${c.name}`);
   }
 
+  const categoryBySlug = new Map(
+    categories
+      .filter((cat) => cat?.slug)
+      .map((cat) => [cat.slug, cat])
+  );
+
+  for (const c of childCatData) {
+    const parent = categoryBySlug.get(c.parent_slug);
+    if (!parent?.id) {
+      log("–", `Skip child category (missing parent): ${c.name}`);
+      continue;
+    }
+
+    const payload = {
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      icon: c.icon,
+      parent_id: parent.id,
+      status: "published",
+    };
+
+    try {
+      const child = await post("/items/categories", payload);
+      categoryBySlug.set(child.slug, child);
+      log("✓", `Sub-category: ${c.name}`);
+    } catch (e) {
+      if (e.message.includes("unique") || e.message.includes("duplicate") || e.message.includes("UNIQUE")) {
+        const found = await get(`/items/categories?filter[slug][_eq]=${c.slug}&fields=id,slug`);
+        const arr = Array.isArray(found) ? found : [];
+        if (arr.length > 0) categoryBySlug.set(c.slug, arr[0]);
+        log("–", `Sub-category exists: ${c.name}`);
+        continue;
+      }
+      throw e;
+    }
+  }
+
   // ── Courses ──
   let course1, course2;
 
@@ -2209,7 +2293,7 @@ async function seedData() {
       level: "beginner",
       language: "vi",
       status: "published",
-      category_id: categories[0]?.id,
+      category_id: categoryBySlug.get("lap-trinh")?.id,
       requirements: ["Kiến thức cơ bản về HTML, CSS, JavaScript", "Máy tính có cài Node.js"],
       what_you_learn: ["Hiểu sâu về React hooks và component patterns", "Xây dựng ứng dụng Full-stack với Next.js", "Quản lý state với React Context và Zustand", "Deploy ứng dụng lên Vercel"],
     });
@@ -2233,7 +2317,7 @@ async function seedData() {
       level: "beginner",
       language: "vi",
       status: "published",
-      category_id: categories[1]?.id,
+      category_id: categoryBySlug.get("thiet-ke")?.id,
       requirements: ["Không yêu cầu kinh nghiệm trước", "Cài đặt Figma (miễn phí)"],
       what_you_learn: ["Nguyên tắc thiết kế UI/UX cơ bản", "Sử dụng thành thạo Figma", "Thiết kế responsive", "Tạo design system"],
     });

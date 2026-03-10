@@ -10,7 +10,20 @@ export async function GET() {
     if (res.status === 401) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     if (!res.ok) return NextResponse.json({ error: "Không thể tải wishlist" }, { status: 500 });
     const data = await res.json();
-    return NextResponse.json({ data: data.data ?? [] });
+    const items = Array.isArray(data?.data) ? data.data : [];
+
+    // Hide orphan wishlist rows where the related course is missing/inaccessible.
+    const filtered = items.filter((item) => {
+      const course = item?.course_id;
+      return Boolean(
+        course &&
+          typeof course === "object" &&
+          typeof course.id === "string" &&
+          course.id.length > 0
+      );
+    });
+
+    return NextResponse.json({ data: filtered });
   } catch {
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }

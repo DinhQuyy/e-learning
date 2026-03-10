@@ -13,7 +13,16 @@ export async function getCategories(): Promise<CategoryWithCount[]> {
         status: { _eq: "published" },
       },
       sort: ["sort", "name"],
-      fields: ["id", "name", "slug", "description", "icon", "status"],
+      fields: [
+        "id",
+        "name",
+        "slug",
+        "description",
+        "icon",
+        "parent_id",
+        "sort",
+        "status",
+      ],
     })
   );
 
@@ -51,7 +60,16 @@ export async function getCategoryBySlug(
           status: { _eq: "published" },
         },
         limit: 1,
-        fields: ["id", "name", "slug", "description", "icon", "status"],
+        fields: [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "icon",
+          "parent_id",
+          "sort",
+          "status",
+        ],
       })
     );
 

@@ -14,7 +14,7 @@ import type { Course } from "@/types";
 
 interface WishlistItemData {
   id: string;
-  course_id: Course;
+  course_id: Course | string | null;
   date_created: string;
 }
 
@@ -36,7 +36,18 @@ export default function WishlistPage() {
   useEffect(() => {
     apiFetch("/api/wishlist")
       .then((r) => r.json())
-      .then((d) => setItems(d.data ?? []))
+      .then((d) => {
+        const rawItems = Array.isArray(d?.data) ? d.data : [];
+        const validItems = rawItems.filter((item: WishlistItemData) => {
+          const course = item?.course_id;
+          return Boolean(
+            course &&
+              typeof course === "object" &&
+              typeof (course as Course).id === "string"
+          );
+        });
+        setItems(validItems);
+      })
       .catch(() => toast.error("Không thể tải danh sách yêu thích"))
       .finally(() => setIsLoading(false));
   }, []);

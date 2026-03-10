@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -30,16 +29,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HeaderCartSheet } from "@/components/layout/header-cart-sheet";
 import { HeaderSearchDialog } from "@/components/layout/header-search-dialog";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { getAssetUrl } from "@/lib/directus";
 import { cn } from "@/lib/utils";
 import { getDashboardPath } from "@/lib/role-routing";
-
-const MobileNav = dynamic(
-  () => import("@/components/layout/mobile-nav").then((m) => m.MobileNav),
-  { ssr: false }
-);
 
 interface HeaderCategory {
   id: string;
@@ -56,12 +51,11 @@ const navLinks = [
 ];
 
 const fallbackCategories: HeaderCategory[] = [
-  { id: "lap-trinh", name: "Lập trình", slug: "" },
-  { id: "thiet-ke", name: "Thiết kế", slug: "" },
-  { id: "marketing", name: "Marketing", slug: "" },
-  { id: "data", name: "Data", slug: "" },
-  { id: "kinh-doanh", name: "Kinh doanh", slug: "" },
-  { id: "ngoai-ngu", name: "Ngoại ngữ", slug: "" },
+  { id: "kinh-doanh", name: "Kinh doanh", slug: "kinh-doanh" },
+  { id: "lap-trinh", name: "Lập trình", slug: "lap-trinh" },
+  { id: "ngoai-ngu", name: "Ngoại ngữ", slug: "ngoai-ngu" },
+  { id: "phat-trien-ca-nhan", name: "Phát triển bản thân", slug: "phat-trien-ca-nhan" },
+  { id: "thiet-ke", name: "Thiết kế", slug: "thiet-ke" },
 ];
 
 function hasParent(parent: unknown): boolean {

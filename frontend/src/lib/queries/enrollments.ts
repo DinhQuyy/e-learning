@@ -24,6 +24,57 @@ function dedupeLatestEnrollments(enrollments: Enrollment[]): Enrollment[] {
   return deduped;
 }
 
+function isCourseObject(value: Enrollment["course_id"]): value is NonNullable<Enrollment["course_id"]> & { id: string } {
+  return Boolean(value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string");
+}
+
+async function hydrateCourseRelations(
+  token: string,
+  enrollments: Enrollment[]
+): Promise<Enrollment[]> {
+  const unresolvedCourseIds = Array.from(
+    new Set(
+      enrollments
+        .map((enrollment) =>
+          typeof enrollment.course_id === "string" ? enrollment.course_id : null
+        )
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  if (unresolvedCourseIds.length === 0) {
+    return enrollments;
+  }
+
+  const res = await fetch(
+    `${directusUrl}/items/courses?filter[id][_in]=${unresolvedCourseIds.join(",")}&fields=id,title,slug,thumbnail,total_lessons,total_duration,average_rating,level,category_id.name&limit=-1`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      next: { revalidate: 0 },
+    }
+  );
+
+  if (!res.ok) return enrollments;
+
+  const payload = await res.json();
+  const courseRows = Array.isArray(payload?.data) ? payload.data : [];
+  const courseMap = new Map<string, unknown>(
+    courseRows
+      .filter((course) => typeof course?.id === "string")
+      .map((course) => [String(course.id), course])
+  );
+
+  return enrollments.map((enrollment) => {
+    if (typeof enrollment.course_id !== "string") return enrollment;
+    const hydrated = courseMap.get(enrollment.course_id);
+    if (!hydrated) return enrollment;
+    return { ...enrollment, course_id: hydrated as Enrollment["course_id"] };
+  });
+}
+
 export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   const res = await fetch(
     `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at,-date_created,-id`,
@@ -42,7 +93,11 @@ export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
 
   const data = await res.json();
   const enrollments = (data.data ?? []) as Enrollment[];
-  return dedupeLatestEnrollments(enrollments);
+  const deduped = dedupeLatestEnrollments(enrollments);
+  const hydrated = await hydrateCourseRelations(token, deduped);
+
+  // Hide orphan enrollments whose related course is missing/inaccessible to avoid blank cards.
+  return hydrated.filter((enrollment) => isCourseObject(enrollment.course_id));
 }
 
 export async function getEnrollmentByCourse(

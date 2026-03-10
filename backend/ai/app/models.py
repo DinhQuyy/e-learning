@@ -1,0 +1,243 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+
+ModeType = Literal['helpdesk', 'mentor', 'references', 'assignment']
+
+
+class CtaModel(BaseModel):
+    label: str
+    href: str
+
+
+class HelpdeskStepModel(BaseModel):
+    title: str
+    detail: str
+    deep_link: str
+
+
+class HelpdeskIssueModel(BaseModel):
+    symptom: str
+    cause: str
+    fix: str
+
+
+class HelpdeskSuggestionModel(BaseModel):
+    question: str
+    deep_link: str
+
+
+class HelpdeskOutput(BaseModel):
+    mode: Literal['helpdesk']
+    answer_title: str
+    steps: list[HelpdeskStepModel] = Field(default_factory=list)
+    common_issues: list[HelpdeskIssueModel] = Field(default_factory=list)
+    suggested_questions: list[HelpdeskSuggestionModel] = Field(default_factory=list)
+
+
+class ReferenceRecModel(BaseModel):
+    title: str
+    type: Literal['course', 'book', 'article', 'video']
+    level: Literal['basic', 'intermediate', 'advanced']
+    reason: str
+    url: str
+    source_ids: list[str] = Field(default_factory=list)
+
+
+class ReferencesOutput(BaseModel):
+    mode: Literal['references']
+    topic: str
+    recommendations: list[ReferenceRecModel] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class MentorTaskModel(BaseModel):
+    task: str
+    eta_min: int
+    why: str
+    cta: CtaModel
+
+
+class MentorOverdueModel(BaseModel):
+    lesson_id: str
+    title: str
+    reason: str
+    cta: CtaModel
+
+
+class MentorMetricsModel(BaseModel):
+    progress_pct: float
+    streak_days: int
+    last_activity: date | None
+
+
+class MentorOutput(BaseModel):
+    mode: Literal['mentor']
+    summary: str
+    today_plan: list[MentorTaskModel] = Field(default_factory=list)
+    overdue: list[MentorOverdueModel] = Field(default_factory=list)
+    metrics: MentorMetricsModel
+
+
+class AssignmentHintModel(BaseModel):
+    hint: str
+    why: str
+
+
+class AssignmentOutput(BaseModel):
+    mode: Literal['assignment']
+    restate: str
+    blocked: bool
+    block_reason: str
+    allowed_help: list[str] = Field(default_factory=list)
+    hints: list[AssignmentHintModel] = Field(default_factory=list)
+    self_check: list[str] = Field(default_factory=list)
+
+
+class IndexDocumentRequest(BaseModel):
+    source_type: Literal[
+        'course_lesson',
+        'course_module',
+        'system_docs',
+        'faq',
+        'custom_qa',
+        'policy',
+        'references',
+        'quiz',
+    ]
+    source_id: str
+    title: str
+    content: str
+    visibility: Literal['public', 'enrolled_only', 'instructor_only', 'admin_only'] = 'public'
+    course_id: str | None = None
+    updated_at: datetime | None = None
+    operation: Literal['upsert', 'delete'] = 'upsert'
+
+
+class ChatRequest(BaseModel):
+    mode: Literal['helpdesk', 'references']
+    user_id: str
+    role: Literal['admin', 'instructor', 'student']
+    query: str
+    conversation_id: str | None = None
+    course_id: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class MentorRequest(BaseModel):
+    user_id: str
+    role: Literal['admin', 'instructor', 'student']
+    course_id: str
+    conversation_id: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssignmentRequest(BaseModel):
+    user_id: str
+    role: Literal['admin', 'instructor', 'student']
+    course_id: str
+    lesson_id: str | None = None
+    quiz_id: str | None = None
+    question: str
+    student_attempt: str | None = None
+    conversation_id: str | None = None
+
+
+class LearningEventRequest(BaseModel):
+    user_id: str
+    course_id: str
+    lesson_id: str | None = None
+    event_type: Literal['lesson_start', 'lesson_complete', 'quiz_attempt', 'video_watch']
+    duration_sec: int | None = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentQueueJob(BaseModel):
+    document_id: str
+
+
+class MetricsResponse(BaseModel):
+    total_requests_24h: int
+    p95_latency_ms: int
+    blocked_requests_24h: int
+    cache_hit_ratio: float
+    fallback_rate_24h: float
+    positive_feedback_24h: int
+    negative_feedback_24h: int
+
+
+class FeedbackRequest(BaseModel):
+    user_id: str
+    conversation_id: str
+    message_id: str
+    mode: ModeType
+    rating: Literal[-1, 1]
+    comment: str | None = None
+    include_in_training: bool = True
+
+
+class FeedbackResponse(BaseModel):
+    status: Literal['ok']
+    feedback_id: str
+
+
+class DailyMetricRow(BaseModel):
+    metric_date: date
+    total_requests: int
+    p95_latency_ms: int
+    blocked_requests: int
+    cache_hit_ratio: float
+    fallback_rate: float
+    positive_feedback: int
+    negative_feedback: int
+
+
+class DailyMetricsSummary(BaseModel):
+    window_days: int
+    req_change_pct: float
+    p95_improvement_pct: float
+    fallback_improvement_pct: float
+    positive_feedback_change_pct: float
+
+
+class DailyMetricsResponse(BaseModel):
+    rows: list[DailyMetricRow] = Field(default_factory=list)
+    summary: DailyMetricsSummary
+
+
+class CustomQaItem(BaseModel):
+    id: str | None = None
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)
+    deep_link: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    notes: str | list[str] | None = None
+
+
+class CustomQaImportRequest(BaseModel):
+    set_name: str = Field(min_length=1, max_length=120)
+    source_type: Literal['custom_qa', 'faq'] = 'custom_qa'
+    visibility: Literal['public', 'enrolled_only', 'instructor_only', 'admin_only'] = 'public'
+    course_id: str | None = None
+    replace_set: bool = False
+    items: list[CustomQaItem] = Field(min_length=1)
+
+
+class CustomQaImportResponse(BaseModel):
+    status: Literal['ok']
+    set_name: str
+    source_type: str
+    replaced_deleted: int
+    imported: int
+    queued: int
+    source_ids: list[str] = Field(default_factory=list)
+
+
+class HelpdeskSuggestionsResponse(BaseModel):
+    query: str
+    items: list[HelpdeskSuggestionModel] = Field(default_factory=list)

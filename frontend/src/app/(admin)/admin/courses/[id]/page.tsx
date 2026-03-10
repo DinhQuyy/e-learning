@@ -191,11 +191,11 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                   </div>
                   <h1 className="text-xl font-bold">{course.title}</h1>
                   {course.description && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-500">
                       {course.description}
                     </p>
                   )}
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                     <span className="flex items-center gap-1">
                       <BarChart3 className="h-4 w-4" />
                       {levelLabels[course.level] ?? course.level}
@@ -226,7 +226,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Danh mục
                   </p>
                   <p className="mt-1">
@@ -236,13 +236,13 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Ngôn ngữ
                   </p>
                   <p className="mt-1">{course.language || "Tiếng Việt"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Giá
                   </p>
                   <p className="mt-1">
@@ -251,14 +251,14 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                       : formatPrice(course.price)}
                     {course.discount_price != null &&
                       course.discount_price < course.price && (
-                        <span className="ml-2 text-sm text-muted-foreground line-through">
+                        <span className="ml-2 text-sm text-gray-500 line-through">
                           {formatPrice(course.price)}
                         </span>
                       )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Đánh giá
                   </p>
                   <p className="mt-1 flex items-center gap-1">
@@ -268,7 +268,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Ngày tạo
                   </p>
                   <p className="mt-1">
@@ -280,7 +280,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">
                     Cập nhật lần cuối
                   </p>
                   <p className="mt-1">
@@ -297,7 +297,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                 <>
                   <Separator />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-sm font-medium text-gray-500 mb-2">
                       Video giới thiệu
                     </p>
                     <a
@@ -316,7 +316,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                 <>
                   <Separator />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-sm font-medium text-gray-500 mb-2">
                       Bạn sẽ học được gì
                     </p>
                     <ul className="space-y-1">
@@ -335,7 +335,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                 <>
                   <Separator />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-sm font-medium text-gray-500 mb-2">
                       Yêu cầu
                     </p>
                     <ul className="space-y-1">
@@ -390,7 +390,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex items-center gap-2 text-left">
                             <span className="font-medium">{mod.title}</span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-gray-500">
                               ({mod.lessons.length} bài học)
                             </span>
                           </div>
@@ -404,9 +404,9 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                               >
                                 <div className="flex items-center gap-2">
                                   {lesson.type === "video" ? (
-                                    <PlayCircle className="h-4 w-4 text-muted-foreground" />
+                                    <PlayCircle className="h-4 w-4 text-gray-500" />
                                   ) : (
-                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <FileText className="h-4 w-4 text-gray-500" />
                                   )}
                                   <span>{lesson.title}</span>
                                   {lesson.is_free && (
@@ -423,7 +423,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                                     </Badge>
                                   )}
                                 </div>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-gray-500">
                                   {Math.floor(lesson.duration / 60)}:
                                   {String(lesson.duration % 60).padStart(2, "0")}
                                 </span>
@@ -504,7 +504,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                           </Badge>
                         </div>
                         {review.comment && (
-                          <p className="mt-2 text-sm text-muted-foreground">
+                          <p className="mt-2 text-sm text-gray-500">
                             {review.comment}
                           </p>
                         )}
@@ -554,7 +554,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
                         {[inst.first_name, inst.last_name].filter(Boolean).join(" ") ||
                           inst.email}
                       </p>
-                      <p className="text-xs text-muted-foreground">{inst.email}</p>
+                      <p className="text-xs text-gray-500">{inst.email}</p>
                     </div>
                   </Link>
                 ))}

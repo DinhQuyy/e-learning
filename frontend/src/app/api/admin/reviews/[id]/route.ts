@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
 import { recalculateCourseRating } from "@/lib/review-rating";
+import { isValidReviewStatus } from "@/lib/validations";
 
 async function getCourseIdByReviewId(reviewId: string): Promise<string | null> {
   try {
@@ -33,12 +34,18 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {};
 
     if (body.status !== undefined) {
+      if (!isValidReviewStatus(body.status)) {
+        return NextResponse.json(
+          { error: "Trạng thái không hợp lệ. Chỉ chấp nhận: pending, approved, rejected, hidden" },
+          { status: 400 }
+        );
+      }
       updateData.status = body.status;
     }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { error: "KhÃ´ng cÃ³ dá»¯ liá»‡u cáº­p nháº­t" },
+        { error: "Không có dữ liệu cập nhật" },
         { status: 400 }
       );
     }
@@ -50,7 +57,7 @@ export async function PATCH(
 
     if (res.status === 401) {
       return NextResponse.json(
-        { error: "KhÃ´ng cÃ³ quyá»n truy cáº­p" },
+        { error: "Không có quyền truy cập" },
         { status: 401 }
       );
     }
@@ -58,7 +65,7 @@ export async function PATCH(
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { error: "KhÃ´ng thá»ƒ cáº­p nháº­t Ä‘Ã¡nh giÃ¡", details: error },
+        { error: "Không thể cập nhật đánh giá", details: error },
         { status: res.status }
       );
     }
@@ -70,7 +77,7 @@ export async function PATCH(
     return NextResponse.json(data);
   } catch {
     return NextResponse.json(
-      { error: "Lá»—i há»‡ thá»‘ng" },
+      { error: "Lỗi hệ thống" },
       { status: 500 }
     );
   }
@@ -91,7 +98,7 @@ export async function DELETE(
 
     if (res.status === 401) {
       return NextResponse.json(
-        { error: "KhÃ´ng cÃ³ quyá»n truy cáº­p" },
+        { error: "Không có quyền truy cập" },
         { status: 401 }
       );
     }
@@ -99,7 +106,7 @@ export async function DELETE(
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { error: "KhÃ´ng thá»ƒ xoÃ¡ Ä‘Ã¡nh giÃ¡", details: error },
+        { error: "Không thể xoá đánh giá", details: error },
         { status: res.status }
       );
     }
@@ -110,7 +117,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
-      { error: "Lá»—i há»‡ thá»‘ng" },
+      { error: "Lỗi hệ thống" },
       { status: 500 }
     );
   }

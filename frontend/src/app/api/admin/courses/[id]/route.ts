@@ -1,4 +1,5 @@
 import { directusFetch } from "@/lib/directus-fetch";
+import { isValidCourseStatus } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyInstructorCourseStatus } from "@/lib/notifications-helper";
 
@@ -48,6 +49,12 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {};
 
     if (body.status !== undefined) {
+      if (!isValidCourseStatus(body.status)) {
+        return NextResponse.json(
+          { error: "Trạng thái không hợp lệ. Chỉ chấp nhận: draft, review, published, archived" },
+          { status: 400 }
+        );
+      }
       updateData.status = body.status;
     }
 

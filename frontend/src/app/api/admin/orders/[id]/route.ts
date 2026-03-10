@@ -1,6 +1,7 @@
 ﻿import { directusFetch } from "@/lib/directus-fetch";
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
 import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
+import { isValidOrderStatus } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -14,6 +15,12 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {};
 
     if (body.status !== undefined) {
+      if (!isValidOrderStatus(body.status)) {
+        return NextResponse.json(
+          { error: "Trạng thái không hợp lệ. Chỉ chấp nhận: pending, success, failed, cancelled" },
+          { status: 400 }
+        );
+      }
       updateData.status = body.status;
       if (body.status === "success") {
         updateData.paid_at = new Date().toISOString();

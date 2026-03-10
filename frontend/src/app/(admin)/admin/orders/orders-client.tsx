@@ -13,8 +13,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  Eye,
+  Download,
+  RefreshCw,
+  CalendarIcon,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -99,9 +106,13 @@ export function AdminOrdersClient() {
   const [loading, setLoading] = useState(true);
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
 
-  const currentPage = Number(searchParams.get("page")) || 1;
+  const currentPage = Math.max(1, Number(searchParams.get("page")) || 1);
   const status = searchParams.get("status") || "all";
+  const dateFrom = searchParams.get("from") || "";
+  const dateTo = searchParams.get("to") || "";
   const totalPages = Math.ceil(totalCount / 20);
+  const [fromValue, setFromValue] = useState(dateFrom);
+  const [toValue, setToValue] = useState(dateTo);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -110,6 +121,8 @@ export function AdminOrdersClient() {
       params.set("page", String(currentPage));
       params.set("limit", "20");
       if (status !== "all") params.set("status", status);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
 
       const res = await apiFetch(`/api/admin/orders?${params.toString()}`);
       if (res.ok) {
@@ -122,7 +135,7 @@ export function AdminOrdersClient() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, status]);
+  }, [currentPage, status, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchOrders();
@@ -197,13 +210,56 @@ export function AdminOrdersClient() {
     );
   };
 
+  const handleExportCSV = () => {
+    if (orders.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const header = "Mã đơn,Khách hàng,Email,Tổng tiền,Phương thức,Trạng thái,Ngày tạo,Ngày thanh toán\n";
+    const rows = orders.map((o) => {
+      const name = getUserName(o.user_id);
+      const email = o.user_id?.email ?? "";
+      const method = getPaymentMethodLabel(o.payment_method);
+      const created = format(new Date(o.date_created), "dd/MM/yyyy HH:mm");
+      const paid = o.paid_at ? format(new Date(o.paid_at), "dd/MM/yyyy HH:mm") : "";
+      return `"${o.order_number}","${name}","${email}",${o.total_amount},"${method}","${o.status}","${created}","${paid}"`;
+    });
+    const csv = "\uFEFF" + header + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `orders-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Đã xuất file CSV");
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Quản lý đơn hàng</h1>
-        <p className="text-muted-foreground">
-          Tổng cộng {totalCount} đơn hàng
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Quản lý đơn hàng</h1>
+          <p className="text-gray-500">
+            Tổng cộng {totalCount} đơn hàng
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/admin/orders")}
+            disabled={loading}
+            className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 transition-transform ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Đang tải..." : "Làm mới"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700">
+            <Download className="mr-2 h-4 w-4" />
+            Xuất CSV
+          </Button>
+        </div>
       </div>
 
       {/* Status Tabs */}
@@ -220,58 +276,158 @@ export function AdminOrdersClient() {
         </TabsList>
       </Tabs>
 
-      {/* Table */}
-      <div className="rounded-lg border bg-white">
+      {/* Date Range Filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-4 w-4 text-gray-500" />
+          <span className="text-sm text-gray-600">Từ ngày</span>
+          <Input
+            type="date"
+            value={fromValue}
+            onChange={(e) => setFromValue(e.target.value)}
+            className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Đến ngày</span>
+          <Input
+            type="date"
+            value={toValue}
+            onChange={(e) => setToValue(e.target.value)}
+            className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          />
+        </div>
+        <Button
+          size="sm"
+          onClick={() => router.push(buildUrl({ from: fromValue, to: toValue, page: "1" }))}
+          className="bg-gray-900 text-white hover:bg-gray-800"
+        >
+          Lọc
+        </Button>
+        {(dateFrom || dateTo) && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setFromValue("");
+              setToValue("");
+              router.push(buildUrl({ from: "", to: "", page: "1" }));
+            }}
+            className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <X className="mr-1 h-3 w-3" />
+            Xoá bộ lọc
+          </Button>
+        )}
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="space-y-3 lg:hidden">
+        {loading ? (
+          <p className="py-12 text-center text-gray-400">Đang tải...</p>
+        ) : orders.length === 0 ? (
+          <p className="py-12 text-center text-gray-400">Không có đơn hàng nào.</p>
+        ) : (
+          orders.map((order) => (
+            <div key={order.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-mono text-sm font-medium text-gray-900">{order.order_number}</p>
+                  <p className="text-sm text-gray-500">{getUserName(order.user_id)}</p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/admin/orders/${order.id}`}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Xem chi tiết
+                      </Link>
+                    </DropdownMenuItem>
+                    {order.status === "pending" && (
+                      <>
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(order.id, "success")}>
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                          Xác nhận
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(order.id, "cancelled")}>
+                          <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                          Huỷ đơn
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                {getStatusBadge(order.status)}
+                <span className="font-medium text-gray-900">{formatPrice(order.total_amount)}</span>
+                <span className="text-gray-500">{getPaymentMethodLabel(order.payment_method)}</span>
+                <span className="ml-auto text-gray-400">
+                  {format(new Date(order.date_created), "dd/MM/yyyy", { locale: vi })}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden lg:block rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Mã đơn</TableHead>
-              <TableHead>Khách hàng</TableHead>
-              <TableHead>Tổng tiền</TableHead>
-              <TableHead>Phương thức</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày tạo</TableHead>
-              <TableHead className="w-12">Hành động</TableHead>
+            <TableRow className="bg-gray-100 hover:bg-gray-100">
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Mã đơn</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Khách hàng</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Tổng tiền</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Phương thức</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Trạng thái</TableHead>
+              <TableHead className="text-gray-700 font-semibold text-xs uppercase tracking-wider">Ngày tạo</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-12 text-center text-gray-400">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                  <Package className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                <TableCell colSpan={7} className="py-12 text-center text-gray-400">
+                  <Package className="mx-auto h-8 w-8 text-gray-300 mb-2" />
                   Không có đơn hàng nào.
                 </TableCell>
               </TableRow>
             ) : (
               orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono text-sm">
+                <TableRow key={order.id} className="hover:bg-gray-50/50">
+                  <TableCell className="font-mono text-sm text-gray-900">
                     {order.order_number}
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium text-gray-900">
                         {getUserName(order.user_id)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-gray-400">
                         {order.user_id?.email}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-gray-900">
                     {formatPrice(order.total_amount)}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm text-gray-600">
                     {getPaymentMethodLabel(order.payment_method)}
                   </TableCell>
                   <TableCell>{getStatusBadge(order.status)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-gray-500">
                     {format(new Date(order.date_created), "dd/MM/yyyy HH:mm", {
                       locale: vi,
                     })}
@@ -288,6 +444,13 @@ export function AdminOrdersClient() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/orders/${order.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Xem chi tiết
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         {order.status === "pending" && (
                           <>
                           <DropdownMenuItem
@@ -332,13 +495,14 @@ export function AdminOrdersClient() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Trang {currentPage} / {totalPages}
           </p>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
               disabled={currentPage <= 1}
               onClick={() =>
                 router.push(buildUrl({ page: String(currentPage - 1) }))
@@ -350,6 +514,7 @@ export function AdminOrdersClient() {
             <Button
               variant="outline"
               size="sm"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
               disabled={currentPage >= totalPages}
               onClick={() =>
                 router.push(buildUrl({ page: String(currentPage + 1) }))

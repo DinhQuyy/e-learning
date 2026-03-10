@@ -275,10 +275,10 @@ export default function AdminCategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Quản lý danh mục
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-500">
             Tổ chức danh mục khoá học của nền tảng
           </p>
         </div>
@@ -298,10 +298,10 @@ export default function AdminCategoriesPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
             </div>
           ) : orderedCategories.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">
+            <p className="py-12 text-center text-gray-500">
               Chưa có danh mục nào. Hãy tạo danh mục đầu tiên.
             </p>
           ) : (
@@ -322,19 +322,19 @@ export default function AdminCategoriesPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {cat.isChild && (
-                          <span className="ml-6 text-muted-foreground">
+                          <span className="ml-6 text-gray-500">
                             &#8627;
                           </span>
                         )}
                         {cat.icon && (
-                          <span className="text-muted-foreground">
+                          <span className="text-gray-500">
                             {cat.icon}
                           </span>
                         )}
                         <span className="font-medium">{cat.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-gray-500">
                       {cat.slug}
                     </TableCell>
                     <TableCell className="text-sm">

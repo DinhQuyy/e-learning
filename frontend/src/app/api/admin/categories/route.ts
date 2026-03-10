@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
+import { isValidSlug, isValidCategoryStatus } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -65,8 +66,43 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
+      return NextResponse.json(
+        { error: "Tên danh mục không được để trống" },
+        { status: 400 }
+      );
+    }
+
+    if (!body.slug || !isValidSlug(body.slug)) {
+      return NextResponse.json(
+        { error: "Slug không hợp lệ. Chỉ chấp nhận chữ thường, số và dấu gạch ngang" },
+        { status: 400 }
+      );
+    }
+
+    if (body.status && !isValidCategoryStatus(body.status)) {
+      return NextResponse.json(
+        { error: "Trạng thái không hợp lệ. Chỉ chấp nhận: published, draft, archived" },
+        { status: 400 }
+      );
+    }
+
+    // Check slug uniqueness
+    const slugCheck = await directusFetch(
+      `/items/categories?filter[slug][_eq]=${encodeURIComponent(body.slug)}&limit=1&fields=id`
+    );
+    if (slugCheck.ok) {
+      const slugData = await slugCheck.json();
+      if ((slugData.data ?? []).length > 0) {
+        return NextResponse.json(
+          { error: "Slug đã tồn tại. Vui lòng chọn slug khác" },
+          { status: 409 }
+        );
+      }
+    }
+
     const createData = {
-      name: body.name,
+      name: body.name.trim(),
       slug: body.slug,
       description: body.description ?? null,
       icon: body.icon ?? null,

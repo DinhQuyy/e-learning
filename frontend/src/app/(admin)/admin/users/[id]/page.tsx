@@ -323,9 +323,9 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
               </AvatarFallback>
             </Avatar>
             <h2 className="mt-4 text-xl font-bold">{displayName}</h2>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
+            <p className="text-sm text-gray-500">{user.email}</p>
             {user.headline && (
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-gray-500">
                 {user.headline}
               </p>
             )}
@@ -355,17 +355,17 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
             <Separator className="my-4 w-full" />
 
             <div className="w-full space-y-3 text-left text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-gray-500">
                 <Mail className="h-4 w-4" />
                 <span>{user.email}</span>
               </div>
               {user.phone && (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-gray-500">
                   <Phone className="h-4 w-4" />
                   <span>{user.phone}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-gray-500">
                 <Calendar className="h-4 w-4" />
                 <span>
                   Tham gia{" "}
@@ -377,7 +377,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                 </span>
               </div>
               {Object.keys(socialLinks).length > 0 && (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-gray-500">
                   <Globe className="h-4 w-4" />
                   <div className="space-x-2">
                     {Object.entries(socialLinks).map(([key, val]) => (
@@ -398,7 +398,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
 
             <Separator className="my-4 w-full" />
 
-            <UserDetailActions userId={user.id} currentStatus={user.status} currentRoleId={typeof role === "object" ? role?.id : ""} />
+            <UserDetailActions userId={user.id} currentStatus={user.status} currentRoleId={typeof role === "object" ? role?.id ?? "" : ""} />
           </CardContent>
         </Card>
 
@@ -419,20 +419,20 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-sm font-medium text-gray-500">
                       Họ và tên
                     </p>
                     <p className="mt-1">{displayName}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-sm font-medium text-gray-500">
                       Email
                     </p>
                     <p className="mt-1">{user.email}</p>
                   </div>
                   {user.phone && (
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-gray-500">
                         Số điện thoại
                       </p>
                       <p className="mt-1">{user.phone}</p>
@@ -440,7 +440,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                   )}
                   {user.headline && (
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-gray-500">
                         Tiêu đề
                       </p>
                       <p className="mt-1">{user.headline}</p>
@@ -448,7 +448,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                   )}
                   {user.bio && (
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-gray-500">
                         Giới thiệu
                       </p>
                       <p className="mt-1 whitespace-pre-wrap">{user.bio}</p>
@@ -456,7 +456,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                   )}
                   {Object.keys(socialLinks).length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-gray-500">
                         Liên kết xã hội
                       </p>
                       <div className="mt-1 space-y-1">
@@ -528,12 +528,12 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                                   value={e.progress_percentage ?? 0}
                                   className="h-2 w-20"
                                 />
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-gray-500">
                                   {Math.round(e.progress_percentage ?? 0)}%
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-gray-500">
                               {format(new Date(e.enrolled_at), "dd/MM/yyyy", {
                                 locale: vi,
                               })}
@@ -615,7 +615,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
 
               {enrollments.length === 0 && instructorCourses.length === 0 && (
                 <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
+                  <CardContent className="py-12 text-center text-gray-500">
                     Người dùng chưa có khoá học nào.
                   </CardContent>
                 </Card>
@@ -667,7 +667,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                                   </Badge>
                                 )}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
+                              <TableCell className="text-sm text-gray-500">
                                 {format(
                                   new Date(a.started_at),
                                   "dd/MM/yyyy HH:mm",
@@ -722,7 +722,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                               </div>
                             </div>
                             {r.comment && (
-                              <p className="mt-2 text-sm text-muted-foreground">
+                              <p className="mt-2 text-sm text-gray-500">
                                 {r.comment}
                               </p>
                             )}
@@ -742,7 +742,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                                     ? "Đã ẩn"
                                     : "Chờ duyệt"}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-gray-500">
                                 {format(
                                   new Date(r.date_created),
                                   "dd/MM/yyyy",
@@ -760,7 +760,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
 
               {quizAttempts.length === 0 && reviews.length === 0 && (
                 <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
+                  <CardContent className="py-12 text-center text-gray-500">
                     Chưa có hoạt động nào.
                   </CardContent>
                 </Card>

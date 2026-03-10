@@ -1,147 +1,17 @@
 import { directusUrl } from "@/lib/directus";
 
+// ── Shared types ──
+
+interface DirectusListResponse<T> {
+  data: T[];
+  meta?: { filter_count?: number; total_count?: number };
+}
+
 interface AdminStatsResult {
   totalUsers: number;
   totalCourses: number;
   totalEnrollments: number;
   pendingCourses: number;
-}
-
-type AiMetrics = {
-  total_requests_24h: number;
-  p95_latency_ms: number;
-  blocked_requests_24h: number;
-  cache_hit_ratio: number;
-  fallback_rate_24h: number;
-  positive_feedback_24h: number;
-  negative_feedback_24h: number;
-};
-
-type AiDailyMetric = {
-  metric_date: string;
-  total_requests: number;
-  p95_latency_ms: number;
-  blocked_requests: number;
-  cache_hit_ratio: number;
-  fallback_rate: number;
-  positive_feedback: number;
-  negative_feedback: number;
-};
-
-type AiDailySummary = {
-  window_days: number;
-  req_change_pct: number;
-  p95_improvement_pct: number;
-  fallback_improvement_pct: number;
-  positive_feedback_change_pct: number;
-};
-
-type AiDailyMetricsPayload = {
-  rows: AiDailyMetric[];
-  summary: AiDailySummary;
-};
-
-async function getAiMetrics(): Promise<AiMetrics> {
-  const aiUrl = process.env.AI_API_URL || "http://localhost:8090";
-  const aiInternalKey = process.env.AI_INTERNAL_KEY || "";
-
-  if (!aiInternalKey) {
-    return {
-      total_requests_24h: 0,
-      p95_latency_ms: 0,
-      blocked_requests_24h: 0,
-      cache_hit_ratio: 0,
-      fallback_rate_24h: 0,
-      positive_feedback_24h: 0,
-      negative_feedback_24h: 0,
-    };
-  }
-
-  const res = await fetch(`${aiUrl}/v1/admin/metrics`, {
-    headers: {
-      "X-AI-Internal-Key": aiInternalKey,
-    },
-    cache: "no-store",
-  }).catch(() => null);
-
-  if (!res || !res.ok) {
-    return {
-      total_requests_24h: 0,
-      p95_latency_ms: 0,
-      blocked_requests_24h: 0,
-      cache_hit_ratio: 0,
-      fallback_rate_24h: 0,
-      positive_feedback_24h: 0,
-      negative_feedback_24h: 0,
-    };
-  }
-
-  const payload = await res.json().catch(() => null);
-  return {
-    total_requests_24h: Number(payload?.total_requests_24h ?? 0),
-    p95_latency_ms: Number(payload?.p95_latency_ms ?? 0),
-    blocked_requests_24h: Number(payload?.blocked_requests_24h ?? 0),
-    cache_hit_ratio: Number(payload?.cache_hit_ratio ?? 0),
-    fallback_rate_24h: Number(payload?.fallback_rate_24h ?? 0),
-    positive_feedback_24h: Number(payload?.positive_feedback_24h ?? 0),
-    negative_feedback_24h: Number(payload?.negative_feedback_24h ?? 0),
-  };
-}
-
-async function getAiDailyMetrics(days: number = 14): Promise<AiDailyMetricsPayload> {
-  const aiUrl = process.env.AI_API_URL || "http://localhost:8090";
-  const aiInternalKey = process.env.AI_INTERNAL_KEY || "";
-  const defaultPayload: AiDailyMetricsPayload = {
-    rows: [],
-    summary: {
-      window_days: Math.max(Math.floor(days / 2), 1),
-      req_change_pct: 0,
-      p95_improvement_pct: 0,
-      fallback_improvement_pct: 0,
-      positive_feedback_change_pct: 0,
-    },
-  };
-
-  if (!aiInternalKey) {
-    return defaultPayload;
-  }
-
-  const res = await fetch(
-    `${aiUrl}/v1/admin/metrics/daily?days=${encodeURIComponent(String(days))}`,
-    {
-      headers: {
-        "X-AI-Internal-Key": aiInternalKey,
-      },
-      cache: "no-store",
-    }
-  ).catch(() => null);
-
-  if (!res || !res.ok) {
-    return defaultPayload;
-  }
-
-  const payload = await res.json().catch(() => null);
-  return {
-    rows: Array.isArray(payload?.rows)
-      ? payload.rows.map((row: Record<string, unknown>) => ({
-          metric_date: String(row.metric_date ?? ""),
-          total_requests: Number(row.total_requests ?? 0),
-          p95_latency_ms: Number(row.p95_latency_ms ?? 0),
-          blocked_requests: Number(row.blocked_requests ?? 0),
-          cache_hit_ratio: Number(row.cache_hit_ratio ?? 0),
-          fallback_rate: Number(row.fallback_rate ?? 0),
-          positive_feedback: Number(row.positive_feedback ?? 0),
-          negative_feedback: Number(row.negative_feedback ?? 0),
-        }))
-      : [],
-    summary: {
-      window_days: Number(payload?.summary?.window_days ?? defaultPayload.summary.window_days),
-      req_change_pct: Number(payload?.summary?.req_change_pct ?? 0),
-      p95_improvement_pct: Number(payload?.summary?.p95_improvement_pct ?? 0),
-      fallback_improvement_pct: Number(payload?.summary?.fallback_improvement_pct ?? 0),
-      positive_feedback_change_pct: Number(payload?.summary?.positive_feedback_change_pct ?? 0),
-    },
-  };
 }
 
 export async function getAdminStats(token: string): Promise<AdminStatsResult> {
@@ -198,7 +68,7 @@ interface GetUsersParams {
   status?: string;
 }
 
-export async function getUsers(token: string, params: GetUsersParams = {}) {
+export async function getUsers(token: string, params: GetUsersParams = {}): Promise<DirectusListResponse<AdminUser>> {
   const { page = 1, limit = 20, search, role, status } = params;
   const offset = (page - 1) * limit;
 
@@ -206,9 +76,9 @@ export async function getUsers(token: string, params: GetUsersParams = {}) {
 
   if (search) {
     filterParts.push(
-      `filter[_or][0][first_name][_contains]=${encodeURIComponent(search)}` +
-        `&filter[_or][1][last_name][_contains]=${encodeURIComponent(search)}` +
-        `&filter[_or][2][email][_contains]=${encodeURIComponent(search)}`
+      `filter[_or][0][first_name][_icontains]=${encodeURIComponent(search)}` +
+        `&filter[_or][1][last_name][_icontains]=${encodeURIComponent(search)}` +
+        `&filter[_or][2][email][_icontains]=${encodeURIComponent(search)}`
     );
   }
 
@@ -239,7 +109,7 @@ export async function getUsers(token: string, params: GetUsersParams = {}) {
   return res.json();
 }
 
-export async function getUserById(token: string, id: string) {
+export async function getUserById(token: string, id: string): Promise<AdminUserDetail | null> {
   const url = `${directusUrl}/users/${id}?fields=id,first_name,last_name,email,avatar,status,date_created,bio,phone,headline,social_links,role.id,role.name`;
 
   const res = await fetch(url, {
@@ -300,7 +170,7 @@ function getEnrollmentCountFromAggregate(row: EnrollmentAggregateRow): number {
 export async function getAllCourses(
   token: string,
   params: GetCoursesParams = {}
-) {
+)  {
   const { page = 1, limit = 20, search, status } = params;
   const offset = (page - 1) * limit;
 
@@ -308,7 +178,7 @@ export async function getAllCourses(
 
   if (search) {
     filterParts.push(
-      `filter[title][_contains]=${encodeURIComponent(search)}`
+      `filter[title][_icontains]=${encodeURIComponent(search)}`
     );
   }
 
@@ -394,7 +264,7 @@ export async function getAllCourses(
 export async function getReviewsForModeration(
   token: string,
   status: string = "pending"
-) {
+): Promise<AdminReview[]> {
   const filterStr =
     status === "all" ? "" : `&filter[status][_eq]=${encodeURIComponent(status)}`;
 
@@ -416,7 +286,7 @@ export async function getReviewsForModeration(
   return data.data ?? [];
 }
 
-export async function getReportData(token: string) {
+export async function getReportData(token: string): Promise<ReportDataResult> {
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -535,7 +405,162 @@ export async function getReportData(token: string) {
   };
 }
 
-export async function getLatestEnrollments(token: string, limit: number = 5) {
+export async function getRevenueStats(token: string, from?: string, to?: string): Promise<RevenueStatsResult> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  // Get all successful orders from last 12 months (or custom date range)
+  const dateFilters: string[] = [`filter[status][_eq]=success`];
+  if (from) {
+    dateFilters.push(`filter[date_created][_gte]=${encodeURIComponent(from)}T00:00:00`);
+  } else {
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    dateFilters.push(`filter[paid_at][_gte]=${twelveMonthsAgo.toISOString()}`);
+  }
+  if (to) {
+    dateFilters.push(`filter[date_created][_lte]=${encodeURIComponent(to)}T23:59:59`);
+  }
+
+  const ordersRes = await fetch(
+    `${directusUrl}/items/orders?fields=id,total_amount,paid_at,date_created&${dateFilters.join("&")}&sort=-paid_at&limit=1000`,
+    { headers, next: { revalidate: 0 } }
+  );
+
+  const orders = ordersRes.ok ? (await ordersRes.json()).data ?? [] : [];
+
+  // Calculate monthly revenue
+  const monthlyRevenue: Record<string, number> = {};
+  let totalRevenue = 0;
+  let currentMonthRevenue = 0;
+  let lastMonthRevenue = 0;
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
+
+  for (const order of orders) {
+    const amount = Number(order.total_amount ?? 0);
+    if (!Number.isFinite(amount)) continue;
+    totalRevenue += amount;
+
+    const date = new Date(order.paid_at || order.date_created);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] ?? 0) + amount;
+
+    if (monthKey === currentMonthKey) currentMonthRevenue += amount;
+    if (monthKey === lastMonthKey) lastMonthRevenue += amount;
+  }
+
+  // Build last 6 months array for chart
+  const monthlyChart = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+    monthlyChart.push({
+      month: monthNames[d.getMonth()],
+      revenue: monthlyRevenue[key] ?? 0,
+    });
+  }
+
+  const revenueChange = lastMonthRevenue > 0
+    ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+    : currentMonthRevenue > 0 ? 100 : 0;
+
+  return {
+    totalRevenue,
+    currentMonthRevenue,
+    lastMonthRevenue,
+    revenueChange,
+    monthlyChart,
+    totalOrders: orders.length,
+  };
+}
+
+export async function getEnrollmentTrend(token: string): Promise<EnrollmentTrendItem[]> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const res = await fetch(
+    `${directusUrl}/items/enrollments?fields=id,enrolled_at&filter[enrolled_at][_gte]=${sixMonthsAgo.toISOString()}&sort=-enrolled_at&limit=1000`,
+    { headers, next: { revalidate: 0 } }
+  );
+
+  const enrollments = res.ok ? (await res.json()).data ?? [] : [];
+
+  const now = new Date();
+  const monthlyCount: Record<string, number> = {};
+
+  for (const e of enrollments) {
+    const date = new Date(e.enrolled_at);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthlyCount[key] = (monthlyCount[key] ?? 0) + 1;
+  }
+
+  const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+  const trend = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    trend.push({
+      month: monthNames[d.getMonth()],
+      enrollments: monthlyCount[key] ?? 0,
+    });
+  }
+
+  return trend;
+}
+
+export async function getCourseStatusDistribution(token: string): Promise<CourseStatusItem[]> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  const statuses = ["draft", "review", "published", "archived"];
+  const results = await Promise.all(
+    statuses.map(async (status) => {
+      const res = await fetch(
+        `${directusUrl}/items/courses?aggregate[count]=id&filter[status][_eq]=${status}`,
+        { headers, next: { revalidate: 0 } }
+      );
+      if (!res.ok) return { status, count: 0 };
+      const data = await res.json();
+      return { status, count: Number(data.data?.[0]?.count?.id ?? 0) };
+    })
+  );
+
+  const labelMap: Record<string, string> = {
+    draft: "Bản nháp",
+    review: "Chờ duyệt",
+    published: "Đã xuất bản",
+    archived: "Lưu trữ",
+  };
+
+  const colorMap: Record<string, string> = {
+    draft: "#94a3b8",
+    review: "#f59e0b",
+    published: "#22c55e",
+    archived: "#6b7280",
+  };
+
+  return results.map((r) => ({
+    name: labelMap[r.status] ?? r.status,
+    value: r.count,
+    fill: colorMap[r.status] ?? "#8884d8",
+  }));
+}
+
+export async function getLatestEnrollments(token: string, limit: number = 5): Promise<LatestEnrollment[]> {
   const url = `${directusUrl}/items/enrollments?fields=id,enrolled_at,status,user_id.id,user_id.first_name,user_id.last_name,user_id.avatar,course_id.id,course_id.title&sort=-enrolled_at&limit=${limit}`;
 
   const res = await fetch(url, {
@@ -551,7 +576,7 @@ export async function getLatestEnrollments(token: string, limit: number = 5) {
   return data.data ?? [];
 }
 
-export async function getLatestReviews(token: string, limit: number = 5) {
+export async function getLatestReviews(token: string, limit: number = 5): Promise<LatestReview[]> {
   const url = `${directusUrl}/items/reviews?fields=id,rating,comment,date_created,user_id.id,user_id.first_name,user_id.last_name,user_id.avatar,course_id.id,course_id.title&sort=-date_created&limit=${limit}`;
 
   const res = await fetch(url, {

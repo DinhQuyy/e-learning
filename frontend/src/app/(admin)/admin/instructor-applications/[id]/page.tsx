@@ -155,7 +155,7 @@ export default function AdminInstructorApplicationDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-gray-500" />
       </div>
     );
   }
@@ -163,7 +163,7 @@ export default function AdminInstructorApplicationDetailPage() {
   if (!application) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-500">
           Không tìm thấy đơn đăng ký.
         </p>
         <Button asChild variant="outline">
@@ -177,10 +177,10 @@ export default function AdminInstructorApplicationDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Chi tiết đơn giảng viên
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-500">
             Xem và cập nhật kết quả xét duyệt.
           </p>
         </div>
@@ -206,7 +206,7 @@ export default function AdminInstructorApplicationDetailPage() {
             <p className="font-medium">Học viên</p>
             <p>{applicantName}</p>
             {typeof application.user_id === "object" && application.user_id?.email && (
-              <p className="text-muted-foreground">{application.user_id.email}</p>
+              <p className="text-gray-500">{application.user_id.email}</p>
             )}
           </div>
 
@@ -222,7 +222,7 @@ export default function AdminInstructorApplicationDetailPage() {
 
           <div>
             <p className="font-medium">Mô tả chuyên môn</p>
-            <p className="whitespace-pre-wrap text-muted-foreground">
+            <p className="whitespace-pre-wrap text-gray-500">
               {application.expertise_description || "--"}
             </p>
           </div>
@@ -232,7 +232,7 @@ export default function AdminInstructorApplicationDetailPage() {
               <p className="font-medium">Liên kết hồ sơ năng lực</p>
               <div className="space-y-1">
                 {(application.portfolio_links || []).length === 0 && (
-                  <p className="text-muted-foreground">Không có liên kết</p>
+                  <p className="text-gray-500">Không có liên kết</p>
                 )}
                 {(application.portfolio_links || []).map((link) => (
                   <a
@@ -263,12 +263,12 @@ export default function AdminInstructorApplicationDetailPage() {
                     {application.demo_video_link}
                   </a>
                 ) : (
-                  <p className="text-muted-foreground">--</p>
+                  <p className="text-gray-500">--</p>
                 )}
               </div>
               <div>
                 <p className="font-medium">Đề cương khóa học</p>
-                <p className="whitespace-pre-wrap text-muted-foreground">
+                <p className="whitespace-pre-wrap text-gray-500">
                   {application.course_outline || "--"}
                 </p>
               </div>
@@ -280,7 +280,7 @@ export default function AdminInstructorApplicationDetailPage() {
               <p className="font-medium">Tài liệu</p>
               <div className="space-y-1">
                 {(application.document_urls || []).length === 0 && (
-                  <p className="text-muted-foreground">Không có tài liệu</p>
+                  <p className="text-gray-500">Không có tài liệu</p>
                 )}
                 {(application.document_urls || []).map((item, index) => (
                   <a
@@ -300,7 +300,7 @@ export default function AdminInstructorApplicationDetailPage() {
           {application.admin_note && (
             <div>
               <p className="font-medium">Ghi chú hiện tại</p>
-              <p className="whitespace-pre-wrap text-muted-foreground">
+              <p className="whitespace-pre-wrap text-gray-500">
                 {application.admin_note}
               </p>
             </div>
@@ -347,7 +347,7 @@ export default function AdminInstructorApplicationDetailPage() {
           </div>
 
           {isFinalStatus ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Đơn này đã kết thúc. Bạn không thể xét duyệt lại.
             </p>
           ) : (

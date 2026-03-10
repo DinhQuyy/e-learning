@@ -60,7 +60,11 @@ async function hydrateCourseRelations(
   if (!res.ok) return enrollments;
 
   const payload = await res.json();
-  const courseRows = Array.isArray(payload?.data) ? payload.data : [];
+  const courseRows: Array<{ id?: unknown; [key: string]: unknown }> = Array.isArray(
+    payload?.data
+  )
+    ? (payload.data as Array<{ id?: unknown; [key: string]: unknown }>)
+    : [];
   const courseMap = new Map<string, unknown>(
     courseRows
       .filter((course) => typeof course?.id === "string")

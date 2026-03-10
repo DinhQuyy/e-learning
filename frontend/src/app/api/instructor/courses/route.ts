@@ -14,7 +14,7 @@ export async function GET() {
 
     // Get course IDs from junction table
     const junctionRes = await directusFetch(
-      `/items/courses_instructors?filter[user_id][_eq]=${userId}&fields=course_id`
+      `/items/courses_instructors?filter[user_id][_eq]=${userId}&fields=course_id&limit=-1`
     );
 
     if (junctionRes.status === 401) {
@@ -29,28 +29,59 @@ export async function GET() {
     }
 
     const junctionData = await junctionRes.json();
-    const courseIds: number[] = (junctionData.data ?? []).map(
-      (j: { course_id: number }) => j.course_id
+    const courseIds: string[] = Array.from(
+      new Set(
+        (junctionData.data ?? [])
+          .map((j: { course_id?: string | { id?: string } | null }) =>
+            typeof j.course_id === "string"
+              ? j.course_id
+              : typeof j.course_id?.id === "string"
+                ? j.course_id.id
+                : null
+          )
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+      )
     );
 
     if (courseIds.length === 0) {
       return NextResponse.json({ data: [] });
     }
+    // Fetch full course data in chunks to avoid long URL errors.
+    const chunkSize = 60;
+    const courseIdChunks: string[][] = [];
+    for (let i = 0; i < courseIds.length; i += chunkSize) {
+      courseIdChunks.push(courseIds.slice(i, i + chunkSize));
+    }
 
-    // Fetch full course data
-    const coursesRes = await directusFetch(
-      `/items/courses?filter[id][_in]=${courseIds.join(",")}&fields=*,category_id.id,category_id.name&sort=-date_created`
+    const courseResults = await Promise.all(
+      courseIdChunks.map(async (chunk) => {
+        const coursesRes = await directusFetch(
+          `/items/courses?filter[id][_in]=${chunk.join(",")}&fields=*,category_id.id,category_id.name&sort=-date_created&limit=-1`
+        );
+
+        if (!coursesRes.ok) return null;
+        const payload = await coursesRes.json();
+        return payload?.data ?? [];
+      })
     );
 
-    if (!coursesRes.ok) {
+    if (courseResults.some((result) => result === null)) {
       return NextResponse.json(
         { error: "Không thể tải khoá học." },
-        { status: coursesRes.status }
+        { status: 500 }
       );
     }
 
-    const coursesData = await coursesRes.json();
-    return NextResponse.json({ data: coursesData.data });
+    const courses = courseResults
+      .flat()
+      .sort((a: { date_created?: string }, b: { date_created?: string }) => {
+        const aTime = Date.parse(String(a.date_created ?? ""));
+        const bTime = Date.parse(String(b.date_created ?? ""));
+        if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+        return bTime - aTime;
+      });
+
+    return NextResponse.json({ data: courses });
   } catch (error) {
     console.error("GET /api/instructor/courses error:", error);
     return NextResponse.json(
@@ -142,3 +173,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

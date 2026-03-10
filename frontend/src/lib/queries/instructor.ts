@@ -24,6 +24,7 @@ export interface CourseStudent {
 
 type CountResult = { map: Map<string, number>; success: boolean };
 const IN_FILTER_CHUNK_SIZE = 60;
+const RATING_STARS = [1, 2, 3, 4, 5] as const;
 
 function chunkIds(ids: string[], chunkSize: number = IN_FILTER_CHUNK_SIZE): string[][] {
   const unique = Array.from(new Set(ids.map((id) => String(id)).filter(Boolean)));
@@ -68,6 +69,17 @@ function dedupeEnrollmentsByUserCourse(enrollments: Enrollment[]): Enrollment[] 
   }
 
   return deduped;
+}
+
+function createEmptyRatingDistribution(): Record<number, number> {
+  return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+}
+
+function normalizeRating(rawRating: unknown): number | null {
+  const parsed = Number(rawRating);
+  if (!Number.isFinite(parsed)) return null;
+  const rating = Math.round(parsed);
+  return rating >= 1 && rating <= 5 ? rating : null;
 }
 
 function getAuthHeaders(token: string) {
@@ -216,6 +228,54 @@ async function getInstructorRevenueByCourseIds(
   return totalRevenue;
 }
 
+async function getDistinctStudentsByCourseIds(
+  courseIds: string[],
+  token: string
+): Promise<number> {
+  const chunks = chunkIds(courseIds);
+  if (chunks.length === 0) return 0;
+
+  const headers = getAuthHeaders(token);
+  const uniqueUserIds = new Set<string>();
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[course_id][_in]", chunk.join(","));
+      params.set("filter[status][_neq]", "cancelled");
+      params.append("groupBy[]", "user_id");
+      params.append("aggregate[count]", "id");
+      params.set("limit", "-1");
+
+      try {
+        const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
+          headers,
+          next: { revalidate: 0 },
+        });
+
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        for (const row of payload?.data ?? []) {
+          const userId =
+            typeof row?.user_id === "string"
+              ? row.user_id
+              : row?.user_id?.id
+                ? String(row.user_id.id)
+                : null;
+          if (userId) {
+            uniqueUserIds.add(userId);
+          }
+        }
+      } catch {
+        // keep best-effort behavior and continue other chunks
+      }
+    })
+  );
+
+  return uniqueUserIds.size;
+}
+
 async function enrichEnrollments(
   enrollments: Enrollment[],
   token: string
@@ -314,7 +374,7 @@ export async function getInstructorCourses(
 ): Promise<InstructorCourse[]> {
   // First get junction records to find instructor's courses
   const junctionRes = await fetch(
-    `${directusUrl}/items/courses_instructors?filter[user_id][_eq]=$CURRENT_USER&fields=course_id`,
+    `${directusUrl}/items/courses_instructors?filter[user_id][_eq]=$CURRENT_USER&fields=course_id&limit=-1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -327,18 +387,23 @@ export async function getInstructorCourses(
   if (!junctionRes.ok) return [];
 
   const junctionData = await junctionRes.json();
-  const courseIds = Array.from(
+  const junctionRows: Array<{ course_id?: string | { id?: string } | null }> =
+    Array.isArray(junctionData?.data)
+      ? (junctionData.data as Array<{ course_id?: string | { id?: string } | null }>)
+      : [];
+
+  const courseIds: string[] = Array.from(
     new Set(
-      (junctionData.data ?? [])
+      junctionRows
         .map(
-          (j: { course_id?: string | { id?: string } | null }) =>
+          (j) =>
             typeof j.course_id === "string"
               ? j.course_id
               : j.course_id?.id
                 ? String(j.course_id.id)
                 : ""
         )
-        .filter(Boolean)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
     )
   );
 
@@ -383,6 +448,7 @@ export async function getInstructorCourses(
     courseIdChunks.map(async (chunk) => {
       const params = new URLSearchParams();
       params.set("filter[course_id][_in]", chunk.join(","));
+      params.set("filter[status][_neq]", "cancelled");
       params.append("groupBy[]", "course_id");
       params.append("aggregate[countDistinct]", "user_id");
 
@@ -461,13 +527,11 @@ export async function getInstructorStats(
   const courses = await getInstructorCourses(token);
   const activeCourses = courses.filter((course) => course.status !== "archived");
   const scopedCourses = activeCourses.length > 0 ? activeCourses : courses;
-  const courseIds = scopedCourses.map((course) => course.id);
+  const scopedCourseIds = scopedCourses.map((course) => course.id);
+  const revenueCourseIds = courses.map((course) => course.id);
 
   const totalCourses = scopedCourses.length;
-  const totalStudents = scopedCourses.reduce(
-    (acc, c) => acc + (c.enrollment_count ?? 0),
-    0
-  );
+  const totalStudents = await getDistinctStudentsByCourseIds(scopedCourseIds, token);
 
   const coursesWithRating = scopedCourses.filter(
     (c) => Number(c.review_count ?? 0) > 0 && Number(c.average_rating ?? 0) > 0
@@ -481,7 +545,7 @@ export async function getInstructorStats(
         coursesWithRating.reduce((acc, c) => acc + Number(c.review_count ?? 0), 0)
       : 0;
 
-  const totalRevenue = await getInstructorRevenueByCourseIds(courseIds, token);
+  const totalRevenue = await getInstructorRevenueByCourseIds(revenueCourseIds, token);
 
   return { totalCourses, totalStudents, averageRating, totalRevenue };
 }
@@ -502,11 +566,12 @@ export async function getRecentEnrollments(
     chunks.map(async (chunk) => {
       const params = new URLSearchParams();
       params.set("filter[course_id][_in]", chunk.join(","));
+      params.set("filter[status][_neq]", "cancelled");
       params.set(
         "fields",
         "id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons"
       );
-      params.set("sort", "-enrolled_at");
+      params.set("sort", "-enrolled_at,-date_created,-id");
       params.set("limit", String(queryLimit));
 
       const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
@@ -634,14 +699,65 @@ export async function getRatingDistribution(
     }
   );
 
-  if (!res.ok) return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  if (!res.ok) return createEmptyRatingDistribution();
 
   const data = await res.json();
-  const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const distribution = createEmptyRatingDistribution();
   for (const item of data.data ?? []) {
-    distribution[item.rating] = Number(item.count?.id ?? 0);
+    const rating = normalizeRating(item?.rating);
+    if (!rating) continue;
+    distribution[rating] = Number(item?.count?.id ?? 0);
   }
   return distribution;
+}
+
+export async function getRatingDistributionForCourses(
+  token: string,
+  courseIds: string[],
+  approvedOnly: boolean = true
+): Promise<Record<number, number>> {
+  if (courseIds.length === 0) return createEmptyRatingDistribution();
+
+  const headers = getAuthHeaders(token);
+  const chunks = chunkIds(courseIds);
+  const chunkDistributions = await Promise.all(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[course_id][_in]", chunk.join(","));
+      if (approvedOnly) {
+        params.set("filter[status][_eq]", "approved");
+      }
+      params.append("groupBy[]", "rating");
+      params.append("aggregate[count]", "id");
+      params.set("limit", "-1");
+
+      const res = await fetch(`${directusUrl}/items/reviews?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return createEmptyRatingDistribution();
+
+      const data = await res.json();
+      const distribution = createEmptyRatingDistribution();
+      for (const item of data.data ?? []) {
+        const rating = normalizeRating(item?.rating);
+        if (!rating) continue;
+        distribution[rating] = Number(item?.count?.id ?? 0);
+      }
+
+      return distribution;
+    })
+  );
+
+  const totalDistribution = createEmptyRatingDistribution();
+  for (const distribution of chunkDistributions) {
+    for (const star of RATING_STARS) {
+      totalDistribution[star] += distribution[star] ?? 0;
+    }
+  }
+
+  return totalDistribution;
 }
 
 export async function verifyInstructorOwnership(

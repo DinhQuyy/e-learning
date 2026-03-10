@@ -6,7 +6,7 @@ import { getAssetUrl } from "@/lib/directus";
 import {
   getInstructorCourses,
   getInstructorStats,
-  getRatingDistribution,
+  getRatingDistributionForCourses,
   getRecentEnrollments,
 } from "@/lib/queries/instructor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,19 +38,11 @@ export default async function InstructorDashboard() {
   const displayName = getUserDisplayName(user);
   const stats = await getInstructorStats(token);
   const courses = await getInstructorCourses(token);
-  const courseIds = courses.map((course) => course.id);
-  const recentEnrollments = await getRecentEnrollments(token, courseIds, 10);
-
-  const allRatingDistributions = await Promise.all(
-    courseIds.map((id) => getRatingDistribution(token, id)),
-  );
-
-  const ratingDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const distribution of allRatingDistributions) {
-    for (const key of [1, 2, 3, 4, 5] as const) {
-      ratingDistribution[key] += distribution[key] ?? 0;
-    }
-  }
+  const activeCourseIds = courses
+    .filter((course) => course.status !== "archived")
+    .map((course) => course.id);
+  const recentEnrollments = await getRecentEnrollments(token, activeCourseIds, 10);
+  const ratingDistribution = await getRatingDistributionForCourses(token, activeCourseIds);
   const totalRatings = Object.values(ratingDistribution).reduce((a, b) => a + b, 0);
 
   return (

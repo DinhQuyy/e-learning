@@ -39,20 +39,26 @@ const profileSchema = z.object({
   phone: z.string().optional(),
   bio: z.string().optional(),
   headline: z.string().optional(),
-  social_links: z.object({
-    facebook: z.string().optional(),
-    linkedin: z.string().optional(),
-    twitter: z.string().optional(),
-    website: z.string().optional(),
-  }).optional(),
+  social_links: z
+    .object({
+      facebook: z.string().optional(),
+      linkedin: z.string().optional(),
+      twitter: z.string().optional(),
+      website: z.string().optional(),
+    })
+    .optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 const passwordSchema = z
   .object({
-    current_password: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
-    new_password: z.string().min(8, "Mật khẩu mới tối thiểu 8 ký tự"),
+    current_password: z
+      .string()
+      .min(1, "Vui lòng nhập mật khẩu hiện tại"),
+    new_password: z
+      .string()
+      .min(8, "Mật khẩu mới tối thiểu 8 ký tự"),
     confirm_password: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
   })
   .refine((data) => data.new_password === data.confirm_password, {
@@ -92,7 +98,6 @@ export default function ProfilePage() {
     resolver: zodResolver(passwordSchema),
   });
 
-  // Populate form when user data is available
   useEffect(() => {
     if (user) {
       resetProfile({
@@ -120,13 +125,13 @@ export default function ProfilePage() {
   const onProfileSubmit = async (data: ProfileFormData) => {
     try {
       const res = await apiPatch("/api/auth/me", {
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone || null,
-          bio: data.bio || null,
-          headline: data.headline || null,
-          social_links: data.social_links || null,
-        });
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone || null,
+        bio: data.bio || null,
+        headline: data.headline || null,
+        social_links: data.social_links || null,
+      });
 
       if (!res.ok) {
         const errData = await res.json();
@@ -136,18 +141,16 @@ export default function ProfilePage() {
       await fetchUser();
       toast.success("Hồ sơ đã được cập nhật");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Lỗi cập nhật hồ sơ"
-      );
+      toast.error(err instanceof Error ? err.message : "Lỗi cập nhật hồ sơ");
     }
   };
 
   const onPasswordSubmit = async (data: PasswordFormData) => {
     try {
       const res = await apiPatch("/api/auth/password", {
-          current_password: data.current_password,
-          new_password: data.new_password,
-        });
+        current_password: data.current_password,
+        new_password: data.new_password,
+      });
 
       if (!res.ok) {
         const errData = await res.json();
@@ -157,13 +160,9 @@ export default function ProfilePage() {
       resetPassword();
       toast.success("Mật khẩu đã được thay đổi");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Lỗi đổi mật khẩu"
-      );
+      toast.error(err instanceof Error ? err.message : "Lỗi đổi mật khẩu");
     }
   };
-
-
 
   const validateAvatarFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -299,9 +298,7 @@ export default function ProfilePage() {
       toast.success("Ảnh đại diện đã được cập nhật");
       return true;
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Lỗi tải ảnh"
-      );
+      toast.error(err instanceof Error ? err.message : "Lỗi tải ảnh");
       return false;
     } finally {
       setIsUploadingAvatar(false);
@@ -312,7 +309,7 @@ export default function ProfilePage() {
     try {
       const croppedFile = await getCroppedAvatarFile();
       if (!croppedFile) {
-        toast.error("Không thể xử lý ảnh đã crop");
+        toast.error("Không thể xử lý ảnh đã cắt");
         return;
       }
 
@@ -321,9 +318,7 @@ export default function ProfilePage() {
         resetCropState();
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Không thể crop ảnh"
-      );
+      toast.error(err instanceof Error ? err.message : "Không thể cắt ảnh");
     }
   };
 
@@ -335,35 +330,32 @@ export default function ProfilePage() {
     );
   }
 
-  const initials = [user.first_name?.[0], user.last_name?.[0]]
-    .filter(Boolean)
-    .join("")
-    .toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
+  const initials =
+    [user.first_name?.[0], user.last_name?.[0]].filter(Boolean).join("").toUpperCase() ||
+    user.email?.[0]?.toUpperCase() ||
+    "U";
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Hồ sơ</h1>
-        <p className="text-muted-foreground">
-          Quản lý thông tin cá nhân của bạn
-        </p>
+        <p className="text-muted-foreground">Quản lý thông tin cá nhân của bạn</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Tro thanh giang vien</CardTitle>
+          <CardTitle>Trở thành giảng viên</CardTitle>
           <CardDescription>
-            Nop ho so de duoc xet duyet quyen Instructor.
+            Nộp hồ sơ để được xét duyệt quyền Giảng viên.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">
-            <Link href="/become-instructor">Mo trang dang ky giang vien</Link>
+            <Link href="/become-instructor">Mở trang đăng ký giảng viên</Link>
           </Button>
         </CardContent>
       </Card>
 
-      {/* Avatar Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -381,7 +373,7 @@ export default function ProfilePage() {
           </Avatar>
           <div>
             <Label htmlFor="avatar-upload" className="cursor-pointer">
-              <div className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">
+              <div className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">
                 {isUploadingAvatar ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -404,7 +396,6 @@ export default function ProfilePage() {
             </p>
           </div>
         </CardContent>
-
       </Card>
 
       <Dialog
@@ -419,7 +410,7 @@ export default function ProfilePage() {
           <DialogHeader>
             <DialogTitle>Cắt ảnh đại diện</DialogTitle>
           </DialogHeader>
-          <div className="relative w-full aspect-square bg-muted rounded-md overflow-hidden">
+          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
             {cropSrc && (
               <Cropper
                 image={cropSrc}
@@ -436,7 +427,7 @@ export default function ProfilePage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Label className="text-sm text-muted-foreground w-20">Zoom</Label>
+            <Label className="w-20 text-sm text-muted-foreground">Zoom</Label>
             <input
               type="range"
               min={1}
@@ -446,7 +437,7 @@ export default function ProfilePage() {
               onChange={(e) => setZoom(parseFloat(e.target.value))}
               className="flex-1"
             />
-            <span className="text-xs text-muted-foreground w-12 text-right">
+            <span className="w-12 text-right text-xs text-muted-foreground">
               {zoom.toFixed(1)}x
             </span>
           </div>
@@ -473,8 +464,6 @@ export default function ProfilePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Profile Form */}
 
       <Card>
         <CardHeader>
@@ -519,12 +508,7 @@ export default function ProfilePage() {
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={user.email}
-                disabled
-                className="bg-muted"
-              />
+              <Input id="email" value={user.email} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">
                 Email không thể thay đổi
               </p>
@@ -615,7 +599,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Change Password */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/dal";
+﻿import { requireAuth } from "@/lib/dal";
 import { getReportData, getRevenueStats } from "@/lib/queries/admin";
 import { getAssetUrl } from "@/lib/directus";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Star, TrendingUp, Trophy, BarChart3 } from "lucide-react";
+import { AiCustomQaUploadCard } from "@/components/features/ai-custom-qa-upload-card";
+import { Star, TrendingUp, Trophy, BarChart3, Bot, DollarSign } from "lucide-react";
 import type { Metadata } from "next";
 import {
   EnrollmentTrendChart,
@@ -114,7 +115,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            AI Service Metrics (24h)
+            Chỉ số dịch vụ AI (24h)
           </CardTitle>
           <CardDescription>
             Theo dõi hiệu năng AI helpdesk/mentor/assignment.
@@ -123,37 +124,37 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Tổng request</p>
+              <p className="text-xs text-muted-foreground">Tổng yêu cầu</p>
               <p className="text-xl font-semibold">
                 {numberFormatter.format(reportData.aiMetrics.total_requests_24h)}
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">P95 latency</p>
+              <p className="text-xs text-muted-foreground">Độ trễ P95</p>
               <p className="text-xl font-semibold">
                 {numberFormatter.format(reportData.aiMetrics.p95_latency_ms)} ms
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Policy blocked</p>
+              <p className="text-xs text-muted-foreground">Yêu cầu bị chặn chính sách</p>
               <p className="text-xl font-semibold">
                 {numberFormatter.format(reportData.aiMetrics.blocked_requests_24h)}
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Cache hit ratio</p>
+              <p className="text-xs text-muted-foreground">Tỷ lệ trúng bộ nhớ đệm</p>
               <p className="text-xl font-semibold">
                 {(reportData.aiMetrics.cache_hit_ratio * 100).toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Fallback rate</p>
+              <p className="text-xs text-muted-foreground">Tỷ lệ fallback</p>
               <p className="text-xl font-semibold">
                 {(reportData.aiMetrics.fallback_rate_24h * 100).toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Feedback (+ / -)</p>
+              <p className="text-xs text-muted-foreground">Phản hồi (+ / -)</p>
               <p className="text-xl font-semibold">
                 {numberFormatter.format(reportData.aiMetrics.positive_feedback_24h)} /{" "}
                 {numberFormatter.format(reportData.aiMetrics.negative_feedback_24h)}
@@ -165,7 +166,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>AI Improvement Summary</CardTitle>
+          <CardTitle>Tổng hợp cải thiện AI</CardTitle>
           <CardDescription>
             So sánh trung bình {reportData.aiDailyMetrics.summary.window_days} ngày gần nhất với giai đoạn trước.
           </CardDescription>
@@ -173,28 +174,28 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Request change</p>
+              <p className="text-xs text-muted-foreground">Biến động yêu cầu</p>
               <p className="text-xl font-semibold">
                 {reportData.aiDailyMetrics.summary.req_change_pct >= 0 ? "+" : ""}
                 {reportData.aiDailyMetrics.summary.req_change_pct.toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">P95 improvement</p>
+              <p className="text-xs text-muted-foreground">Cải thiện P95</p>
               <p className="text-xl font-semibold">
                 {reportData.aiDailyMetrics.summary.p95_improvement_pct >= 0 ? "+" : ""}
                 {reportData.aiDailyMetrics.summary.p95_improvement_pct.toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Fallback improvement</p>
+              <p className="text-xs text-muted-foreground">Cải thiện fallback</p>
               <p className="text-xl font-semibold">
                 {reportData.aiDailyMetrics.summary.fallback_improvement_pct >= 0 ? "+" : ""}
                 {reportData.aiDailyMetrics.summary.fallback_improvement_pct.toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Positive feedback change</p>
+              <p className="text-xs text-muted-foreground">Biến động phản hồi tích cực</p>
               <p className="text-xl font-semibold">
                 {reportData.aiDailyMetrics.summary.positive_feedback_change_pct >= 0 ? "+" : ""}
                 {reportData.aiDailyMetrics.summary.positive_feedback_change_pct.toFixed(1)}%
@@ -288,10 +289,10 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" />
-              Khoá học phổ biến nhất
+              Khóa học phổ biến nhất
             </CardTitle>
             <CardDescription>
-              Top 10 khoá học theo số lượng ghi danh
+              Top 10 khóa học theo số lượng ghi danh
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -371,7 +372,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
                   <TableRow>
                     <TableHead className="w-10">#</TableHead>
                     <TableHead>Giảng viên</TableHead>
-                    <TableHead>Khoá học</TableHead>
+                    <TableHead>Khóa học</TableHead>
                     <TableHead>Học viên</TableHead>
                     <TableHead>TB</TableHead>
                   </TableRow>

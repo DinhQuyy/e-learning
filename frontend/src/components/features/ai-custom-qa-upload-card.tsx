@@ -23,10 +23,10 @@ const SAMPLE_QA = {
   items: [
     {
       id: "course-create-01",
-      question: "Tao khoa hoc moi o dau?",
-      answer: "Ban vao Instructor Portal, chon Tao khoa hoc moi va dien thong tin co ban.",
+      question: "Tạo khóa học mới ở đâu?",
+      answer: "Bạn vào Instructor Portal, chọn Tạo khóa học mới và điền thông tin cơ bản.",
       deep_link: "/instructor/courses/new",
-      aliases: ["Tao khoa hoc nhu the nao?"],
+      aliases: ["Tạo khóa học như thế nào?"],
       tags: ["instructor", "course"],
     },
   ],
@@ -45,7 +45,7 @@ export function AiCustomQaUploadCard() {
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const sourceTypeLabel = useMemo(
-    () => (sourceType === "custom_qa" ? "custom_qa (khuyen nghi)" : "faq"),
+    () => (sourceType === "custom_qa" ? "custom_qa (khuyến nghị)" : "faq"),
     [sourceType]
   );
 
@@ -62,7 +62,7 @@ export function AiCustomQaUploadCard() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!file) {
-      toast.error("Vui long chon file JSON");
+      toast.error("Vui lòng chọn file JSON");
       return;
     }
 
@@ -85,13 +85,13 @@ export function AiCustomQaUploadCard() {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(String(payload?.error ?? "Upload that bai"));
+        throw new Error(String(payload?.error ?? "Tải lên thất bại"));
       }
 
       setResult(payload as ImportResult);
-      toast.success("Upload QA thanh cong");
+      toast.success("Tải lên QA thành công");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload that bai");
+      toast.error(error instanceof Error ? error.message : "Tải lên thất bại");
     } finally {
       setUploading(false);
     }
@@ -100,19 +100,19 @@ export function AiCustomQaUploadCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Admin QA Upload</CardTitle>
+        <CardTitle>Tải lên bộ hỏi đáp AI (Quản trị)</CardTitle>
         <CardDescription>
-          Upload file JSON de cap nhat bo cau hoi rieng cho AI ma khong can chay script.
+          Tải file JSON để cập nhật bộ câu hỏi riêng cho AI mà không cần chạy script.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" onClick={downloadSample}>
-              Tai file mau JSON
+              Tải file mẫu JSON
             </Button>
             <span className="text-xs text-muted-foreground">
-              Source type hien tai: <span className="font-medium">{sourceTypeLabel}</span>
+              Loại nguồn hiện tại: <span className="font-medium">{sourceTypeLabel}</span>
             </span>
           </div>
 
@@ -128,7 +128,7 @@ export function AiCustomQaUploadCard() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="set-name">Set name</Label>
+              <Label htmlFor="set-name">Tên bộ dữ liệu</Label>
               <Input
                 id="set-name"
                 value={setName}
@@ -137,19 +137,19 @@ export function AiCustomQaUploadCard() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="course-id">Course ID (optional)</Label>
+              <Label htmlFor="course-id">Mã khóa học (tùy chọn)</Label>
               <Input
                 id="course-id"
                 value={courseId}
                 onChange={(event) => setCourseId(event.target.value)}
-                placeholder="uuid hoac de trong"
+                placeholder="uuid hoặc để trống"
               />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="source-type">Source type</Label>
+              <Label htmlFor="source-type">Loại nguồn</Label>
               <select
                 id="source-type"
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -161,7 +161,7 @@ export function AiCustomQaUploadCard() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="visibility">Visibility</Label>
+              <Label htmlFor="visibility">Phạm vi hiển thị</Label>
               <select
                 id="visibility"
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -190,23 +190,23 @@ export function AiCustomQaUploadCard() {
               checked={replaceSet}
               onCheckedChange={(value) => setReplaceSet(Boolean(value))}
             />
-            <Label htmlFor="replace-set">Xoa bo cu trong set truoc khi import</Label>
+            <Label htmlFor="replace-set">Xóa dữ liệu cũ trong bộ trước khi nhập</Label>
           </div>
 
           <Button type="submit" disabled={uploading}>
-            {uploading ? "Dang upload..." : "Upload QA"}
+            {uploading ? "Đang tải lên..." : "Tải lên QA"}
           </Button>
         </form>
 
         {result ? (
           <div className="mt-4 rounded-md border p-3 text-sm">
-            <p className="font-medium">Ket qua import</p>
-            <p>Set: {result.set_name}</p>
-            <p>Imported: {result.imported}</p>
-            <p>Queued for indexing: {result.queued}</p>
-            <p>Deleted old docs: {result.replaced_deleted}</p>
+            <p className="font-medium">Kết quả nhập</p>
+            <p>Tên bộ: {result.set_name}</p>
+            <p>Đã nhập: {result.imported}</p>
+            <p>Đã đưa vào hàng đợi lập chỉ mục: {result.queued}</p>
+            <p>Đã xóa dữ liệu cũ: {result.replaced_deleted}</p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Source IDs: {result.source_ids.slice(0, 8).join(", ")}
+              Mã nguồn: {result.source_ids.slice(0, 8).join(", ")}
               {result.source_ids.length > 8 ? " ..." : ""}
             </p>
           </div>

@@ -1,5 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+
+interface WishlistCourseRef {
+  id?: string | null;
+}
+
+interface WishlistItemRow {
+  course_id?: string | WishlistCourseRef | null;
+  [key: string]: unknown;
+}
 
 export async function GET() {
   try {
@@ -7,20 +16,24 @@ export async function GET() {
       "/items/wishlists?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.price,course_id.discount_price,course_id.average_rating,course_id.total_enrollments&sort=-date_created"
     );
 
-    if (res.status === 401) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
-    if (!res.ok) return NextResponse.json({ error: "Không thể tải wishlist" }, { status: 500 });
+    if (res.status === 401) {
+      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+    }
+    if (!res.ok) {
+      return NextResponse.json({ error: "Không thể tải wishlist" }, { status: 500 });
+    }
+
     const data = await res.json();
-    const items = Array.isArray(data?.data) ? data.data : [];
+    const items: WishlistItemRow[] = Array.isArray(data?.data)
+      ? (data.data as WishlistItemRow[])
+      : [];
 
     // Hide orphan wishlist rows where the related course is missing/inaccessible.
     const filtered = items.filter((item) => {
       const course = item?.course_id;
-      return Boolean(
-        course &&
-          typeof course === "object" &&
-          typeof course.id === "string" &&
-          course.id.length > 0
-      );
+      if (!course || typeof course !== "object") return false;
+      const courseRef = course as WishlistCourseRef;
+      return typeof courseRef.id === "string" && courseRef.id.length > 0;
     });
 
     return NextResponse.json({ data: filtered });
@@ -32,10 +45,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { course_id } = await request.json();
-    if (!course_id) return NextResponse.json({ error: "Thiếu course_id" }, { status: 400 });
+    if (!course_id) {
+      return NextResponse.json({ error: "Thiếu course_id" }, { status: 400 });
+    }
 
     const userId = await getCurrentUserId();
-    if (!userId) return NextResponse.json({ error: "Không xác định được người dùng" }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Không xác định được người dùng" },
+        { status: 401 }
+      );
+    }
 
     // Check if already in wishlist — if so, remove it (toggle)
     const checkRes = await directusFetch(
@@ -58,7 +78,13 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ course_id, user_id: userId }),
     });
 
-    if (!res.ok) return NextResponse.json({ error: "Không thể thêm vào wishlist" }, { status: 500 });
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: "Không thể thêm vào wishlist" },
+        { status: 500 }
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json({ data: data.data, removed: false }, { status: 201 });
   } catch {

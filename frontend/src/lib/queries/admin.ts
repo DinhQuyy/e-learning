@@ -1,4 +1,5 @@
 import { directusUrl } from "@/lib/directus";
+import { callAiApiRaw } from "@/lib/ai-client";
 
 // ── Shared types ──
 
@@ -7,11 +8,276 @@ interface DirectusListResponse<T> {
   meta?: { filter_count?: number; total_count?: number };
 }
 
+interface AdminRole {
+  id: string;
+  name: string;
+}
+
+interface AdminUser {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  avatar: string | null;
+  status: string;
+  date_created: string;
+  role: AdminRole | null;
+}
+
+interface AdminUserDetail extends AdminUser {
+  bio?: string | null;
+  phone?: string | null;
+  headline?: string | null;
+  social_links?: Record<string, string> | null;
+}
+
+interface AdminReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  status: string;
+  date_created: string;
+  user_id:
+    | {
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+        avatar: string | null;
+        email: string;
+      }
+    | null;
+  course_id:
+    | {
+        id: number;
+        title: string;
+        slug: string;
+      }
+    | null;
+}
+
+interface ReportDataResult {
+  popularCourses: Array<{
+    id: number;
+    title: string;
+    slug?: string;
+    total_enrollments: number;
+    average_rating: number;
+  }>;
+  enrollments: Array<{ enrolled_at: string }>;
+  ratingDistribution: Array<{ rating: number; count: number }>;
+  topInstructors: Array<{
+    id: string;
+    name: string;
+    avatar: string | null;
+    coursesCount: number;
+    totalStudents: number;
+    avgRating: number;
+  }>;
+  aiMetrics: AiMetricsResult;
+  aiDailyMetrics: AiDailyMetricsResult;
+}
+
+interface RevenueStatsResult {
+  totalRevenue: number;
+  currentMonthRevenue: number;
+  lastMonthRevenue: number;
+  revenueChange: number;
+  monthlyChart: Array<{ month: string; revenue: number }>;
+  totalOrders: number;
+}
+
+interface EnrollmentTrendItem {
+  month: string;
+  enrollments: number;
+}
+
+interface CourseStatusItem {
+  name: string;
+  value: number;
+  fill: string;
+}
+
+interface LatestEnrollment {
+  id: number;
+  enrolled_at: string;
+  status?: string;
+  user_id: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar: string | null;
+  };
+  course_id: {
+    id: number;
+    title: string;
+  };
+}
+
+interface LatestReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  date_created: string;
+  user_id: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar: string | null;
+  };
+  course_id: {
+    id: number;
+    title: string;
+  };
+}
+
 interface AdminStatsResult {
   totalUsers: number;
   totalCourses: number;
   totalEnrollments: number;
   pendingCourses: number;
+}
+
+interface AiMetricsResult {
+  total_requests_24h: number;
+  p95_latency_ms: number;
+  blocked_requests_24h: number;
+  cache_hit_ratio: number;
+  fallback_rate_24h: number;
+  positive_feedback_24h: number;
+  negative_feedback_24h: number;
+}
+
+interface AiDailyMetricRow {
+  metric_date: string;
+  total_requests: number;
+  p95_latency_ms: number;
+  blocked_requests: number;
+  cache_hit_ratio: number;
+  fallback_rate: number;
+  positive_feedback: number;
+  negative_feedback: number;
+}
+
+interface AiDailyMetricsSummary {
+  window_days: number;
+  req_change_pct: number;
+  p95_improvement_pct: number;
+  fallback_improvement_pct: number;
+  positive_feedback_change_pct: number;
+}
+
+interface AiDailyMetricsResult {
+  rows: AiDailyMetricRow[];
+  summary: AiDailyMetricsSummary;
+}
+
+const EMPTY_AI_METRICS: AiMetricsResult = {
+  total_requests_24h: 0,
+  p95_latency_ms: 0,
+  blocked_requests_24h: 0,
+  cache_hit_ratio: 0,
+  fallback_rate_24h: 0,
+  positive_feedback_24h: 0,
+  negative_feedback_24h: 0,
+};
+
+function toFiniteNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toPositiveInt(value: unknown): number {
+  const parsed = Math.trunc(toFiniteNumber(value));
+  return parsed > 0 ? parsed : 0;
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function normalizeAiMetrics(raw: unknown): AiMetricsResult {
+  const data = readObject(raw);
+  return {
+    total_requests_24h: toPositiveInt(data.total_requests_24h),
+    p95_latency_ms: toPositiveInt(data.p95_latency_ms),
+    blocked_requests_24h: toPositiveInt(data.blocked_requests_24h),
+    cache_hit_ratio: toFiniteNumber(data.cache_hit_ratio),
+    fallback_rate_24h: toFiniteNumber(data.fallback_rate_24h),
+    positive_feedback_24h: toPositiveInt(data.positive_feedback_24h),
+    negative_feedback_24h: toPositiveInt(data.negative_feedback_24h),
+  };
+}
+
+function createEmptyAiDailyMetrics(days: number): AiDailyMetricsResult {
+  const safeDays = Math.max(days, 2);
+  return {
+    rows: [],
+    summary: {
+      window_days: Math.max(Math.floor(safeDays / 2), 1),
+      req_change_pct: 0,
+      p95_improvement_pct: 0,
+      fallback_improvement_pct: 0,
+      positive_feedback_change_pct: 0,
+    },
+  };
+}
+
+function normalizeAiDailyMetrics(raw: unknown, days: number): AiDailyMetricsResult {
+  const data = readObject(raw);
+  const rows = Array.isArray(data.rows)
+    ? data.rows.map((row) => {
+        const r = readObject(row);
+        return {
+          metric_date:
+            typeof r.metric_date === "string" ? r.metric_date : "",
+          total_requests: toPositiveInt(r.total_requests),
+          p95_latency_ms: toPositiveInt(r.p95_latency_ms),
+          blocked_requests: toPositiveInt(r.blocked_requests),
+          cache_hit_ratio: toFiniteNumber(r.cache_hit_ratio),
+          fallback_rate: toFiniteNumber(r.fallback_rate),
+          positive_feedback: toPositiveInt(r.positive_feedback),
+          negative_feedback: toPositiveInt(r.negative_feedback),
+        };
+      })
+    : [];
+
+  const fallback = createEmptyAiDailyMetrics(days);
+  const summaryData = readObject(data.summary);
+
+  return {
+    rows,
+    summary: {
+      window_days:
+        toPositiveInt(summaryData.window_days) || fallback.summary.window_days,
+      req_change_pct: toFiniteNumber(summaryData.req_change_pct),
+      p95_improvement_pct: toFiniteNumber(summaryData.p95_improvement_pct),
+      fallback_improvement_pct: toFiniteNumber(summaryData.fallback_improvement_pct),
+      positive_feedback_change_pct: toFiniteNumber(
+        summaryData.positive_feedback_change_pct
+      ),
+    },
+  };
+}
+
+async function getAiMetrics(): Promise<AiMetricsResult> {
+  try {
+    const raw = await callAiApiRaw("/v1/admin/metrics");
+    return normalizeAiMetrics(raw);
+  } catch {
+    return EMPTY_AI_METRICS;
+  }
+}
+
+async function getAiDailyMetrics(days: number = 14): Promise<AiDailyMetricsResult> {
+  const safeDays = Math.max(days, 2);
+  try {
+    const raw = await callAiApiRaw(
+      `/v1/admin/metrics/daily?days=${encodeURIComponent(String(safeDays))}`
+    );
+    return normalizeAiDailyMetrics(raw, safeDays);
+  } catch {
+    return createEmptyAiDailyMetrics(safeDays);
+  }
 }
 
 export async function getAdminStats(token: string): Promise<AdminStatsResult> {
@@ -148,6 +414,25 @@ interface EnrollmentAggregateRow {
   count?: { id?: number | string | null } | null;
 }
 
+interface ReportInstructorUserRow {
+  id?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  avatar?: string | null;
+}
+
+interface ReportCourseInstructorRow {
+  user_id?: string | ReportInstructorUserRow | null;
+}
+
+interface ReportCourseRow {
+  id: string;
+  title?: string | null;
+  slug?: string | null;
+  average_rating?: number | null;
+  instructors?: ReportCourseInstructorRow[] | null;
+}
+
 function extractCourseIdFromAggregate(row: EnrollmentAggregateRow): string | null {
   const raw = row.course_id;
   if (typeof raw === "string" && raw.trim().length > 0) return raw;
@@ -165,6 +450,55 @@ function getEnrollmentCountFromAggregate(row: EnrollmentAggregateRow): number {
     0;
   const parsed = Number(rawCount);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isReportCourseRow(value: unknown): value is ReportCourseRow {
+  const row = readObject(value);
+  return typeof row.id === "string" && row.id.trim().length > 0;
+}
+
+async function getEnrollmentCountMapByCourseIds(
+  headers: Record<string, string>,
+  courseIds: string[]
+): Promise<Map<string, number>> {
+  const enrollmentCountByCourseId = new Map<string, number>();
+  if (courseIds.length === 0) return enrollmentCountByCourseId;
+
+  const batchSize = 120;
+  for (let i = 0; i < courseIds.length; i += batchSize) {
+    const batchIds = courseIds.slice(i, i + batchSize);
+    const enrollmentParams = new URLSearchParams();
+    enrollmentParams.set("filter[course_id][_in]", batchIds.join(","));
+    enrollmentParams.set("filter[status][_neq]", "cancelled");
+    enrollmentParams.append("groupBy[]", "course_id");
+    enrollmentParams.append("aggregate[countDistinct]", "user_id");
+    enrollmentParams.set("limit", "-1");
+
+    const enrollmentRes = await fetch(
+      `${directusUrl}/items/enrollments?${enrollmentParams.toString()}`,
+      {
+        headers,
+        next: { revalidate: 0 },
+      }
+    );
+
+    if (!enrollmentRes.ok) {
+      continue;
+    }
+
+    const enrollmentPayload = await enrollmentRes.json();
+    const rows = Array.isArray(enrollmentPayload?.data)
+      ? (enrollmentPayload.data as EnrollmentAggregateRow[])
+      : [];
+
+    for (const row of rows) {
+      const courseId = extractCourseIdFromAggregate(row);
+      if (!courseId) continue;
+      enrollmentCountByCourseId.set(courseId, getEnrollmentCountFromAggregate(row));
+    }
+  }
+
+  return enrollmentCountByCourseId;
 }
 
 export async function getAllCourses(
@@ -292,17 +626,42 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     "Content-Type": "application/json",
   };
 
-  // Popular courses by enrollment
-  const popularCoursesRes = await fetch(
-    `${directusUrl}/items/courses?fields=id,title,slug,total_enrollments,average_rating,instructors.user_id.first_name,instructors.user_id.last_name&sort=-total_enrollments&limit=10&filter[status][_eq]=published`,
+  // Pull published courses first, then compute "real" enrollment counts from enrollments table.
+  const publishedCoursesRes = await fetch(
+    `${directusUrl}/items/courses?fields=id,title,slug,average_rating,instructors.user_id.id,instructors.user_id.first_name,instructors.user_id.last_name,instructors.user_id.avatar&filter[status][_eq]=published&limit=-1`,
     { headers, next: { revalidate: 0 } }
   );
 
-  const popularCourses = popularCoursesRes.ok
-    ? (await popularCoursesRes.json()).data ?? []
+  const publishedCoursesRaw = publishedCoursesRes.ok
+    ? (await publishedCoursesRes.json()).data ?? []
+    : [];
+  const publishedCourses = Array.isArray(publishedCoursesRaw)
+    ? publishedCoursesRaw.filter(isReportCourseRow)
     : [];
 
-  // Recent enrollments for trends (get last 200 to compute monthly)
+  const publishedCourseIds = publishedCourses.map((course) => course.id);
+  const enrollmentCountByCourseId = await getEnrollmentCountMapByCourseIds(
+    headers,
+    publishedCourseIds
+  );
+
+  const popularCourses = publishedCourses
+    .map((course) => {
+      const numericId = Number(course.id);
+      const averageRating = Number(course.average_rating ?? 0);
+      return {
+        id: Number.isFinite(numericId) ? numericId : 0,
+        title: typeof course.title === "string" ? course.title : "N/A",
+        slug: typeof course.slug === "string" ? course.slug : "",
+        total_enrollments: enrollmentCountByCourseId.get(course.id) ?? 0,
+        average_rating: Number.isFinite(averageRating) ? averageRating : 0,
+      };
+    })
+    .filter((course) => course.id > 0)
+    .sort((a, b) => b.total_enrollments - a.total_enrollments)
+    .slice(0, 10);
+
+  // Recent enrollments for trends.
   const enrollmentsRes = await fetch(
     `${directusUrl}/items/enrollments?fields=id,enrolled_at&sort=-enrolled_at&limit=500`,
     { headers, next: { revalidate: 0 } }
@@ -326,16 +685,6 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     )
   );
 
-  // Top instructors - get all courses with instructors
-  const instructorCoursesRes = await fetch(
-    `${directusUrl}/items/courses?fields=id,total_enrollments,average_rating,instructors.user_id.id,instructors.user_id.first_name,instructors.user_id.last_name,instructors.user_id.avatar&filter[status][_eq]=published&limit=500`,
-    { headers, next: { revalidate: 0 } }
-  );
-
-  const instructorCourses = instructorCoursesRes.ok
-    ? (await instructorCoursesRes.json()).data ?? []
-    : [];
-
   // Aggregate instructor data
   const instructorMap = new Map<
     string,
@@ -349,22 +698,27 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     }
   >();
 
-  for (const course of instructorCourses) {
-    const instructors = course.instructors ?? [];
+  for (const course of publishedCourses) {
+    const instructors = Array.isArray(course.instructors) ? course.instructors : [];
     const uniqueInstructorIds = new Set<string>();
-    const totalEnrollments = Number(course.total_enrollments ?? 0);
-    const normalizedEnrollments = Number.isFinite(totalEnrollments)
-      ? totalEnrollments
-      : 0;
+    const normalizedEnrollments = enrollmentCountByCourseId.get(course.id) ?? 0;
     const averageRating = Number(course.average_rating ?? 0);
     const normalizedRating = Number.isFinite(averageRating) ? averageRating : 0;
 
     for (const inst of instructors) {
-      const user = inst.user_id;
+      const user = inst?.user_id;
       if (!user || typeof user === "string") continue;
+      if (typeof user.id !== "string" || user.id.trim().length === 0) continue;
       if (uniqueInstructorIds.has(user.id)) continue;
       uniqueInstructorIds.add(user.id);
       const existing = instructorMap.get(user.id);
+
+      const nameParts = [user.first_name, user.last_name].filter(
+        (part): part is string => typeof part === "string" && part.trim().length > 0
+      );
+      const displayName = nameParts.join(" ") || "N/A";
+      const avatar = typeof user.avatar === "string" ? user.avatar : null;
+
       if (existing) {
         existing.coursesCount += 1;
         existing.totalStudents += normalizedEnrollments;
@@ -372,8 +726,8 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
       } else {
         instructorMap.set(user.id, {
           id: user.id,
-          name: [user.first_name, user.last_name].filter(Boolean).join(" ") || "N/A",
-          avatar: user.avatar ?? null,
+          name: displayName,
+          avatar,
           coursesCount: 1,
           totalStudents: normalizedEnrollments,
           totalRating: normalizedRating,

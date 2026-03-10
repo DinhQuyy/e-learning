@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   BarChart,
@@ -82,7 +82,7 @@ export function RatingDistributionChart({
       count: d.count,
       percentage: d.percentage,
     }))
-    .reverse(); // 1→5 for chart display
+    .reverse(); // 1->5 for chart display
 
   return (
     <Card>

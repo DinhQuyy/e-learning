@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -66,7 +66,7 @@ export function ReportFilters({ from, to }: ReportFiltersProps) {
           className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
         >
           <X className="mr-1 h-3 w-3" />
-          Xoá bộ lọc
+          Xóa bộ lọc
         </Button>
       )}
     </div>

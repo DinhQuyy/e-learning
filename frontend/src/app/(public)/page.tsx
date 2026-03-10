@@ -7,7 +7,10 @@ import { LearnifyCourseCard } from "@/components/home/learnify-course-card";
 import { NewsletterStrip } from "@/components/home/newsletter-strip";
 import { BlogTeaserGrid } from "@/components/home/blog-teaser-grid";
 import { getPopularCourses, getTopReviews } from "@/lib/queries/courses";
-import { getCategories } from "@/lib/queries/categories";
+import {
+  getCategories,
+  type CategoryWithCount,
+} from "@/lib/queries/categories";
 import type { Course } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +27,23 @@ function getReviewSnippet(comment: string | null | undefined): string | null {
   return text.length > 120 ? `${text.slice(0, 117)}...` : text;
 }
 
+function hasParentCategory(parent: unknown): boolean {
+  if (!parent) return false;
+  if (typeof parent === "string") return parent.length > 0;
+  if (typeof parent === "number") return true;
+  if (typeof parent === "object") {
+    return Boolean((parent as { id?: string | number | null }).id);
+  }
+  return false;
+}
+
+function sortFeaturedCategories(a: CategoryWithCount, b: CategoryWithCount) {
+  if (a.course_count !== b.course_count) {
+    return b.course_count - a.course_count;
+  }
+  return a.name.localeCompare(b.name, "vi");
+}
+
 export default async function HomePage() {
   const [popularResult, categoriesResult, reviewsResult] =
     await Promise.allSettled([
@@ -34,10 +54,17 @@ export default async function HomePage() {
 
   const popularCourses =
     popularResult.status === "fulfilled" ? popularResult.value : [];
-  const featuredCategories =
+  const allCategories =
     categoriesResult.status === "fulfilled"
-      ? categoriesResult.value.slice(0, 8)
+      ? categoriesResult.value
       : [];
+  const childCategories = allCategories
+    .filter(
+      (category) =>
+        hasParentCategory(category.parent_id) && Number(category.course_count) > 0
+    )
+    .sort(sortFeaturedCategories);
+  const featuredCategories = childCategories.slice(0, 8);
   const topReviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
 
   const heroCourses = popularCourses.slice(0, 5);
@@ -117,9 +144,9 @@ export default async function HomePage() {
                 </div>
                 <div className="rounded-xl border bg-white/85 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-[var(--learnify-heading)]">
-                    {featuredCategories.length > 0 ? `${featuredCategories.length}+` : "--"}
+                    {childCategories.length > 0 ? `${childCategories.length}+` : "--"}
                   </p>
-                  <p className="text-xs text-[var(--learnify-body)]">Danh mục phổ biến</p>
+                  <p className="text-xs text-[var(--learnify-body)]">Danh mục chuyên sâu</p>
                 </div>
                 <div className="rounded-xl border bg-white/85 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-[var(--learnify-heading)]">
@@ -148,6 +175,9 @@ export default async function HomePage() {
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-3xl">
                 Lựa chọn lĩnh vực bạn quan tâm
               </h2>
+              <p className="mt-2 text-sm text-[var(--learnify-body)]">
+                Chỉ hiển thị các danh mục con có khóa học để bạn chọn nhanh hơn.
+              </p>
             </div>
             <Link
               href="/categories"
@@ -164,7 +194,7 @@ export default async function HomePage() {
                 <Link
                   key={category.id}
                   href={`/categories/${category.slug}`}
-                  className="learnify-soft-card group rounded-2xl border bg-card p-5"
+                  className="learnify-soft-card group rounded-2xl border bg-card/95 p-5 transition-transform duration-200 hover:-translate-y-1"
                 >
                   <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[var(--learnify-primary)]/12 text-[var(--learnify-primary)]">
                     <FolderOpen className="size-5" />
@@ -182,7 +212,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border bg-card p-8 text-center">
               <BookOpen className="mx-auto size-8 text-muted-foreground/60" />
               <p className="mt-3 text-sm text-muted-foreground">
-                Chưa có danh mục dữ liệu phù hợp.
+                Chưa có danh mục con có khóa học để hiển thị.
               </p>
             </div>
           )}

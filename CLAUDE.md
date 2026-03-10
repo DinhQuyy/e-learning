@@ -182,10 +182,10 @@ Use `sonner` (not the deprecated shadcn `toast` component).
 - **Dashboard**: 6 stat cards, revenue/enrollment/course-status charts (Recharts), quick actions, activity feeds
 - **Users**: Table with bulk actions (activate/suspend), CSV export, case-insensitive search, role/status filters
 - **Courses**: Table with bulk actions (publish/archive), CSV export, search, status tabs, pending badge
-- **Orders**: Table with status tabs, CSV export, order detail page (`/admin/orders/[id]`) with timeline + actions
+- **Orders**: Table with status tabs, date range filter, CSV export, order detail page (`/admin/orders/[id]`) with timeline + actions
 - **Categories**: CRUD with slug uniqueness check, circular parent_id detection
 - **Reviews**: Status moderation (approve/reject/hide)
-- **Reports**: Revenue summary cards, enrollment trend + rating distribution charts, popular courses + top instructors tables
+- **Reports**: Revenue summary cards with date range filter, enrollment trend + rating distribution charts, popular courses + top instructors tables
 
 ### Admin UI Conventions
 - Use explicit gray color classes (`text-gray-900`, `text-gray-500`, `text-gray-700`) instead of CSS variables (`text-muted-foreground`, `text-foreground`) for reliable contrast on all displays
@@ -194,6 +194,8 @@ Use `sonner` (not the deprecated shadcn `toast` component).
 - Page titles: `text-2xl font-bold tracking-tight text-gray-900`
 - Search uses `_icontains` (case-insensitive) for Directus filters
 - Refresh buttons use `useTransition()` + `router.push("/admin/<page>")` to reset all filters
+- Tables use `hidden lg:block` for desktop + mobile card layout (`lg:hidden`) for responsive design
+- Sidebar shows badge counts (pending courses, orders, reviews, applications) fetched in admin layout
 
 ### Admin Charts (Recharts)
 - `dashboard-charts.tsx`: RevenueChart (BarChart), EnrollmentChart (LineChart), CourseStatusChart (PieChart donut)

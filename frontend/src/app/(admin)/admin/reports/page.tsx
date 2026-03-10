@@ -25,6 +25,7 @@ import {
   EnrollmentTrendChart,
   RatingDistributionChart,
 } from "./report-charts";
+import { ReportFilters } from "./report-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,22 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
-export default async function AdminReportsPage() {
+interface PageProps {
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+  }>;
+}
+
+export default async function AdminReportsPage({ searchParams }: PageProps) {
   const { token } = await requireAuth();
+  const params = await searchParams;
+  const from = params.from || "";
+  const to = params.to || "";
+
   const [reportData, revenueStats] = await Promise.all([
     getReportData(token),
-    getRevenueStats(token),
+    getRevenueStats(token, from, to),
   ]);
 
   // Process enrollment trends by month (last 6 months)
@@ -96,6 +108,8 @@ export default async function AdminReportsPage() {
           Phân tích dữ liệu và xu hướng của nền tảng
         </p>
       </div>
+
+      <ReportFilters from={from} to={to} />
 
       {/* Revenue Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

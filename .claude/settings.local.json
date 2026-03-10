@@ -11,7 +11,8 @@
       "Bash(npx tsc --noEmit)",
       "Bash(npx next lint)",
       "Bash(npx eslint src/ --max-warnings=100)",
-      "Bash(npx eslint src/app/\\\\\\(admin\\\\\\) src/app/api/admin src/lib/queries/admin.ts src/lib/validations.ts src/components/ui/checkbox.tsx --max-warnings=100)"
+      "Bash(npx eslint src/app/\\\\\\(admin\\\\\\) src/app/api/admin src/lib/queries/admin.ts src/lib/validations.ts src/components/ui/checkbox.tsx --max-warnings=100)",
+      "Bash(npx shadcn@latest add calendar --yes)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders"

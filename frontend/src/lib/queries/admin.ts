@@ -1,10 +1,89 @@
 import { directusUrl } from "@/lib/directus";
 
+// ── Shared types ──
+
+interface DirectusListResponse<T> {
+  data: T[];
+  meta?: { filter_count?: number; total_count?: number };
+}
+
 interface AdminStatsResult {
   totalUsers: number;
   totalCourses: number;
   totalEnrollments: number;
   pendingCourses: number;
+}
+
+export interface AdminUser {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  avatar: string | null;
+  status: string;
+  date_created: string;
+  role: { id: string; name: string } | null;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  bio: string | null;
+  phone: string | null;
+  headline: string | null;
+  social_links: Record<string, string> | null;
+}
+
+export interface AdminReview {
+  id: number;
+  rating: number;
+  comment: string;
+  status: string;
+  date_created: string;
+  user_id: { id: string; first_name: string; last_name: string; avatar: string | null; email: string };
+  course_id: { id: number; title: string; slug: string };
+}
+
+export interface RevenueStatsResult {
+  totalRevenue: number;
+  currentMonthRevenue: number;
+  lastMonthRevenue: number;
+  revenueChange: number;
+  monthlyChart: { month: string; revenue: number }[];
+  totalOrders: number;
+}
+
+export interface EnrollmentTrendItem {
+  month: string;
+  enrollments: number;
+}
+
+export interface CourseStatusItem {
+  name: string;
+  value: number;
+  fill: string;
+}
+
+export interface ReportDataResult {
+  popularCourses: { id: number; title: string; slug: string; total_enrollments: number; average_rating: number }[];
+  enrollments: { enrolled_at: string }[];
+  ratingDistribution: { rating: number; count: number }[];
+  topInstructors: { id: string; name: string; avatar: string | null; coursesCount: number; totalStudents: number; avgRating: number }[];
+}
+
+export interface LatestEnrollment {
+  id: number;
+  enrolled_at: string;
+  status: string;
+  user_id: { id: string; first_name: string; last_name: string; avatar: string | null };
+  course_id: { id: number; title: string };
+}
+
+export interface LatestReview {
+  id: number;
+  rating: number;
+  comment: string;
+  date_created: string;
+  user_id: { id: string; first_name: string; last_name: string; avatar: string | null };
+  course_id: { id: number; title: string };
 }
 
 export async function getAdminStats(token: string): Promise<AdminStatsResult> {
@@ -61,7 +140,7 @@ interface GetUsersParams {
   status?: string;
 }
 
-export async function getUsers(token: string, params: GetUsersParams = {}) {
+export async function getUsers(token: string, params: GetUsersParams = {}): Promise<DirectusListResponse<AdminUser>> {
   const { page = 1, limit = 20, search, role, status } = params;
   const offset = (page - 1) * limit;
 
@@ -102,7 +181,7 @@ export async function getUsers(token: string, params: GetUsersParams = {}) {
   return res.json();
 }
 
-export async function getUserById(token: string, id: string) {
+export async function getUserById(token: string, id: string): Promise<AdminUserDetail | null> {
   const url = `${directusUrl}/users/${id}?fields=id,first_name,last_name,email,avatar,status,date_created,bio,phone,headline,social_links,role.id,role.name`;
 
   const res = await fetch(url, {
@@ -131,7 +210,7 @@ interface GetCoursesParams {
 export async function getAllCourses(
   token: string,
   params: GetCoursesParams = {}
-) {
+)  {
   const { page = 1, limit = 20, search, status } = params;
   const offset = (page - 1) * limit;
 
@@ -169,7 +248,7 @@ export async function getAllCourses(
 export async function getReviewsForModeration(
   token: string,
   status: string = "pending"
-) {
+): Promise<AdminReview[]> {
   const filterStr =
     status === "all" ? "" : `&filter[status][_eq]=${encodeURIComponent(status)}`;
 
@@ -191,7 +270,7 @@ export async function getReviewsForModeration(
   return data.data ?? [];
 }
 
-export async function getReportData(token: string) {
+export async function getReportData(token: string): Promise<ReportDataResult> {
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -303,18 +382,27 @@ export async function getReportData(token: string) {
   };
 }
 
-export async function getRevenueStats(token: string) {
+export async function getRevenueStats(token: string, from?: string, to?: string): Promise<RevenueStatsResult> {
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
 
-  // Get all successful orders from last 12 months
-  const twelveMonthsAgo = new Date();
-  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  // Get all successful orders from last 12 months (or custom date range)
+  const dateFilters: string[] = [`filter[status][_eq]=success`];
+  if (from) {
+    dateFilters.push(`filter[date_created][_gte]=${encodeURIComponent(from)}T00:00:00`);
+  } else {
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    dateFilters.push(`filter[paid_at][_gte]=${twelveMonthsAgo.toISOString()}`);
+  }
+  if (to) {
+    dateFilters.push(`filter[date_created][_lte]=${encodeURIComponent(to)}T23:59:59`);
+  }
 
   const ordersRes = await fetch(
-    `${directusUrl}/items/orders?fields=id,total_amount,paid_at,date_created&filter[status][_eq]=success&filter[paid_at][_gte]=${twelveMonthsAgo.toISOString()}&sort=-paid_at&limit=1000`,
+    `${directusUrl}/items/orders?fields=id,total_amount,paid_at,date_created&${dateFilters.join("&")}&sort=-paid_at&limit=1000`,
     { headers, next: { revalidate: 0 } }
   );
 
@@ -370,7 +458,7 @@ export async function getRevenueStats(token: string) {
   };
 }
 
-export async function getEnrollmentTrend(token: string) {
+export async function getEnrollmentTrend(token: string): Promise<EnrollmentTrendItem[]> {
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -409,7 +497,7 @@ export async function getEnrollmentTrend(token: string) {
   return trend;
 }
 
-export async function getCourseStatusDistribution(token: string) {
+export async function getCourseStatusDistribution(token: string): Promise<CourseStatusItem[]> {
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -449,7 +537,7 @@ export async function getCourseStatusDistribution(token: string) {
   }));
 }
 
-export async function getLatestEnrollments(token: string, limit: number = 5) {
+export async function getLatestEnrollments(token: string, limit: number = 5): Promise<LatestEnrollment[]> {
   const url = `${directusUrl}/items/enrollments?fields=id,enrolled_at,status,user_id.id,user_id.first_name,user_id.last_name,user_id.avatar,course_id.id,course_id.title&sort=-enrolled_at&limit=${limit}`;
 
   const res = await fetch(url, {
@@ -465,7 +553,7 @@ export async function getLatestEnrollments(token: string, limit: number = 5) {
   return data.data ?? [];
 }
 
-export async function getLatestReviews(token: string, limit: number = 5) {
+export async function getLatestReviews(token: string, limit: number = 5): Promise<LatestReview[]> {
   const url = `${directusUrl}/items/reviews?fields=id,rating,comment,date_created,user_id.id,user_id.first_name,user_id.last_name,user_id.avatar,course_id.id,course_id.title&sort=-date_created&limit=${limit}`;
 
   const res = await fetch(url, {

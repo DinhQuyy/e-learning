@@ -102,14 +102,29 @@ const navLabels: Record<string, string> = {
   "/admin/settings": "Cài đặt",
 };
 
+interface BadgeCounts {
+  pendingCourses: number;
+  pendingOrders: number;
+  pendingReviews: number;
+  pendingApplications: number;
+}
+
 interface AdminSidebarProps {
   userRole: string;
   displayName: string;
   avatarUrl: string;
   userEmail: string;
+  badgeCounts?: BadgeCounts;
 }
 
-function SidebarNav({ onNavClick }: { onNavClick?: () => void }) {
+const badgeMap: Record<string, keyof BadgeCounts> = {
+  "/admin/courses": "pendingCourses",
+  "/admin/orders": "pendingOrders",
+  "/admin/reviews": "pendingReviews",
+  "/admin/instructor-applications": "pendingApplications",
+};
+
+function SidebarNav({ onNavClick, badgeCounts }: { onNavClick?: () => void; badgeCounts?: BadgeCounts }) {
   const pathname = usePathname();
 
   return (
@@ -118,6 +133,8 @@ function SidebarNav({ onNavClick }: { onNavClick?: () => void }) {
         const isActive =
           pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon;
+        const badgeKey = badgeMap[item.href];
+        const badgeCount = badgeKey && badgeCounts ? badgeCounts[badgeKey] : 0;
 
         return (
           <Link
@@ -132,7 +149,12 @@ function SidebarNav({ onNavClick }: { onNavClick?: () => void }) {
             )}
           >
             <Icon className="h-5 w-5 shrink-0" />
-            <span>{navLabels[item.href] ?? item.label}</span>
+            <span className="flex-1">{navLabels[item.href] ?? item.label}</span>
+            {badgeCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -144,6 +166,7 @@ export function AdminSidebar({
   displayName,
   avatarUrl,
   userEmail,
+  badgeCounts,
 }: AdminSidebarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -157,7 +180,7 @@ export function AdminSidebar({
         </div>
       </div>
       <Separator className="bg-slate-700" />
-      <SidebarNav onNavClick={() => setSheetOpen(false)} />
+      <SidebarNav onNavClick={() => setSheetOpen(false)} badgeCounts={badgeCounts} />
       <Separator className="bg-slate-700" />
       <div className="p-4">
         <DropdownMenu>

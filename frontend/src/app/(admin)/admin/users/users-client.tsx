@@ -388,8 +388,66 @@ export function AdminUsersClient({
         </div>
       )}
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      {/* Mobile Cards */}
+      <div className="space-y-3 lg:hidden">
+        {users.length === 0 && (
+          <p className="py-12 text-center text-gray-400">Không tìm thấy người dùng nào.</p>
+        )}
+        {users.map((user) => (
+          <div key={user.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={selectedIds.has(user.id)}
+                onCheckedChange={() => toggleSelect(user.id)}
+              />
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={getAssetUrl(user.avatar)} alt={userName(user)} />
+                <AvatarFallback className="bg-gray-200 text-gray-600 text-sm">
+                  {userName(user).charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 truncate">{userName(user)}</p>
+                <p className="text-sm text-gray-500 truncate">{user.email}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/users/${user.id}`}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Xem chi tiết
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                    {user.status === "active" ? (
+                      <><Ban className="mr-2 h-4 w-4" />Vô hiệu hoá</>
+                    ) : (
+                      <><CheckCircle className="mr-2 h-4 w-4" />Kích hoạt</>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="mt-3 flex items-center gap-3 text-sm">
+              {getRoleBadge(user)}
+              {getStatusBadge(user.status)}
+              <span className="text-gray-400 ml-auto">
+                {user.date_created
+                  ? format(new Date(user.date_created), "dd/MM/yyyy", { locale: vi })
+                  : "---"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden lg:block rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-100 hover:bg-gray-100">

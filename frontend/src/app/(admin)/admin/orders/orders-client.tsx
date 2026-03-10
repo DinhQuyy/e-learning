@@ -16,9 +16,12 @@ import {
   Eye,
   Download,
   RefreshCw,
+  CalendarIcon,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -105,7 +108,11 @@ export function AdminOrdersClient() {
 
   const currentPage = Math.max(1, Number(searchParams.get("page")) || 1);
   const status = searchParams.get("status") || "all";
+  const dateFrom = searchParams.get("from") || "";
+  const dateTo = searchParams.get("to") || "";
   const totalPages = Math.ceil(totalCount / 20);
+  const [fromValue, setFromValue] = useState(dateFrom);
+  const [toValue, setToValue] = useState(dateTo);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -114,6 +121,8 @@ export function AdminOrdersClient() {
       params.set("page", String(currentPage));
       params.set("limit", "20");
       if (status !== "all") params.set("status", status);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
 
       const res = await apiFetch(`/api/admin/orders?${params.toString()}`);
       if (res.ok) {
@@ -126,7 +135,7 @@ export function AdminOrdersClient() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, status]);
+  }, [currentPage, status, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchOrders();
@@ -267,8 +276,108 @@ export function AdminOrdersClient() {
         </TabsList>
       </Tabs>
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      {/* Date Range Filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-4 w-4 text-gray-500" />
+          <span className="text-sm text-gray-600">Từ ngày</span>
+          <Input
+            type="date"
+            value={fromValue}
+            onChange={(e) => setFromValue(e.target.value)}
+            className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Đến ngày</span>
+          <Input
+            type="date"
+            value={toValue}
+            onChange={(e) => setToValue(e.target.value)}
+            className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          />
+        </div>
+        <Button
+          size="sm"
+          onClick={() => router.push(buildUrl({ from: fromValue, to: toValue, page: "1" }))}
+          className="bg-gray-900 text-white hover:bg-gray-800"
+        >
+          Lọc
+        </Button>
+        {(dateFrom || dateTo) && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setFromValue("");
+              setToValue("");
+              router.push(buildUrl({ from: "", to: "", page: "1" }));
+            }}
+            className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <X className="mr-1 h-3 w-3" />
+            Xoá bộ lọc
+          </Button>
+        )}
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="space-y-3 lg:hidden">
+        {loading ? (
+          <p className="py-12 text-center text-gray-400">Đang tải...</p>
+        ) : orders.length === 0 ? (
+          <p className="py-12 text-center text-gray-400">Không có đơn hàng nào.</p>
+        ) : (
+          orders.map((order) => (
+            <div key={order.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-mono text-sm font-medium text-gray-900">{order.order_number}</p>
+                  <p className="text-sm text-gray-500">{getUserName(order.user_id)}</p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/admin/orders/${order.id}`}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Xem chi tiết
+                      </Link>
+                    </DropdownMenuItem>
+                    {order.status === "pending" && (
+                      <>
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(order.id, "success")}>
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                          Xác nhận
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(order.id, "cancelled")}>
+                          <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                          Huỷ đơn
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                {getStatusBadge(order.status)}
+                <span className="font-medium text-gray-900">{formatPrice(order.total_amount)}</span>
+                <span className="text-gray-500">{getPaymentMethodLabel(order.payment_method)}</span>
+                <span className="ml-auto text-gray-400">
+                  {format(new Date(order.date_created), "dd/MM/yyyy", { locale: vi })}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden lg:block rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-100 hover:bg-gray-100">

@@ -379,8 +379,56 @@ export function AdminCoursesClient({
         </div>
       )}
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      {/* Mobile Cards */}
+      <div className="space-y-3 lg:hidden">
+        {courses.length === 0 && (
+          <p className="py-12 text-center text-gray-400">Không tìm thấy khoá học nào.</p>
+        )}
+        {courses.map((course) => (
+          <div key={course.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                checked={selectedIds.has(course.id)}
+                onCheckedChange={() => toggleSelect(course.id)}
+                className="mt-1"
+              />
+              <div className="h-12 w-20 shrink-0 overflow-hidden rounded bg-gray-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={getAssetUrl(course.thumbnail)} alt={course.title} className="h-full w-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 line-clamp-1">{course.title}</p>
+                <p className="text-sm text-gray-500">{getInstructorName(course)}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push(`/admin/courses/${course.id}`)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Xem chi tiết
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+              {getStatusBadge(course.status)}
+              <span className="text-gray-500">{course.category_id?.name ?? "---"}</span>
+              <span className="ml-auto flex items-center gap-1 text-gray-600">
+                <StarIcon className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                {Number(course.average_rating ?? 0).toFixed(1)}
+              </span>
+              <span className="text-gray-500">{course.total_enrollments ?? 0} học viên</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden lg:block rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-100 hover:bg-gray-100">

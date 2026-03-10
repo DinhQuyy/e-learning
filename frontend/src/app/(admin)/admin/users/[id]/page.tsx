@@ -398,7 +398,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
 
             <Separator className="my-4 w-full" />
 
-            <UserDetailActions userId={user.id} currentStatus={user.status} currentRoleId={typeof role === "object" ? role?.id : ""} />
+            <UserDetailActions userId={user.id} currentStatus={user.status} currentRoleId={typeof role === "object" ? role?.id ?? "" : ""} />
           </CardContent>
         </Card>
 

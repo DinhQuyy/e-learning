@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Award, ExternalLink, Eye, FileCheck2 } from "lucide-react";
 import { requireAuth } from "@/lib/dal";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { getUserCertificates } from "@/lib/queries/certificates";
 import {
   Card,
@@ -84,9 +84,9 @@ export default async function MyCertificatesPage() {
             return (
               <Card key={certificate.id} className="overflow-hidden py-0 gap-0">
                 <div className="relative aspect-video w-full overflow-hidden">
-                  {course?.thumbnail ? (
+                  {course ? (
                     <Image
-                      src={getAssetUrl(course.thumbnail)}
+                      src={getCourseImageSrc(course)}
                       alt={course.title ?? "Course thumbnail"}
                       fill
                       className="object-cover"

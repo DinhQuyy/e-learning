@@ -44,6 +44,15 @@ interface CategoryGroup {
   totalCount: number;
 }
 
+const parentCategoryOrder = [
+  "lap-trinh",
+  "thiet-ke",
+  "ngoai-ngu",
+  "phat-trien-ban-than",
+  "phat-trien-ca-nhan",
+  "kinh-doanh",
+];
+
 function getParentId(parent: unknown): string | null {
   if (!parent) return null;
   if (typeof parent === "string") return parent;
@@ -63,6 +72,21 @@ function sortCategories(a: CategoryWithCount, b: CategoryWithCount) {
   const sortB = Number(b.sort ?? 0);
   if (sortA !== sortB) return sortA - sortB;
   return a.name.localeCompare(b.name, "vi");
+}
+
+function getParentOrderIndex(category: CategoryWithCount): number {
+  const normalizedSlug = category.slug.toLowerCase();
+  const index = parentCategoryOrder.findIndex(
+    (slug) => normalizedSlug === slug || normalizedSlug.startsWith(`${slug}-`)
+  );
+  return index === -1 ? Number.POSITIVE_INFINITY : index;
+}
+
+function sortRootCategories(a: CategoryWithCount, b: CategoryWithCount) {
+  const orderA = getParentOrderIndex(a);
+  const orderB = getParentOrderIndex(b);
+  if (orderA !== orderB) return orderA - orderB;
+  return sortCategories(a, b);
 }
 
 function getCategoryTone(slug: string) {
@@ -164,7 +188,7 @@ export function CourseFilters({
       childrenByParent.set(parentId, existing);
     }
 
-    const groups: CategoryGroup[] = roots.sort(sortCategories).map((parent) => {
+    const groups: CategoryGroup[] = roots.sort(sortRootCategories).map((parent) => {
       const children = (childrenByParent.get(parent.id) ?? []).sort(
         sortCategories
       );

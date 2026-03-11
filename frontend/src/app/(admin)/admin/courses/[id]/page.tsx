@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/dal";
-import { directusUrl, getAssetUrl } from "@/lib/directus";
+import { directusUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -155,17 +156,15 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex gap-6">
-                {course.thumbnail && (
-                  <div className="relative h-32 w-48 shrink-0 overflow-hidden rounded-lg">
-                    <Image
-                      src={getAssetUrl(course.thumbnail)}
-                      alt={course.title}
-                      fill
-                      className="object-cover"
-                      sizes="192px"
-                    />
-                  </div>
-                )}
+                <div className="relative h-32 w-48 shrink-0 overflow-hidden rounded-lg">
+                  <Image
+                    src={getCourseImageSrc(course)}
+                    alt={course.title}
+                    fill
+                    className="object-cover"
+                    sizes="192px"
+                  />
+                </div>
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
                     <Badge

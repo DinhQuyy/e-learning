@@ -42,7 +42,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiPatch } from "@/lib/api-fetch";
 
@@ -394,7 +394,7 @@ export function AdminCoursesClient({
               />
               <div className="h-12 w-20 shrink-0 overflow-hidden rounded bg-gray-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={getAssetUrl(course.thumbnail)} alt={course.title} className="h-full w-full object-cover" />
+                <img src={getCourseImageSrc(course)} alt={course.title} className="h-full w-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 line-clamp-1">{course.title}</p>
@@ -471,7 +471,7 @@ export function AdminCoursesClient({
                   <div className="h-10 w-16 overflow-hidden rounded bg-gray-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={getAssetUrl(course.thumbnail)}
+                      src={getCourseImageSrc(course)}
                       alt={course.title}
                       className="h-full w-full object-cover"
                     />

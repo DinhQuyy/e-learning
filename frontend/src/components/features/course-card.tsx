@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { RatingStars } from "@/components/features/rating-stars";
 import { WishlistButton } from "@/components/features/wishlist-button";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import type { Course, DirectusUser, Category } from "@/types";
 
 interface CourseCardProps {
@@ -71,7 +71,7 @@ export function CourseCard({ course }: CourseCardProps) {
       <Card className="h-full overflow-hidden py-0 transition-shadow hover:shadow-lg">
         <div className="relative aspect-video overflow-hidden">
           <Image
-            src={getAssetUrl(course.thumbnail)}
+            src={getCourseImageSrc(course)}
             alt={course.title}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"

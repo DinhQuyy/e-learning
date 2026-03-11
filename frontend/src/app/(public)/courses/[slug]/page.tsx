@@ -33,6 +33,7 @@ import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog
 import { CourseActions } from "./course-actions";
 import { getCourseBySlug, getRelatedCourses } from "@/lib/queries/courses";
 import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import type {
   Category,
   Course,
@@ -158,7 +159,7 @@ export async function generateMetadata({
     openGraph: {
       title: course.title,
       description: stripHtml(course.description) || undefined,
-      images: course.thumbnail ? [{ url: getAssetUrl(course.thumbnail) }] : undefined,
+      images: [{ url: getCourseImageSrc(course) }],
     },
   };
 }
@@ -268,9 +269,9 @@ export default async function CourseDetailPage({
   ];
 
   const previewNode = (
-    <div className="relative aspect-video overflow-hidden rounded-xl">
+    <div className="relative aspect-video overflow-hidden">
       <Image
-        src={getAssetUrl(course.thumbnail)}
+        src={getCourseImageSrc(course)}
         alt={course.title}
         fill
         priority
@@ -294,7 +295,7 @@ export default async function CourseDetailPage({
       <section className="relative overflow-hidden border-b border-slate-200 bg-[#0f172a] text-white">
         <div className="absolute inset-0">
           <Image
-            src={getAssetUrl(course.thumbnail)}
+            src={getCourseImageSrc(course)}
             alt={course.title}
             fill
             className="object-cover opacity-25 blur-[2px]"
@@ -408,10 +409,10 @@ export default async function CourseDetailPage({
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="order-2 space-y-6 lg:order-1">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.5)]">
-              <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(15,23,42,0.5)]">
+              <div className="relative aspect-[16/9] overflow-hidden">
                 <Image
-                  src={getAssetUrl(course.thumbnail)}
+                  src={getCourseImageSrc(course)}
                   alt={course.title}
                   fill
                   className="object-cover"
@@ -714,7 +715,7 @@ export default async function CourseDetailPage({
 
           <aside className="order-1 lg:order-2">
             <div className="sticky top-24 space-y-5">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
                 {course.promo_video_url ? (
                   <a
                     href={course.promo_video_url}

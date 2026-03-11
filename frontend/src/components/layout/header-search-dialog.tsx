@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BookOpen, Search, TrendingUp, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -178,7 +178,7 @@ export function HeaderSearchDialog({
                     >
                       <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Image
-                          src={getAssetUrl(course.thumbnail)}
+                          src={getCourseImageSrc(course)}
                           alt={course.title}
                           fill
                           className="object-cover"

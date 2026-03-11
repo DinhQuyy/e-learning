@@ -1,6 +1,8 @@
 import { requireAuth } from "@/lib/dal";
 import { directusFetch } from "@/lib/directus-fetch";
 import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
+import Image from "next/image";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -165,11 +167,15 @@ export default async function AdminOrderDetailPage({
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {item.course_id?.thumbnail && (
-                              <img
-                                src={getAssetUrl(item.course_id.thumbnail) ?? ""}
-                                alt=""
-                                className="h-10 w-16 rounded object-cover"
-                              />
+                              <div className="relative h-10 w-16 overflow-hidden rounded">
+                                <Image
+                                  src={getCourseImageSrc(item.course_id)}
+                                  alt={item.course_id.title}
+                                  fill
+                                  className="object-cover"
+                                  sizes="64px"
+                                />
+                              </div>
                             )}
                             <span className="font-medium">
                               {item.course_id?.title ?? "Khoá học đã xoá"}

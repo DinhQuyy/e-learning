@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Loader2, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiDelete, apiFetch } from "@/lib/api-fetch";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -155,7 +155,7 @@ export function HeaderCartSheet() {
                     <div className="flex gap-3">
                       <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Image
-                          src={getAssetUrl(course.thumbnail)}
+                          src={getCourseImageSrc(course)}
                           alt={course.title}
                           fill
                           className="object-cover"

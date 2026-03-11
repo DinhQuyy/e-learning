@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Star, Users } from "lucide-react";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { cn } from "@/lib/utils";
 import type { Category, Course, DirectusUser } from "@/types";
 
@@ -103,7 +103,7 @@ export function LearnifyCourseCard({
       >
         <div className="relative aspect-[16/10] overflow-hidden">
           <Image
-            src={getAssetUrl(course.thumbnail)}
+            src={getCourseImageSrc(course)}
             alt={course.title}
             fill
             priority={priority}

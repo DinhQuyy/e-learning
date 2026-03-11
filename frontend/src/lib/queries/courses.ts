@@ -134,6 +134,79 @@ function mergeMetricsIntoCourses<T extends Course>(
   });
 }
 
+type CategoryTreeNode = {
+  id: string;
+  slug: string;
+  parent_id: string | number | { id?: string | number | null } | null;
+};
+
+function getCategoryParentId(
+  parent: CategoryTreeNode["parent_id"]
+): string | null {
+  if (!parent) return null;
+  if (typeof parent === "string") return parent;
+  if (typeof parent === "number") return String(parent);
+
+  const parentId = parent.id;
+  if (typeof parentId === "string") return parentId;
+  if (typeof parentId === "number") return String(parentId);
+  return null;
+}
+
+async function resolveCategoryTreeIdsBySlug(
+  categorySlug: string
+): Promise<string[] | null> {
+  try {
+    const categories = (await directus.request(
+      readItems("categories", {
+        filter: {
+          status: { _eq: "published" },
+        },
+        limit: -1,
+        fields: ["id", "slug", "parent_id"],
+      })
+    )) as unknown as CategoryTreeNode[];
+
+    const selectedCategory = categories.find(
+      (item) => item.slug === categorySlug
+    );
+    if (!selectedCategory) return null;
+
+    const childrenByParent = new Map<string, string[]>();
+    for (const category of categories) {
+      const parentId = getCategoryParentId(category.parent_id);
+      if (!parentId) continue;
+
+      const existing = childrenByParent.get(parentId) ?? [];
+      existing.push(category.id);
+      childrenByParent.set(parentId, existing);
+    }
+
+    const ids: string[] = [];
+    const queue: string[] = [selectedCategory.id];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (!currentId || visited.has(currentId)) continue;
+
+      visited.add(currentId);
+      ids.push(currentId);
+
+      const children = childrenByParent.get(currentId) ?? [];
+      for (const childId of children) {
+        if (!visited.has(childId)) {
+          queue.push(childId);
+        }
+      }
+    }
+
+    return ids;
+  } catch {
+    return null;
+  }
+}
+
 interface GetCoursesParams {
   page?: number;
   limit?: number;
@@ -191,9 +264,17 @@ export async function getCourses({
   }
 
   if (category) {
-    filter.category_id = {
-      slug: { _eq: category },
-    };
+    const categoryIds = await resolveCategoryTreeIdsBySlug(category);
+    if (categoryIds && categoryIds.length > 0) {
+      filter.category_id =
+        categoryIds.length === 1
+          ? { _eq: categoryIds[0] }
+          : { _in: categoryIds };
+    } else {
+      filter.category_id = {
+        slug: { _eq: category },
+      };
+    }
   }
 
   if (level && level !== "all") {

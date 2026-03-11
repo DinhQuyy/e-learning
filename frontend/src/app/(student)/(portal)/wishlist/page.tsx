@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api-fetch";
+import { getCourseImageSrc } from "@/lib/course-image";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -137,11 +138,7 @@ export default function WishlistPage() {
               <Card key={item.id} className="overflow-hidden py-0 gap-0">
                 <div className="relative aspect-video w-full overflow-hidden">
                   <Image
-                    src={
-                      course.thumbnail
-                        ? `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/assets/${course.thumbnail}`
-                        : "/placeholder.svg"
-                    }
+                    src={getCourseImageSrc(course)}
                     alt={course.title}
                     fill
                     className="object-cover"

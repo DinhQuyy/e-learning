@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/dal";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { partitionEnrollments } from "@/lib/enrollment-helpers";
 import { recalcEnrollmentsProgress } from "@/lib/enrollment-progress";
 import { getUserEnrollments } from "@/lib/queries/enrollments";
@@ -87,7 +87,7 @@ export default async function MyCoursesPage() {
                   >
                     <div className="relative aspect-video w-full overflow-hidden">
                       <Image
-                        src={getAssetUrl(course.thumbnail)}
+                        src={getCourseImageSrc(course)}
                         alt={course.title}
                         fill
                         className="object-cover"
@@ -168,7 +168,7 @@ export default async function MyCoursesPage() {
                   >
                     <div className="relative aspect-video w-full overflow-hidden">
                       <Image
-                        src={getAssetUrl(course.thumbnail)}
+                        src={getCourseImageSrc(course)}
                         alt={course.title}
                         fill
                         className="object-cover"

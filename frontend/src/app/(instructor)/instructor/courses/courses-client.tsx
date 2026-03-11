@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiPatch } from "@/lib/api-fetch";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import type { Category, Course } from "@/types";
 
 type InstructorCourse = Course & {
@@ -130,7 +130,7 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
                   <div className="flex items-center gap-3">
                     <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
                       <Image
-                        src={getAssetUrl(course.thumbnail)}
+                        src={getCourseImageSrc(course)}
                         alt={course.title}
                         fill
                         className="object-cover"

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "check:course-images": "node scripts/check-course-image-sync.mjs",
+    "lint": "npm run check:course-images && eslint"
   },
   "dependencies": {
     "@directus/sdk": "^21.1.0",

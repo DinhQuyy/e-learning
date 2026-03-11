@@ -46,10 +46,19 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   const rating = params.rating || "";
   const sort = params.sort || "newest";
   const view = params.view === "list" ? "list" : "grid";
+  const shouldSwapFirstTwoBetweenPage1And2 = Boolean(
+    !search &&
+      !category &&
+      !level &&
+      !price &&
+      !rating &&
+      sort === "newest" &&
+      (page === 1 || page === 2)
+  );
 
   const ratingNumber = Number(rating);
 
-  const [coursesResult, categories] = await Promise.all([
+  const [coursesResult, categories, swapSourceResult] = await Promise.all([
     getCourses({
       page,
       limit: COURSES_PER_PAGE,
@@ -61,12 +70,35 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
       sort,
     }),
     getCategories(),
+    shouldSwapFirstTwoBetweenPage1And2
+      ? getCourses({
+          page: page === 1 ? 2 : 1,
+          limit: COURSES_PER_PAGE,
+          search,
+          category,
+          level,
+          price,
+          rating: Number.isNaN(ratingNumber) ? undefined : ratingNumber,
+          sort,
+        })
+      : Promise.resolve(null),
   ]);
 
   const totalPages = Math.ceil(coursesResult.total / COURSES_PER_PAGE);
   const startIndex =
     coursesResult.total === 0 ? 0 : (page - 1) * COURSES_PER_PAGE + 1;
   const endIndex = Math.min(page * COURSES_PER_PAGE, coursesResult.total);
+  let displayCourses = coursesResult.data;
+
+  if (shouldSwapFirstTwoBetweenPage1And2 && swapSourceResult?.data?.length) {
+    const swapCount = Math.min(2, swapSourceResult.data.length, coursesResult.data.length);
+    if (swapCount > 0) {
+      displayCourses = [
+        ...swapSourceResult.data.slice(0, swapCount),
+        ...coursesResult.data.slice(swapCount),
+      ];
+    }
+  }
 
   return (
     <div className={`${poppins.className} min-h-screen bg-[#f6f9ff] text-slate-900`}>
@@ -124,7 +156,7 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
           />
 
           <div>
-            {coursesResult.data.length > 0 ? (
+            {displayCourses.length > 0 ? (
               <div
                 className={
                   view === "list"
@@ -132,7 +164,7 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
                     : "grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
                 }
               >
-                {coursesResult.data.map((course, index) => (
+                {displayCourses.map((course, index) => (
                   <CourseGridCard
                     key={course.id}
                     course={course}

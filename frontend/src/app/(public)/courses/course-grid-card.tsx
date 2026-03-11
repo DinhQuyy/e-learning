@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Users } from "lucide-react";
 import { RatingStars } from "@/components/features/rating-stars";
 import { WishlistButton } from "@/components/features/wishlist-button";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { cn } from "@/lib/utils";
 import type { Category, Course, DirectusUser } from "@/types";
 
@@ -56,6 +56,38 @@ function getPrimaryInstructor(course: Course): {
     name: fullName || user.email || "Giảng viên",
     avatar: user.avatar ?? null,
   };
+}
+
+function CourseCoverMedia({
+  course,
+  variant,
+  priority,
+}: {
+  course: Course;
+  variant: "grid" | "list";
+  priority: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden",
+        variant === "grid" ? "h-[210px]" : "h-[220px] md:h-auto md:w-[320px] md:shrink-0"
+      )}
+    >
+      <Image
+        src={getCourseImageSrc(course)}
+        alt={course.title}
+        fill
+        priority={priority}
+        className="object-cover transition-transform duration-500 group-hover:scale-105"
+        sizes={
+          variant === "grid"
+            ? "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            : "(max-width: 768px) 100vw, 320px"
+        }
+      />
+    </div>
+  );
 }
 
 function getDiscountInfo(course: Course) {
@@ -162,29 +194,11 @@ export function CourseGridCard({
         href={`/courses/${course.slug}`}
         className={cn("flex", variant === "grid" ? "h-full flex-col" : "flex-col md:flex-row")}
       >
-        {variant === "grid" ? (
-          <div className="relative h-[210px] overflow-hidden">
-            <Image
-              src={getAssetUrl(course.thumbnail)}
-              alt={course.title}
-              fill
-              priority={priority}
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-            />
-          </div>
-        ) : (
-          <div className="relative h-[220px] overflow-hidden md:h-auto md:w-[320px] md:shrink-0">
-            <Image
-              src={getAssetUrl(course.thumbnail)}
-              alt={course.title}
-              fill
-              priority={priority}
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, 320px"
-            />
-          </div>
-        )}
+        <CourseCoverMedia
+          course={course}
+          variant={variant}
+          priority={priority}
+        />
 
         <div className={cn("flex flex-1 flex-col p-5", variant === "list" && "md:p-6")}>
           <div className="flex items-center justify-between gap-3">

@@ -8,7 +8,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getUserDisplayName, requireAuth } from "@/lib/dal";
-import { directusUrl, getAssetUrl } from "@/lib/directus";
+import { directusUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { partitionEnrollments } from "@/lib/enrollment-helpers";
 import { recalcEnrollmentsProgress } from "@/lib/enrollment-progress";
 import { getUserEnrollments } from "@/lib/queries/enrollments";
@@ -246,7 +247,7 @@ export default async function StudentDashboard() {
                     <div className="flex gap-4">
                       <div className="relative size-20 shrink-0 overflow-hidden rounded-xl">
                         <Image
-                          src={getAssetUrl(course.thumbnail)}
+                          src={getCourseImageSrc(course)}
                           alt={course.title}
                           fill
                           className="object-cover"

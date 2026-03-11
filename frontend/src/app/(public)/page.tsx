@@ -6,7 +6,11 @@ import { HeroCourseSlider } from "@/components/home/hero-course-slider";
 import { LearnifyCourseCard } from "@/components/home/learnify-course-card";
 import { NewsletterStrip } from "@/components/home/newsletter-strip";
 import { BlogTeaserGrid } from "@/components/home/blog-teaser-grid";
-import { getPopularCourses, getTopReviews } from "@/lib/queries/courses";
+import {
+  getCourseBySlug,
+  getPopularCourses,
+  getTopReviews,
+} from "@/lib/queries/courses";
 import {
   getCategories,
   type CategoryWithCount,
@@ -19,6 +23,14 @@ const poppins = Poppins({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700", "800"],
 });
+
+const HERO_COURSE_SLUG_ORDER = [
+  "lap-trinh-kiem-thu-phan-mem-kiem-thu-hieu-nang-bang-jmeter-08-2",
+  "thiet-ke-chinh-sua-video-dung-video-youtube-06-2",
+  "ngoai-ngu-tieng-han-ngu-phap-tieng-han-thiet-yeu-03-2",
+  "phat-trien-ban-than-nang-suat-ca-nhan-quan-ly-tap-trung-va-nang-luong-03-2",
+  "kinh-doanh-chien-luoc-chien-luoc-inh-gia-06-2",
+];
 
 function getReviewSnippet(comment: string | null | undefined): string | null {
   if (!comment) return null;
@@ -51,6 +63,9 @@ export default async function HomePage() {
       getCategories(),
       getTopReviews(6),
     ]);
+  const heroCourseResults = await Promise.allSettled(
+    HERO_COURSE_SLUG_ORDER.map((slug) => getCourseBySlug(slug))
+  );
 
   const popularCourses =
     popularResult.status === "fulfilled" ? popularResult.value : [];
@@ -66,8 +81,20 @@ export default async function HomePage() {
     .sort(sortFeaturedCategories);
   const featuredCategories = childCategories.slice(0, 8);
   const topReviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+  const prioritizedHeroCourses = HERO_COURSE_SLUG_ORDER.map((_, index) => {
+    const result = heroCourseResults[index];
+    if (!result || result.status !== "fulfilled") return null;
+    return result.value;
+  }).filter((course): course is Course => Boolean(course));
 
-  const heroCourses = popularCourses.slice(0, 5);
+  const heroCourseIds = new Set<string>();
+  const heroCourses = [...prioritizedHeroCourses, ...popularCourses]
+    .filter((course) => {
+      if (heroCourseIds.has(course.id)) return false;
+      heroCourseIds.add(course.id);
+      return true;
+    })
+    .slice(0, 5);
   const popularGridCourses: Course[] = popularCourses.slice(0, 6);
   const reviewSnippet = getReviewSnippet(topReviews[0]?.comment);
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, apiPost } from "@/lib/api-fetch";
+import { getCourseImageSrc } from "@/lib/course-image";
 import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -128,11 +129,7 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex gap-3 items-center">
                     <div className="relative size-14 shrink-0 rounded overflow-hidden">
                       <Image
-                        src={
-                          course.thumbnail
-                            ? `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/assets/${course.thumbnail}`
-                            : "/placeholder.svg"
-                        }
+                        src={getCourseImageSrc(course)}
                         alt={course.title}
                         fill
                         className="object-cover"

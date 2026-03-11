@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiDelete, apiFetch } from "@/lib/api-fetch";
-import { getAssetUrl } from "@/lib/directus";
+import { getCourseImageSrc } from "@/lib/course-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -152,7 +152,7 @@ export default function CartPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                       <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-40">
                         <Image
-                          src={getAssetUrl(course.thumbnail)}
+                          src={getCourseImageSrc(course)}
                           alt={course.title}
                           fill
                           className="object-cover"

@@ -152,6 +152,16 @@ Query modules in `lib/queries/`: `courses.ts`, `categories.ts`, `instructor.ts`,
 | `rich-text-editor.tsx` | TipTap rich text editor wrapper |
 | `search-input.tsx` | Search input with debounce |
 | `wishlist-button.tsx` | Wishlist toggle button (heart icon) |
+| `course-recommendations.tsx` | Horizontal scrollable course recommendation section |
+
+## Course Recommendations
+
+Query functions in `lib/queries/courses.ts`:
+- `getRecommendedByCategories(enrolledCourseIds, enrolledCategoryIds, limit)` — courses from student's studied categories, excluding enrolled
+- `getRecommendedByInstructors(enrolledCourseIds, enrolledInstructorIds, limit)` — courses from studied instructors
+- `getTrendingCourses(enrolledCourseIds, limit)` — highest enrollment courses, excluding enrolled
+
+Used in: `/dashboard` and `/my-courses` pages via `CourseRecommendationSection` component. Extracts category/instructor IDs from student's enrollment data.
 
 ## Important Conventions
 
@@ -196,6 +206,15 @@ Use `sonner` (not the deprecated shadcn `toast` component).
 - Refresh buttons use `useTransition()` + `router.push("/admin/<page>")` to reset all filters
 - Tables use `hidden lg:block` for desktop + mobile card layout (`lg:hidden`) for responsive design
 - Sidebar shows badge counts (pending courses, orders, reviews, applications) fetched in admin layout
+
+### Admin Loading & Error States
+- Every admin page has a `loading.tsx` with skeleton UI matching its layout (dashboard, users, courses, orders, reviews, categories, reports, settings, instructor-applications, instructor-reactivations)
+- Global error boundary at `(admin)/error.tsx` catches all admin errors
+- Detail pages (`[id]`) have specific `error.tsx` with Vietnamese messages + "Quay lại danh sách" link (orders, users, courses, instructor-applications)
+
+### Admin Query Types (`lib/queries/admin.ts`)
+- All query functions have explicit return types
+- Exported interfaces: `AdminUser`, `AdminUserDetail`, `AdminReview`, `RevenueStatsResult`, `EnrollmentTrendItem`, `CourseStatusItem`, `ReportDataResult`, `LatestEnrollment`, `LatestReview`
 
 ### Admin Charts (Recharts)
 - `dashboard-charts.tsx`: RevenueChart (BarChart), EnrollmentChart (LineChart), CourseStatusChart (PieChart donut)

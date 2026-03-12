@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (quizRes.status === 401) {
-      return NextResponse.json({ error: "Chua xac thuc." }, { status: 401 });
+      return NextResponse.json({ error: "Chưa xác thực." }, { status: 401 });
     }
 
     if (!quizRes.ok) {
       const errorData = await quizRes.json().catch(() => null);
-      const message = errorData?.errors?.[0]?.message || "Khong the tao quiz.";
+      const message = errorData?.errors?.[0]?.message || "Không thể tạo quiz.";
       return NextResponse.json({ error: message }, { status: quizRes.status });
     }
 
@@ -99,6 +99,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: quiz }, { status: 201 });
   } catch (error) {
     console.error("POST quiz error:", error);
-    return NextResponse.json({ error: "Loi he thong." }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống." }, { status: 500 });
   }
 }

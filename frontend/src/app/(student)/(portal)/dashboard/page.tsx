@@ -13,11 +13,16 @@ import { getCourseImageSrc } from "@/lib/course-image";
 import { partitionEnrollments } from "@/lib/enrollment-helpers";
 import { recalcEnrollmentsProgress } from "@/lib/enrollment-progress";
 import { getUserEnrollments } from "@/lib/queries/enrollments";
+import {
+  getRecommendedByCategories,
+  getTrendingCourses,
+} from "@/lib/queries/courses";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MentorPlanCard } from "@/components/features/mentor-plan-card";
-import type { Course, Lesson } from "@/types";
+import { CourseRecommendationSection } from "@/components/features/course-recommendations";
+import type { Course, Category, Lesson } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -131,12 +136,47 @@ export default async function StudentDashboard() {
     return acc + Math.round((duration * progress) / 100);
   }, 0);
 
-  const recentEnrollments = activeEnrollments.slice(0, 4);
+  // Sort active enrollments: ones with recent progress first, then by enrollment date
+  const sortedActiveEnrollments = [...activeEnrollments].sort((a, b) => {
+    const aHasProgress = a.last_lesson_id ? 1 : 0;
+    const bHasProgress = b.last_lesson_id ? 1 : 0;
+    if (aHasProgress !== bHasProgress) return bHasProgress - aHasProgress;
+    const aProgress = a.progress ?? 0;
+    const bProgress = b.progress ?? 0;
+    // Active courses with some progress but not finished are prioritized
+    if (aProgress > 0 && bProgress === 0) return -1;
+    if (bProgress > 0 && aProgress === 0) return 1;
+    return 0;
+  });
+  const recentEnrollments = sortedActiveEnrollments.slice(0, 4);
   const firstRecentCourse = recentEnrollments[0]?.course_id;
   const mentorCourseId =
     firstRecentCourse && typeof firstRecentCourse === "object"
       ? ((firstRecentCourse as Course).id ?? null)
       : null;
+
+  // Extract data for recommendations
+  const enrolledCourseIds: string[] = [];
+  const enrolledCategoryIds: string[] = [];
+  for (const enrollment of normalizedEnrollments) {
+    const course = enrollment.course_id as Course | null;
+    if (!course || typeof course === "string") continue;
+    enrolledCourseIds.push(course.id);
+    const cat = course.category_id;
+    if (cat && typeof cat === "object") {
+      const catId = (cat as Category).id;
+      if (catId && !enrolledCategoryIds.includes(catId)) {
+        enrolledCategoryIds.push(catId);
+      }
+    } else if (typeof cat === "string" && !enrolledCategoryIds.includes(cat)) {
+      enrolledCategoryIds.push(cat);
+    }
+  }
+
+  const [recommendedByCategory, trendingCourses] = await Promise.all([
+    getRecommendedByCategories(enrolledCourseIds, enrolledCategoryIds, 8),
+    getTrendingCourses(enrolledCourseIds, 8),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -263,11 +303,19 @@ export default async function StudentDashboard() {
                             ? `Bài gần nhất: ${lastLesson.title}`
                             : "Chưa bắt đầu"}
                         </p>
-                        <Badge className="mt-3" variant="secondary">
-                          {enrollment.derivedStatus === "completed"
-                            ? "Hoàn thành"
-                            : "Đang học"}
-                        </Badge>
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">
+                              {Math.round(enrollment.progress ?? 0)}% hoàn thành
+                            </span>
+                          </div>
+                          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className="h-full rounded-full bg-[#2f57ef] transition-all"
+                              style={{ width: `${Math.min(100, Math.round(enrollment.progress ?? 0))}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -286,6 +334,20 @@ export default async function StudentDashboard() {
           </div>
         )}
       </section>
+
+      <CourseRecommendationSection
+        title="Gợi ý cho bạn"
+        subtitle="Dựa trên các danh mục bạn đang học"
+        courses={recommendedByCategory}
+        viewAllHref="/courses"
+      />
+
+      <CourseRecommendationSection
+        title="Khoá học phổ biến"
+        subtitle="Được nhiều học viên đăng ký nhất"
+        courses={trendingCourses}
+        viewAllHref="/courses"
+      />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.35)]">
         <h3 className="mb-4 text-lg font-bold text-slate-900">Hoạt động gần đây</h3>

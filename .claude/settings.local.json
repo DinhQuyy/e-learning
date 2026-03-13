@@ -12,7 +12,12 @@
       "Bash(npx next lint)",
       "Bash(npx eslint src/ --max-warnings=100)",
       "Bash(npx eslint src/app/\\\\\\(admin\\\\\\) src/app/api/admin src/lib/queries/admin.ts src/lib/validations.ts src/components/ui/checkbox.tsx --max-warnings=100)",
-      "Bash(npx shadcn@latest add calendar --yes)"
+      "Bash(npx shadcn@latest add calendar --yes)",
+      "Bash(npm run:*)",
+      "Bash(find /c/Users/Admin/Downloads/e-learning/frontend/src/app -name \"*.tsx\" -path \"*\\(student\\)*\" -type f)",
+      "Bash(ls -la /c/Users/Admin/Downloads/e-learning/frontend/src/app/\\\\\\(public\\\\\\)/)",
+      "Bash(grep -E \"\\\\.tsx$|^d\")",
+      "Bash(find \"c:/Users/Admin/Downloads/e-learning/frontend/src/app/\\(instructor\\)\" -name \"*.tsx\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders"

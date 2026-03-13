@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingStars } from "@/components/features/rating-stars";
-import { ReviewCard } from "@/components/features/review-card";
+import { ShareButton } from "./share-button";
+import { ReviewList } from "./review-list";
 import { CourseCard } from "@/components/features/course-card";
 import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog";
 import { CourseActions } from "./course-actions";
@@ -773,21 +774,7 @@ export default async function CourseDetailPage({
                 </div>
               </div>
 
-              <div className="mt-6 space-y-4">
-                {approvedReviews.slice(0, 5).map((review) => (
-                  <ReviewCard key={review.id} review={review} />
-                ))}
-
-                {approvedReviews.length > 5 ? (
-                  <Button variant="outline" className="w-full">
-                    Xem thêm {approvedReviews.length - 5} đánh giá
-                  </Button>
-                ) : null}
-
-                {approvedReviews.length === 0 ? (
-                  <p className="text-sm text-slate-500">Chưa có đánh giá nào.</p>
-                ) : null}
-              </div>
+              <ReviewList reviews={approvedReviews} />
             </SectionCard>
           </div>
 
@@ -917,9 +904,7 @@ export default async function CourseDetailPage({
                 </ul>
 
                 <div className="mt-5 border-t border-slate-200 pt-4">
-                  <Button variant="outline" className="w-full">
-                    Chia sẻ khoá học
-                  </Button>
+                  <ShareButton title={course.title} slug={course.slug} />
                 </div>
               </div>
             </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -42,6 +43,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiPatch } from "@/lib/api-fetch";
 import { getCourseImageSrc } from "@/lib/course-image";
@@ -70,6 +81,29 @@ const statusMap: Record<
 
 function CourseTable({ courses }: { courses: InstructorCourse[] }) {
   const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<InstructorCourse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/instructor/courses/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Không thể xoá khoá học");
+      }
+      toast.success("Đã xoá khoá học thành công");
+      setDeleteTarget(null);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Có lỗi xảy ra khi xoá");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleStatusChange = async (
     courseId: string,
@@ -228,7 +262,10 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(course)}
+                      >
                         <Trash2 className="mr-2 size-4" />
                         Xoá
                       </DropdownMenuItem>
@@ -240,6 +277,28 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
           })}
         </TableBody>
       </Table>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá khoá học</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xoá khoá học &quot;{deleteTarget?.title}&quot;? Hành động
+              này không thể hoàn tác. Chỉ khoá học ở trạng thái bản nháp hoặc chờ duyệt
+              và chưa có học viên mới có thể xoá.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Đang xoá..." : "Xoá khoá học"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

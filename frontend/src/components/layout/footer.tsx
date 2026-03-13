@@ -3,10 +3,10 @@ import { BookOpen, Mail, Phone, MapPin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const aboutLinks = [
-  { href: "/about", label: "Về chúng tôi" },
-  { href: "/instructors", label: "Giảng viên" },
-  { href: "/careers", label: "Tuyển dụng" },
-  { href: "/blog", label: "Blog" },
+  { href: "/help", label: "Về chúng tôi" },
+  { href: "/courses", label: "Khóa học" },
+  { href: "/categories", label: "Danh mục" },
+  { href: "/faq", label: "FAQ" },
 ];
 
 const quickLinks = [

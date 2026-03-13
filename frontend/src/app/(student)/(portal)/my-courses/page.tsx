@@ -4,6 +4,10 @@ import { partitionEnrollments } from "@/lib/enrollment-helpers";
 import { recalcEnrollmentsProgress } from "@/lib/enrollment-progress";
 import { getUserEnrollments } from "@/lib/queries/enrollments";
 import {
+  getRecommendedByCategories,
+  getTrendingCourses,
+} from "@/lib/queries/courses";
+import {
   Card,
   CardContent,
 } from "@/components/ui/card";
@@ -13,10 +17,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CourseRecommendationSection } from "@/components/features/course-recommendations";
 import { BookOpen, ArrowRight, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Course, Lesson } from "@/types";
+import type { Course, Category, Lesson } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -25,8 +30,29 @@ export default async function MyCoursesPage() {
   const enrollmentsRaw = await getUserEnrollments(token);
   const enrollments = await recalcEnrollmentsProgress(enrollmentsRaw, token);
 
-  const { active: activeEnrollments, completed: completedEnrollments } =
+  const { normalized: allEnrollments, active: activeEnrollments, completed: completedEnrollments } =
     partitionEnrollments(enrollments);
+
+  // Extract enrolled course/category IDs for recommendations
+  const enrolledCourseIds: string[] = [];
+  const enrolledCategoryIds: string[] = [];
+  for (const enrollment of allEnrollments) {
+    const course = enrollment.course_id as Course | null;
+    if (!course || typeof course === "string") continue;
+    enrolledCourseIds.push(course.id);
+    const cat = course.category_id;
+    if (cat && typeof cat === "object") {
+      const catId = (cat as Category).id;
+      if (catId && !enrolledCategoryIds.includes(catId)) enrolledCategoryIds.push(catId);
+    } else if (typeof cat === "string" && !enrolledCategoryIds.includes(cat)) {
+      enrolledCategoryIds.push(cat);
+    }
+  }
+
+  const [recommendedCourses, trendingCourses] = await Promise.all([
+    getRecommendedByCategories(enrolledCourseIds, enrolledCategoryIds, 8),
+    getTrendingCourses(enrolledCourseIds, 8),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -232,6 +258,20 @@ export default async function MyCoursesPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <CourseRecommendationSection
+        title="Có thể bạn quan tâm"
+        subtitle="Dựa trên các danh mục bạn đang học"
+        courses={recommendedCourses}
+        viewAllHref="/courses"
+      />
+
+      <CourseRecommendationSection
+        title="Khoá học nổi bật"
+        subtitle="Được nhiều học viên đăng ký nhất"
+        courses={trendingCourses}
+        viewAllHref="/courses"
+      />
     </div>
   );
 }

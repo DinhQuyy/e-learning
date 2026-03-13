@@ -314,7 +314,7 @@ export default function EditCoursePage() {
       setActiveTab("media");
     }
 
-    toast.error("Form chua hop le. Vui long kiem tra lai thong tin.");
+    toast.error("Form chưa hợp lệ. Vui lòng kiểm tra lại thông tin.");
   };
 
   const handlePublish = async () => {

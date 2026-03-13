@@ -613,6 +613,41 @@ export async function getTopReviews(limit = 6) {
   }
 }
 
+// ── Shared listing fields ──
+
+const LISTING_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "description",
+  "thumbnail",
+  "price",
+  "discount_price",
+  "level",
+  "average_rating",
+  "total_enrollments",
+  "total_lessons",
+  "total_duration",
+  "date_created",
+  { category_id: ["id", "name", "slug"] },
+  {
+    instructors: [
+      "id",
+      { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+    ],
+  },
+] as never[];
+
+async function enrichCourses(courses: Course[]): Promise<Course[]> {
+  if (courses.length === 0) return [];
+  const ids = courses.map((c) => c.id);
+  const [ratingMap, enrollmentMap] = await Promise.all([
+    fetchRatingsByCourse(ids),
+    fetchEnrollmentCountsByCourse(ids),
+  ]);
+  return mergeMetricsIntoCourses(courses, ratingMap, enrollmentMap);
+}
+
 export async function getRelatedCourses(
   courseId: string,
   categoryId: string | null,
@@ -632,36 +667,131 @@ export async function getRelatedCourses(
       filter,
       sort: ["-average_rating", "-total_enrollments"],
       limit,
-      fields: [
-        "id",
-        "title",
-        "slug",
-        "description",
-        "thumbnail",
-        "price",
-        "discount_price",
-        "level",
-        "average_rating",
-        "total_enrollments",
-        "total_lessons",
-        "total_duration",
-        "date_created",
-        { category_id: ["id", "name", "slug"] },
-        {
-          instructors: [
-            "id",
-            { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
-          ],
-        },
-      ],
+      fields: LISTING_FIELDS,
     })
   );
+  return enrichCourses(data as unknown as Course[]);
+}
 
-  const courses = data as unknown as Course[];
-  const courseIds = courses.map((c) => c.id);
-  const [ratingMap, enrollmentMap] = await Promise.all([
-    fetchRatingsByCourse(courseIds),
-    fetchEnrollmentCountsByCourse(courseIds),
-  ]);
-  return mergeMetricsIntoCourses(courses, ratingMap, enrollmentMap);
+// ── Course Recommendations ──
+
+/**
+ * Courses from categories the student has studied, excluding already-enrolled.
+ */
+export async function getRecommendedByCategories(
+  enrolledCourseIds: string[],
+  enrolledCategoryIds: string[],
+  limit = 8
+): Promise<Course[]> {
+  if (enrolledCategoryIds.length === 0) return [];
+
+  try {
+    const filter: Record<string, unknown> = {
+      status: { _eq: "published" },
+      category_id: { _in: enrolledCategoryIds },
+    };
+    if (enrolledCourseIds.length > 0) {
+      filter.id = { _nin: enrolledCourseIds };
+    }
+
+    const data = await directus.request(
+      readItems("courses", {
+        filter,
+        sort: ["-average_rating", "-total_enrollments"],
+        limit,
+        fields: LISTING_FIELDS,
+      })
+    );
+    return enrichCourses(data as unknown as Course[]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Courses from instructors the student has studied with, excluding already-enrolled.
+ */
+export async function getRecommendedByInstructors(
+  enrolledCourseIds: string[],
+  enrolledInstructorIds: string[],
+  limit = 8
+): Promise<Course[]> {
+  if (!serverToken || enrolledInstructorIds.length === 0) return [];
+
+  try {
+    const params = new URLSearchParams();
+    params.set("filter[user_id][_in]", enrolledInstructorIds.join(","));
+    params.set("fields", "course_id");
+    params.set("limit", "-1");
+
+    const junctionRes = await fetch(
+      `${directusUrl}/items/courses_instructors?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${serverToken}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+    if (!junctionRes.ok) return [];
+
+    const junctionData = await junctionRes.json();
+    const allInstructorCourseIds: string[] = Array.from(
+      new Set<string>(
+        (junctionData.data ?? [])
+          .map((j: { course_id?: string | null }) => j.course_id)
+          .filter((id: unknown): id is string => typeof id === "string")
+      )
+    );
+    const instructorCourseIds = allInstructorCourseIds.filter(
+      (id) => !enrolledCourseIds.includes(id)
+    );
+
+    if (instructorCourseIds.length === 0) return [];
+
+    const data = await directus.request(
+      readItems("courses", {
+        filter: {
+          status: { _eq: "published" },
+          id: { _in: instructorCourseIds.slice(0, 60) },
+        },
+        sort: ["-average_rating", "-total_enrollments"],
+        limit,
+        fields: LISTING_FIELDS,
+      })
+    );
+    return enrichCourses(data as unknown as Course[]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Trending courses (highest enrollment), excluding already-enrolled.
+ */
+export async function getTrendingCourses(
+  enrolledCourseIds: string[] = [],
+  limit = 8
+): Promise<Course[]> {
+  try {
+    const filter: Record<string, unknown> = {
+      status: { _eq: "published" },
+    };
+    if (enrolledCourseIds.length > 0) {
+      filter.id = { _nin: enrolledCourseIds };
+    }
+
+    const data = await directus.request(
+      readItems("courses", {
+        filter,
+        sort: ["-total_enrollments", "-average_rating"],
+        limit,
+        fields: LISTING_FIELDS,
+      })
+    );
+    return enrichCourses(data as unknown as Course[]);
+  } catch {
+    return [];
+  }
 }

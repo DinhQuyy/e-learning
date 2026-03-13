@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   BookOpenText,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -87,21 +88,28 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+function readSearchParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" && first.trim() ? first.trim() : null;
+  }
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 export default async function LessonPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseSlug: string; lessonSlug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { token, user } = await requireAuth();
   const { courseSlug, lessonSlug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const fromAiReferences = readSearchParam(resolvedSearchParams.from) === "ai-references";
 
   const course = await getCourseBySlug(token, courseSlug);
   if (!course) redirect("/my-courses");
-
-  const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
-  if (!enrollment) redirect(`/courses/${courseSlug}`);
-
-  const progressRecords = await getCourseProgress(token, enrollment.id);
 
   const sortedModules = (course.modules || [])
     .sort((a: Module, b: Module) => a.sort - b.sort)
@@ -117,6 +125,24 @@ export default async function LessonPage({
   if (currentIndex === -1) redirect(`/learn/${courseSlug}`);
 
   const lesson = allLessons[currentIndex];
+  const currentModule =
+    sortedModules.find((moduleItem) =>
+      moduleItem.lessons.some((item) => item.id === lesson.id),
+    ) ?? null;
+  const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
+  if (!enrollment) {
+    if (fromAiReferences) {
+      const params = new URLSearchParams({ from: "ai-references" });
+      if (currentModule?.id) {
+        params.set("module", String(currentModule.id));
+      }
+      params.set("lesson", String(lesson.id));
+      redirect(`/courses/${courseSlug}?${params.toString()}#lesson-${lesson.id}`);
+    }
+    redirect(`/courses/${courseSlug}`);
+  }
+
+  const progressRecords = await getCourseProgress(token, enrollment.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
   const existingReview = await getMyReview(token, course.id, user.id);
@@ -145,8 +171,20 @@ export default async function LessonPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 lg:px-6 lg:py-7">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] p-5 sm:p-6">
+      <section
+        className={
+          fromAiReferences
+            ? "overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-[0_16px_40px_-28px_rgba(8,145,178,0.35)] ring-1 ring-cyan-100"
+            : "overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+        }
+      >
+        <div
+          className={
+            fromAiReferences
+              ? "bg-gradient-to-r from-cyan-50 via-[#f7fbff] to-[#eef8ff] p-5 sm:p-6"
+              : "bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] p-5 sm:p-6"
+          }
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="rounded-full bg-white text-slate-700 shadow-sm">{lessonTypeLabel}</Badge>
             {lesson.duration > 0 ? (
@@ -161,7 +199,19 @@ export default async function LessonPage({
             >
               {isCompleted ? "Đã hoàn thành" : "Đang học"}
             </Badge>
+            {fromAiReferences ? (
+              <Badge className="rounded-full bg-cyan-700 text-white shadow-sm">
+                <Bookmark className="mr-1 size-3.5" />
+                Từ Trợ lý AI
+              </Badge>
+            ) : null}
           </div>
+
+          {fromAiReferences ? (
+            <div className="mt-4 rounded-2xl border border-cyan-200 bg-white/80 px-4 py-3 text-sm text-cyan-900">
+              Đây là bài học được Trợ lý AI gợi ý cho chủ đề bạn vừa tìm.
+            </div>
+          ) : null}
 
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             {lesson.title}

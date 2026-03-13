@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
@@ -52,6 +53,7 @@ const poppins = Poppins({
 
 interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 interface SectionCardProps {
@@ -105,6 +107,14 @@ function stripHtml(text: string | null | undefined): string {
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return "--";
   return new Date(dateString).toLocaleDateString("vi-VN");
+}
+
+function readSearchParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" && first.trim() ? first.trim() : null;
+  }
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function getInstructors(course: Course): DirectusUser[] {
@@ -166,8 +176,10 @@ export async function generateMetadata({
 
 export default async function CourseDetailPage({
   params,
+  searchParams,
 }: CourseDetailPageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const course = await getCourseBySlug(slug);
 
   if (!course) {
@@ -193,6 +205,24 @@ export default async function CourseDetailPage({
         .filter((lesson) => (lesson as Lesson).status === "published")
         .sort((a, b) => (a as Lesson).sort - (b as Lesson).sort),
     }));
+
+  const focusedModuleId = readSearchParam(resolvedSearchParams.module);
+  const focusedLessonId = readSearchParam(resolvedSearchParams.lesson);
+  const fromAiReferences = readSearchParam(resolvedSearchParams.from) === "ai-references";
+  const lessonModuleId =
+    focusedLessonId
+      ? sortedModules.find((moduleItem) =>
+          moduleItem.lessons.some((lesson) => String((lesson as Lesson).id) === focusedLessonId),
+        )?.id ?? null
+      : null;
+  const defaultOpenModule =
+    focusedModuleId && sortedModules.some((moduleItem) => String(moduleItem.id) === focusedModuleId)
+      ? focusedModuleId
+      : lessonModuleId
+        ? String(lessonModuleId)
+        : sortedModules[0]?.id
+          ? String(sortedModules[0].id)
+          : null;
 
   const approvedReviews = (course.reviews || []).filter(
     (review) => (review as Review).status === "approved",
@@ -470,21 +500,56 @@ export default async function CourseDetailPage({
                 {sortedModules.length} chương • {totalLessons} bài học • {formatDuration(course.total_duration)}
               </p>
 
+              {fromAiReferences && (focusedModuleId || focusedLessonId) ? (
+                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+                  <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                    Trợ lý AI
+                  </Badge>
+                  <span>
+                    {focusedLessonId
+                      ? "Dang mo bai hoc duoc AI goi y trong kho noi dung nay."
+                      : "Dang mo module duoc AI goi y trong kho noi dung nay."}
+                  </span>
+                </div>
+              ) : null}
+
               {sortedModules.length > 0 ? (
                 <Accordion
                   type="multiple"
-                  defaultValue={[String(sortedModules[0]?.id)]}
+                  defaultValue={defaultOpenModule ? [defaultOpenModule] : []}
                   className="mt-4 divide-y rounded-xl border border-slate-200"
                 >
-                  {sortedModules.map((moduleItem) => (
+                  {sortedModules.map((moduleItem) => {
+                    const isFocusedModule =
+                      fromAiReferences && String(moduleItem.id) === String(defaultOpenModule ?? "");
+
+                    return (
                     <AccordionItem
                       key={moduleItem.id}
                       value={String(moduleItem.id)}
-                      className="border-0"
+                      id={`module-${moduleItem.id}`}
+                      className={
+                        isFocusedModule
+                          ? "border-0 rounded-2xl bg-cyan-50/80 ring-1 ring-cyan-200 shadow-sm"
+                          : "border-0"
+                      }
                     >
-                      <AccordionTrigger className="px-5 py-4 text-left font-semibold hover:bg-slate-50 hover:no-underline">
+                      <AccordionTrigger
+                        className={
+                          isFocusedModule
+                            ? "px-5 py-4 text-left font-semibold text-cyan-950 hover:bg-cyan-50 hover:no-underline"
+                            : "px-5 py-4 text-left font-semibold hover:bg-slate-50 hover:no-underline"
+                        }
+                      >
                         <div className="mr-4 flex flex-1 items-center justify-between gap-3">
-                          <span className="text-slate-900">{moduleItem.title}</span>
+                          <span className="flex items-center gap-2 text-slate-900">
+                            {moduleItem.title}
+                            {isFocusedModule ? (
+                              <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                                AI pick
+                              </Badge>
+                            ) : null}
+                          </span>
                           <span className="text-xs font-medium text-slate-500">
                             {moduleItem.lessons.length} bài học
                           </span>
@@ -494,11 +559,18 @@ export default async function CourseDetailPage({
                         <ul className="divide-y border-t border-slate-200">
                           {moduleItem.lessons.map((lesson) => {
                             const lessonData = lesson as Lesson;
+                            const isFocusedLesson =
+                              fromAiReferences && String(lessonData.id) === String(focusedLessonId ?? "");
 
                             return (
                               <li
                                 key={lessonData.id}
-                                className="flex items-center justify-between gap-4 px-5 py-3"
+                                id={`lesson-${lessonData.id}`}
+                                className={
+                                  isFocusedLesson
+                                    ? "flex items-center justify-between gap-4 bg-cyan-50/90 px-5 py-3 ring-1 ring-inset ring-cyan-200"
+                                    : "flex items-center justify-between gap-4 px-5 py-3"
+                                }
                               >
                                 <div className="flex min-w-0 items-center gap-3">
                                   {lessonData.type === "video" ? (
@@ -509,6 +581,11 @@ export default async function CourseDetailPage({
                                   <span className="truncate text-sm text-slate-700">
                                     {lessonData.title}
                                   </span>
+                                  {isFocusedLesson ? (
+                                    <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                                      AI pick
+                                    </Badge>
+                                  ) : null}
                                 </div>
                                 <div className="flex shrink-0 items-center gap-3 text-xs text-slate-500">
                                   {lessonData.is_free ? (
@@ -532,7 +609,8 @@ export default async function CourseDetailPage({
                         </ul>
                       </AccordionContent>
                     </AccordionItem>
-                  ))}
+                    );
+                  })}
                 </Accordion>
               ) : (
                 <p className="mt-4 text-sm text-slate-500">Chưa có nội dung bài học để hiển thị.</p>

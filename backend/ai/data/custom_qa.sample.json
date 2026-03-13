@@ -201,8 +201,8 @@
     },
     {
       "id": "ai-helpdesk-01",
-      "question": "Helpdesk AI dùng để làm gì?",
-      "answer": "Helpdesk AI trả lời theo từng bước và cung cấp deep link thao tác trong hệ thống.",
+      "question": "Trợ lý AI dùng để làm gì?",
+      "answer": "Trợ lý AI trả lời theo từng bước và cung cấp deep link thao tác trong hệ thống.",
       "deep_link": "/help",
       "aliases": [
         "Trợ lý AI là gì",

@@ -39,7 +39,7 @@ export async function GET() {
                 ? j.course_id.id
                 : null
           )
-          .filter((id): id is string => typeof id === "string" && id.length > 0)
+          .filter((id: string | null): id is string => typeof id === "string" && id.length > 0)
       )
     );
 

@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, Users } from "lucide-react";
 import { RatingStars } from "@/components/features/rating-stars";
 import { WishlistButton } from "@/components/features/wishlist-button";
 import { getCourseImageSrc } from "@/lib/course-image";
+import { getAssetUrl } from "@/lib/directus";
 import { cn } from "@/lib/utils";
 import type { Category, Course, DirectusUser } from "@/types";
 

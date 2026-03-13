@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { apiFetch, apiPost } from "@/lib/api-fetch";
 import { toast } from "sonner";
@@ -131,12 +132,13 @@ export default function MockPaymentPage() {
             <div className="space-y-4">
               <div className="flex justify-center">
                 {qrDataUrl && (
-                  <img
+                  <Image
                     src={qrDataUrl}
                     alt="QR Code"
                     className="rounded-lg"
                     width={200}
                     height={200}
+                    unoptimized
                   />
                 )}
               </div>

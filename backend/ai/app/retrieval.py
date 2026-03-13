@@ -43,6 +43,7 @@ def retrieve_chunks(
     top_k: int | None = None,
     source_types: tuple[str, ...] | None = None,
     max_distance: float | None = None,
+    null_course_only: bool = False,
 ) -> tuple[list[dict[str, Any]], bool]:
     settings = get_settings()
     redis = get_redis()
@@ -65,7 +66,7 @@ def retrieve_chunks(
                         """
                         SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
                                kd.title AS document_title,
-                               kd.source_type, (kc.embedding <=> %s::vector) AS distance
+                               kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
                         FROM knowledge_chunks kc
                         JOIN knowledge_documents kd ON kd.id = kc.document_id
                         WHERE kc.visibility = ANY(%s)
@@ -88,7 +89,7 @@ def retrieve_chunks(
                         """
                         SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
                                kd.title AS document_title,
-                               kd.source_type, (kc.embedding <=> %s::vector) AS distance
+                               kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
                         FROM knowledge_chunks kc
                         JOIN knowledge_documents kd ON kd.id = kc.document_id
                         WHERE kc.visibility = ANY(%s)
@@ -100,40 +101,79 @@ def retrieve_chunks(
                     )
             else:
                 if source_types:
-                    cur.execute(
-                        """
-                        SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
-                               kd.title AS document_title,
-                               kd.source_type, (kc.embedding <=> %s::vector) AS distance
-                        FROM knowledge_chunks kc
-                        JOIN knowledge_documents kd ON kd.id = kc.document_id
-                        WHERE kc.visibility = ANY(%s)
-                          AND kd.source_type = ANY(%s)
-                        ORDER BY kc.embedding <=> %s::vector
-                        LIMIT %s
-                        """,
-                        (
-                            vector_literal,
-                            list(visibilities),
-                            list(source_types),
-                            vector_literal,
-                            k,
-                        ),
-                    )
+                    if null_course_only:
+                        cur.execute(
+                            """
+                            SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
+                                   kd.title AS document_title,
+                                   kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
+                            FROM knowledge_chunks kc
+                            JOIN knowledge_documents kd ON kd.id = kc.document_id
+                            WHERE kc.visibility = ANY(%s)
+                              AND kc.course_id IS NULL
+                              AND kd.source_type = ANY(%s)
+                            ORDER BY kc.embedding <=> %s::vector
+                            LIMIT %s
+                            """,
+                            (
+                                vector_literal,
+                                list(visibilities),
+                                list(source_types),
+                                vector_literal,
+                                k,
+                            ),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
+                                   kd.title AS document_title,
+                                   kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
+                            FROM knowledge_chunks kc
+                            JOIN knowledge_documents kd ON kd.id = kc.document_id
+                            WHERE kc.visibility = ANY(%s)
+                              AND kd.source_type = ANY(%s)
+                            ORDER BY kc.embedding <=> %s::vector
+                            LIMIT %s
+                            """,
+                            (
+                                vector_literal,
+                                list(visibilities),
+                                list(source_types),
+                                vector_literal,
+                                k,
+                            ),
+                        )
                 else:
-                    cur.execute(
-                        """
-                        SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
-                               kd.title AS document_title,
-                               kd.source_type, (kc.embedding <=> %s::vector) AS distance
-                        FROM knowledge_chunks kc
-                        JOIN knowledge_documents kd ON kd.id = kc.document_id
-                        WHERE kc.visibility = ANY(%s)
-                        ORDER BY kc.embedding <=> %s::vector
-                        LIMIT %s
-                        """,
-                        (vector_literal, list(visibilities), vector_literal, k),
-                    )
+                    if null_course_only:
+                        cur.execute(
+                            """
+                            SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
+                                   kd.title AS document_title,
+                                   kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
+                            FROM knowledge_chunks kc
+                            JOIN knowledge_documents kd ON kd.id = kc.document_id
+                            WHERE kc.visibility = ANY(%s)
+                              AND kc.course_id IS NULL
+                            ORDER BY kc.embedding <=> %s::vector
+                            LIMIT %s
+                            """,
+                            (vector_literal, list(visibilities), vector_literal, k),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            SELECT kc.id, kc.document_id, kc.chunk_text, kc.course_id, kc.visibility,
+                                   kd.title AS document_title,
+                                   kd.source_type, kd.source_id, (kc.embedding <=> %s::vector) AS distance
+                            FROM knowledge_chunks kc
+                            JOIN knowledge_documents kd ON kd.id = kc.document_id
+                            WHERE kc.visibility = ANY(%s)
+                            ORDER BY kc.embedding <=> %s::vector
+                            LIMIT %s
+                            """,
+                            (vector_literal, list(visibilities), vector_literal, k),
+                        )
             rows = list(cur.fetchall())
 
     threshold = settings.retrieval_max_distance if max_distance is None else max_distance
@@ -155,6 +195,16 @@ def format_context(chunks: list[dict[str, Any]]) -> str:
     for index, chunk in enumerate(chunks, start=1):
         cid = chunk.get('id')
         text = chunk.get('chunk_text', '')
-        lines.append(f"[{index}] chunk_id={cid}: {text}")
+        source_type = str(chunk.get('source_type') or '').strip()
+        source_id = str(chunk.get('source_id') or '').strip()
+        title = str(chunk.get('document_title') or '').strip()
+        meta_parts = [f"chunk_id={cid}"]
+        if source_type:
+            meta_parts.append(f"source_type={source_type}")
+        if source_id:
+            meta_parts.append(f"source_id={source_id}")
+        if title:
+            meta_parts.append(f"title={json.dumps(title, ensure_ascii=False)}")
+        lines.append(f"[{index}] {' '.join(meta_parts)}: {text}")
     lines.append('<<<END_CONTEXT>>>')
     return '\n'.join(lines)

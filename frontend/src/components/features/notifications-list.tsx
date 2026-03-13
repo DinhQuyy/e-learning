@@ -67,7 +67,6 @@ function getNotificationIconColor(type: Notification["type"]) {
 
 export function NotificationsList({
   initialNotifications,
-  initialTotal: _initialTotal,
 }: NotificationsListProps) {
   const [notifications, setNotifications] =
     useState<Notification[]>(initialNotifications);

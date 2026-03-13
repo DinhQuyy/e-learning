@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 
 
 ModeType = Literal['helpdesk', 'mentor', 'references', 'assignment']
+ReferenceSourceType = Literal['references', 'course_module', 'course_lesson', 'quiz']
+AssistantRequestedMode = Literal['auto', 'helpdesk', 'references']
+AssistantResolvedMode = Literal['helpdesk', 'references']
 
 
 class CtaModel(BaseModel):
@@ -45,6 +48,7 @@ class ReferenceRecModel(BaseModel):
     level: Literal['basic', 'intermediate', 'advanced']
     reason: str
     url: str
+    source_type: ReferenceSourceType | None = None
     source_ids: list[str] = Field(default_factory=list)
 
 
@@ -53,6 +57,59 @@ class ReferencesOutput(BaseModel):
     topic: str
     recommendations: list[ReferenceRecModel] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+
+
+class ReferenceSuggestionModel(BaseModel):
+    title: str
+    source_type: ReferenceSourceType
+    url: str = ''
+    search_query: str = ''
+    course_title: str = ''
+    course_url: str = ''
+    category: str = ''
+    level: str = ''
+
+
+class ReferenceSuggestionsResponse(BaseModel):
+    query: str
+    items: list[ReferenceSuggestionModel] = Field(default_factory=list)
+
+
+class AssistantSuggestionModel(BaseModel):
+    kind: AssistantResolvedMode
+    title: str
+    description: str = ''
+    url: str = ''
+    search_query: str = ''
+    source_type: ReferenceSourceType | None = None
+    course_title: str = ''
+    course_url: str = ''
+    category: str = ''
+    level: str = ''
+
+
+class AssistantSuggestionsResponse(BaseModel):
+    query: str
+    requested_mode: AssistantRequestedMode = 'auto'
+    items: list[AssistantSuggestionModel] = Field(default_factory=list)
+
+
+class AssistantClarifyOption(BaseModel):
+    label: str
+    value: AssistantResolvedMode
+
+
+class AssistantClarifyPayload(BaseModel):
+    question: str
+    options: list[AssistantClarifyOption] = Field(default_factory=list)
+
+
+class AssistantResponse(BaseModel):
+    kind: Literal['helpdesk', 'references', 'clarify']
+    requested_mode: AssistantRequestedMode = 'auto'
+    resolved_mode: AssistantResolvedMode | None = None
+    route_reason: str
+    data: HelpdeskOutput | ReferencesOutput | AssistantClarifyPayload
 
 
 class MentorTaskModel(BaseModel):
@@ -120,6 +177,16 @@ class IndexDocumentRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     mode: Literal['helpdesk', 'references']
+    user_id: str
+    role: Literal['admin', 'instructor', 'student']
+    query: str
+    conversation_id: str | None = None
+    course_id: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssistantRequest(BaseModel):
+    mode: AssistantRequestedMode = 'auto'
     user_id: str
     role: Literal['admin', 'instructor', 'student']
     query: str
@@ -207,6 +274,29 @@ class DailyMetricsSummary(BaseModel):
 class DailyMetricsResponse(BaseModel):
     rows: list[DailyMetricRow] = Field(default_factory=list)
     summary: DailyMetricsSummary
+
+
+class IndexingStatusResponse(BaseModel):
+    queue_depth: int
+    total_documents: int
+    indexed_documents: int
+    pending_documents: int
+    total_chunks: int
+    oldest_pending_updated_at: datetime | None = None
+
+
+class IndexingRequeueRequest(BaseModel):
+    source_type: str | None = None
+    course_id: str | None = None
+    pending_only: bool = True
+    limit: int = Field(default=100, ge=1, le=500)
+
+
+class IndexingRequeueResponse(BaseModel):
+    status: Literal['ok']
+    queued: int
+    queue_depth: int
+    document_ids: list[str] = Field(default_factory=list)
 
 
 class CustomQaItem(BaseModel):

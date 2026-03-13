@@ -19,9 +19,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { AiCustomQaUploadCard } from "@/components/features/ai-custom-qa-upload-card";
-import { Star, TrendingUp, Trophy, BarChart3, Bot, DollarSign } from "lucide-react";
+import { AiIndexingAdminCard } from "@/components/features/ai-indexing-admin-card";
+import { Star, Trophy, Bot, DollarSign } from "lucide-react";
 import type { Metadata } from "next";
 import {
   EnrollmentTrendChart,
@@ -118,7 +118,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
             Chỉ số dịch vụ AI (24h)
           </CardTitle>
           <CardDescription>
-            Theo dõi hiệu năng AI helpdesk/mentor/assignment.
+            Theo dõi hiệu năng các nhánh của Trợ lý AI như hỗ trợ, tài liệu, mentor và assignment.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -206,6 +206,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
       </Card>
 
       <AiCustomQaUploadCard />
+      <AiIndexingAdminCard />
 
       <ReportFilters from={from} to={to} />
 

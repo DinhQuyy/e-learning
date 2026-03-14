@@ -12,6 +12,8 @@ from .indexing import to_queue_job, upsert_document
 from .migrate import run_migrations
 from .models import (
     AssignmentRequest,
+    AssistantRequest,
+    AssistantSuggestionsResponse,
     ChatRequest,
     CustomQaImportRequest,
     CustomQaImportResponse,
@@ -20,17 +22,24 @@ from .models import (
     FeedbackRequest,
     FeedbackResponse,
     HelpdeskSuggestionsResponse,
+    IndexingRequeueRequest,
+    IndexingRequeueResponse,
+    IndexingStatusResponse,
     IndexDocumentRequest,
     LearningEventRequest,
     MentorRequest,
     MetricsResponse,
+    ReferenceSuggestionsResponse,
 )
 from .redis_client import get_redis
 from .indexing import build_custom_qa_content, build_custom_qa_source_id, purge_document_set
 from .services import (
     build_mentor_context,
     clear_runtime_caches,
+    list_assistant_suggestions,
     list_helpdesk_suggestions,
+    list_reference_suggestions,
+    run_assistant,
     run_assignment,
     run_helpdesk,
     run_mentor,
@@ -38,8 +47,10 @@ from .services import (
 )
 from .store import (
     ensure_conversation,
+    get_indexing_status,
     get_daily_metrics,
     get_metrics,
+    list_documents_for_requeue,
     log_message,
     record_event,
     refresh_learning_progress,
@@ -110,6 +121,35 @@ def helpdesk_suggestions(
         limit=limit,
     )
     return HelpdeskSuggestionsResponse(query=q, items=items)
+
+
+@app.get('/v1/references/suggestions', response_model=ReferenceSuggestionsResponse)
+def references_suggestions(
+    q: str = "",
+    limit: int = Query(default=8, ge=1, le=25),
+    _auth: None = Depends(verify_internal_key),
+) -> ReferenceSuggestionsResponse:
+    items = list_reference_suggestions(query=q, limit=limit)
+    return ReferenceSuggestionsResponse(query=q, items=items)
+
+
+@app.get('/v1/assistant/suggestions', response_model=AssistantSuggestionsResponse)
+def assistant_suggestions(
+    role: Literal['admin', 'instructor', 'student'],
+    course_id: str | None = None,
+    mode: Literal['auto', 'helpdesk', 'references'] = 'auto',
+    q: str = "",
+    limit: int = Query(default=10, ge=1, le=25),
+    _auth: None = Depends(verify_internal_key),
+) -> AssistantSuggestionsResponse:
+    items = list_assistant_suggestions(
+        role=role,
+        course_id=course_id,
+        query=q,
+        requested_mode=mode,
+        limit=limit,
+    )
+    return AssistantSuggestionsResponse(query=q, requested_mode=mode, items=items)
 
 
 @app.post('/v1/index/document')
@@ -198,7 +238,10 @@ def chat(payload: ChatRequest, _auth: None = Depends(verify_internal_key)) -> JS
         )
     else:
         output, chunks, latency_ms, prompt_tokens, completion_tokens = run_references(
-            payload.query, payload.role, payload.course_id
+            payload.query,
+            payload.role,
+            payload.course_id,
+            payload.context.get('level') if isinstance(payload.context, dict) else None,
         )
 
     chunk_ids = [str(chunk.get('id')) for chunk in chunks]
@@ -212,6 +255,51 @@ def chat(payload: ChatRequest, _auth: None = Depends(verify_internal_key)) -> JS
         completion_tokens=completion_tokens,
         model=get_settings().llm_chat_model,
     )
+
+    return JSONResponse(
+        {
+            'conversation_id': conversation_id,
+            'assistant_message_id': assistant_message_id,
+            'data': output,
+        }
+    )
+
+
+@app.post('/v1/assistant/chat')
+def assistant_chat(payload: AssistantRequest, _auth: None = Depends(verify_internal_key)) -> JSONResponse:
+    _rate_limit(payload.user_id, 'assistant')
+
+    output, resolved_mode, chunks, latency_ms, prompt_tokens, completion_tokens = run_assistant(
+        payload.query,
+        payload.role,
+        payload.course_id,
+        payload.mode,
+        payload.context.get('level') if isinstance(payload.context, dict) else None,
+    )
+
+    conversation_id: str | None = None
+    assistant_message_id: str | None = None
+
+    if resolved_mode is not None:
+        conversation_id = ensure_conversation(
+            conversation_id=payload.conversation_id,
+            user_id=payload.user_id,
+            mode=resolved_mode,
+            course_id=payload.course_id,
+        )
+
+        log_message(conversation_id=conversation_id, role='user', content=payload.query)
+
+        assistant_message_id = log_message(
+            conversation_id=conversation_id,
+            role='assistant',
+            content=json.dumps(output.get('data') or {}, ensure_ascii=False),
+            retrieved_chunk_ids=[str(chunk.get('id')) for chunk in chunks],
+            latency_ms=latency_ms,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            model=get_settings().llm_chat_model,
+        )
 
     return JSONResponse(
         {
@@ -328,6 +416,41 @@ def learning_event(payload: LearningEventRequest, _auth: None = Depends(verify_i
 
     refresh_learning_progress(user_id=payload.user_id, course_id=payload.course_id)
     return {'status': 'ok'}
+
+
+@app.get('/v1/admin/indexing/status', response_model=IndexingStatusResponse)
+def admin_indexing_status(_auth: None = Depends(verify_internal_key)) -> IndexingStatusResponse:
+    settings = get_settings()
+    redis = get_redis()
+    queue_depth = int(redis.llen(settings.queue_index_name) or 0)
+    snapshot = get_indexing_status(queue_depth=queue_depth)
+    return IndexingStatusResponse(**snapshot)
+
+
+@app.post('/v1/admin/indexing/requeue', response_model=IndexingRequeueResponse)
+def admin_indexing_requeue(
+    payload: IndexingRequeueRequest, _auth: None = Depends(verify_internal_key)
+) -> IndexingRequeueResponse:
+    settings = get_settings()
+    redis = get_redis()
+    document_ids = list_documents_for_requeue(
+        source_type=payload.source_type,
+        course_id=payload.course_id,
+        pending_only=payload.pending_only,
+        limit=payload.limit,
+    )
+
+    if document_ids:
+        jobs = [to_queue_job(document_id) for document_id in document_ids]
+        redis.rpush(settings.queue_index_name, *jobs)
+
+    queue_depth = int(redis.llen(settings.queue_index_name) or 0)
+    return IndexingRequeueResponse(
+        status='ok',
+        queued=len(document_ids),
+        queue_depth=queue_depth,
+        document_ids=document_ids,
+    )
 
 
 @app.get('/v1/admin/metrics', response_model=MetricsResponse)

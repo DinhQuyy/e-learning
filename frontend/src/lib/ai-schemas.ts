@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const referenceSourceTypeSchema = z.enum(["references", "course_module", "course_lesson", "quiz"]);
+const assistantRequestedModeSchema = z.enum(["auto", "helpdesk", "references"]);
+
 const ctaSchema = z.object({
   label: z.string(),
   href: z.string(),
@@ -46,6 +49,7 @@ export const referencesResponseSchema = z.object({
       level: z.enum(['basic', 'intermediate', 'advanced']),
       reason: z.string(),
       url: z.string(),
+      source_type: referenceSourceTypeSchema.nullable().optional(),
       source_ids: z.array(z.string()),
     })
   ),
@@ -126,6 +130,70 @@ export const helpdeskSuggestionsResponseSchema = z.object({
   ),
 });
 
+export const referencesSuggestionsResponseSchema = z.object({
+  query: z.string(),
+  items: z.array(
+    z.object({
+      title: z.string(),
+      source_type: referenceSourceTypeSchema,
+      url: z.string(),
+      search_query: z.string(),
+      course_title: z.string(),
+      course_url: z.string(),
+      category: z.string(),
+      level: z.string(),
+    })
+  ),
+});
+
+export const assistantSuggestionsResponseSchema = z.object({
+  query: z.string(),
+  requested_mode: assistantRequestedModeSchema,
+  items: z.array(
+    z.object({
+      kind: z.enum(["helpdesk", "references"]),
+      title: z.string(),
+      description: z.string(),
+      url: z.string(),
+      search_query: z.string(),
+      source_type: referenceSourceTypeSchema.nullable().optional(),
+      course_title: z.string(),
+      course_url: z.string(),
+      category: z.string(),
+      level: z.string(),
+    })
+  ),
+});
+
+const assistantBaseSchema = z.object({
+  requested_mode: assistantRequestedModeSchema,
+  resolved_mode: z.enum(["helpdesk", "references"]).nullable(),
+  route_reason: z.string(),
+});
+
+export const assistantResponseSchema = z.discriminatedUnion("kind", [
+  assistantBaseSchema.extend({
+    kind: z.literal("helpdesk"),
+    data: helpdeskResponseSchema,
+  }),
+  assistantBaseSchema.extend({
+    kind: z.literal("references"),
+    data: referencesResponseSchema,
+  }),
+  assistantBaseSchema.extend({
+    kind: z.literal("clarify"),
+    data: z.object({
+      question: z.string(),
+      options: z.array(
+        z.object({
+          label: z.string(),
+          value: z.enum(["helpdesk", "references"]),
+        })
+      ),
+    }),
+  }),
+]);
+
 export type HelpdeskResponse = z.infer<typeof helpdeskResponseSchema>;
 export type ReferencesResponse = z.infer<typeof referencesResponseSchema>;
 export type MentorResponse = z.infer<typeof mentorResponseSchema>;
@@ -133,3 +201,6 @@ export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
 export type AiFeedbackRequest = z.infer<typeof aiFeedbackRequestSchema>;
 export type AiFeedbackResponse = z.infer<typeof aiFeedbackResponseSchema>;
 export type HelpdeskSuggestionsResponse = z.infer<typeof helpdeskSuggestionsResponseSchema>;
+export type ReferencesSuggestionsResponse = z.infer<typeof referencesSuggestionsResponseSchema>;
+export type AssistantSuggestionsResponse = z.infer<typeof assistantSuggestionsResponseSchema>;
+export type AssistantResponse = z.infer<typeof assistantResponseSchema>;

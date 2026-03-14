@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { ensureEnrollment, getAiUserContext } from "@/lib/ai-auth";
 import { callAiApiWithMeta } from "@/lib/ai-client";
-import { referencesResponseSchema } from "@/lib/ai-schemas";
+import { assistantResponseSchema } from "@/lib/ai-schemas";
+
+function normalizeMode(value: unknown): "auto" | "helpdesk" | "references" {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "helpdesk" || normalized === "references") {
+    return normalized;
+  }
+  return "auto";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,9 +22,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const query = String(body?.query ?? "").trim();
     const courseId = body?.course_id ? String(body.course_id) : null;
+    const mode = normalizeMode(body?.mode);
 
     if (!query) {
-      return NextResponse.json({ error: "Thiếu chủ đề cần tìm." }, { status: 400 });
+      return NextResponse.json({ error: "Thiếu nội dung cần gửi cho Trợ lý AI." }, { status: 400 });
     }
 
     if (courseId && user.role === "student") {
@@ -30,18 +39,19 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await callAiApiWithMeta(
-      "/v1/chat",
+      "/v1/assistant/chat",
       {
-        mode: "references",
+        mode,
         user_id: user.userId,
         role: user.role,
         query,
         course_id: courseId,
         context: {
+          current_path: body?.current_path ? String(body.current_path) : undefined,
           level: body?.level ? String(body.level) : undefined,
         },
       },
-      referencesResponseSchema
+      assistantResponseSchema
     );
 
     return NextResponse.json({
@@ -53,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Trợ lý AI chưa thể xử lý yêu cầu tìm tài liệu." },
+      { error: error instanceof Error ? error.message : "Trợ lý AI chưa thể xử lý yêu cầu này." },
       { status: 500 }
     );
   }

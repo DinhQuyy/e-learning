@@ -75,7 +75,6 @@ export function SearchInput({
   useEffect(() => {
     if (!isTypingRef.current) {
       const paramValue = searchParams.get(paramKey) || "";
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(paramValue);
     }
   }, [searchParams, paramKey]);

@@ -140,6 +140,8 @@ export interface Review {
   rating: number;
   comment: string | null;
   status: "pending" | "approved" | "rejected";
+  instructor_reply: string | null;
+  instructor_reply_at: string | null;
   date_created: string;
 }
 

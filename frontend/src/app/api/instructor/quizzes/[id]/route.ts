@@ -49,7 +49,7 @@ export async function GET(
     }
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Khong tim thay quiz." }, { status: res.status });
+      return NextResponse.json({ error: "Không tìm thấy quiz." }, { status: res.status });
     }
 
     const data = await res.json();
@@ -88,7 +88,7 @@ export async function PATCH(
 
       if (!quizRes.ok) {
         const errorData = await quizRes.json().catch(() => null);
-        const message = errorData?.errors?.[0]?.message || "Khong the cap nhat quiz.";
+        const message = errorData?.errors?.[0]?.message || "Không thể cập nhật quiz.";
         return NextResponse.json({ error: message }, { status: quizRes.status });
       }
     }
@@ -204,7 +204,7 @@ export async function DELETE(
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Khong the xoa quiz." }, { status: res.status });
+      return NextResponse.json({ error: "Không thể xoá quiz." }, { status: res.status });
     }
 
     await enqueueDeleteIndex("quiz", id);

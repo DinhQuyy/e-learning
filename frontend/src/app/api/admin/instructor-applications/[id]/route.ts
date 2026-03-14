@@ -20,7 +20,7 @@ export async function GET(
 
     if (!isAdminUser(me.data)) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap" },
+        { error: "Không có quyền truy cập" },
         { status: 403 },
       );
     }
@@ -29,7 +29,7 @@ export async function GET(
 
     if (!result.ok || !result.data) {
       return NextResponse.json(
-        { error: "Khong tim thay don dang ky" },
+        { error: "Không tìm thấy đơn đăng ký" },
         { status: result.status === 404 ? 404 : 400 },
       );
     }
@@ -37,6 +37,6 @@ export async function GET(
     return NextResponse.json({ data: result.data });
   } catch (error) {
     console.error("GET /api/admin/instructor-applications/[id] error:", error);
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

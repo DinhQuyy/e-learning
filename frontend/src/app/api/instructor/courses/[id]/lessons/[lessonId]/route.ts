@@ -21,12 +21,12 @@ export async function GET(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json({ error: "Khong the xac dinh nguoi dung." }, { status: 401 });
+      return NextResponse.json({ error: "Không thể xác định người dùng." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
+      return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
     const res = await directusFetch(
@@ -34,7 +34,7 @@ export async function GET(
     );
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Khong tim thay bai hoc." }, { status: res.status });
+      return NextResponse.json({ error: "Không tìm thấy bài học." }, { status: res.status });
     }
 
     const data = await res.json();
@@ -54,12 +54,12 @@ export async function PATCH(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json({ error: "Khong the xac dinh nguoi dung." }, { status: 401 });
+      return NextResponse.json({ error: "Không thể xác định người dùng." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
+      return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
     const body = await request.json();
@@ -71,7 +71,7 @@ export async function PATCH(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
-      const message = errorData?.errors?.[0]?.message || "Khong the cap nhat bai hoc.";
+      const message = errorData?.errors?.[0]?.message || "Không thể cập nhật bài học.";
       return NextResponse.json({ error: message }, { status: res.status });
     }
 
@@ -101,12 +101,12 @@ export async function DELETE(
 
     const userId = await getCurrentUserId();
     if (!userId) {
-      return NextResponse.json({ error: "Khong the xac dinh nguoi dung." }, { status: 401 });
+      return NextResponse.json({ error: "Không thể xác định người dùng." }, { status: 401 });
     }
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
+      return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
     const res = await directusFetch(`/items/lessons/${lessonId}`, {
@@ -114,7 +114,7 @@ export async function DELETE(
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Khong the xoa bai hoc." }, { status: res.status });
+      return NextResponse.json({ error: "Không thể xoá bài học." }, { status: res.status });
     }
 
     await enqueueDeleteIndex("course_lesson", lessonId);

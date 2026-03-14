@@ -534,7 +534,7 @@ export async function getAllCourses(
   });
 
   if (!res.ok) {
-    throw new Error("Khong the tai danh sach khoa hoc");
+    throw new Error("Không thể tải danh sách khoá học");
   }
 
   const payload = await res.json();

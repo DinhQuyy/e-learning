@@ -484,9 +484,55 @@ export async function getFeaturedCourses(limit = 8): Promise<Course[]> {
 export async function getCoursesByCategory(
   categorySlug: string,
   page = 1,
-  limit = 12
+  limit = 12,
+  options?: { sort?: string; level?: string }
 ): Promise<GetCoursesResult> {
-  return getCourses({ page, limit, category: categorySlug });
+  return getCourses({
+    page,
+    limit,
+    category: categorySlug,
+    sort: options?.sort,
+    level: options?.level,
+  });
+}
+
+export async function getCoursesByInstructor(
+  instructorId: string,
+  excludeCourseId?: string,
+  limit = 4
+): Promise<Course[]> {
+  try {
+    // Find courses linked to this instructor via junction table
+    const junctionRes = await directus.request(
+      readItems("courses_instructors" as never, {
+        filter: { directus_users_id: { _eq: instructorId } } as never,
+        fields: ["courses_id"] as never[],
+        limit: -1,
+      } as never)
+    );
+
+    const courseIds = (junctionRes as Array<{ courses_id?: string | null }>)
+      .map((j) => j.courses_id)
+      .filter((id): id is string => typeof id === "string" && id !== excludeCourseId);
+
+    if (courseIds.length === 0) return [];
+
+    const courses = await directus.request(
+      readItems("courses", {
+        filter: {
+          id: { _in: courseIds },
+          status: { _eq: "published" },
+        } as never,
+        fields: LISTING_FIELDS as never[],
+        limit,
+        sort: ["-total_enrollments"] as never[],
+      })
+    );
+
+    return enrichCourses(courses as unknown as Course[]);
+  } catch {
+    return [];
+  }
 }
 
 export async function getLatestCourses(limit = 8): Promise<Course[]> {
@@ -794,4 +840,51 @@ export async function getTrendingCourses(
   } catch {
     return [];
   }
+}
+
+export interface PlatformStats {
+  totalCourses: number;
+  totalStudents: number;
+  totalInstructors: number;
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (serverToken) headers.Authorization = `Bearer ${serverToken}`;
+
+  const [coursesRes, studentsRes, instructorsRes] = await Promise.allSettled([
+    fetch(`${directusUrl}/items/courses?filter[status][_eq]=published&aggregate[count]=id`, {
+      headers,
+      cache: "no-store",
+    }),
+    fetch(`${directusUrl}/items/enrollments?aggregate[countDistinct]=user_id`, {
+      headers,
+      cache: "no-store",
+    }),
+    fetch(`${directusUrl}/items/courses_instructors?aggregate[countDistinct]=user_id`, {
+      headers,
+      cache: "no-store",
+    }),
+  ]);
+
+  const extract = async (result: PromiseSettledResult<Response>): Promise<number> => {
+    if (result.status !== "fulfilled" || !result.value.ok) return 0;
+    try {
+      const data = await result.value.json();
+      const row = data?.data?.[0];
+      if (!row) return 0;
+      const val = row?.count?.id ?? row?.countDistinct?.user_id ?? 0;
+      return Number(val) || 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  return {
+    totalCourses: await extract(coursesRes),
+    totalStudents: await extract(studentsRes),
+    totalInstructors: await extract(instructorsRes),
+  };
 }

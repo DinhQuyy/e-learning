@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Receipt, Package } from "lucide-react";
+import { Receipt, Package, ChevronRight } from "lucide-react";
 import type { Order, OrderItem, Course } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -134,13 +134,21 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {order.status === "pending" && (
-                  <div className="mt-3 pt-3 border-t">
-                    <Link href={`/mock-payment/${order.id}`}>
-                      <Button size="sm">Thanh toán ngay</Button>
-                    </Link>
+                <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                  <div className="flex gap-2">
+                    {order.status === "pending" && (
+                      <Link href={`/mock-payment/${order.id}`}>
+                        <Button size="sm">Thanh toán ngay</Button>
+                      </Link>
+                    )}
                   </div>
-                )}
+                  <Link href={`/orders/${order.id}`}>
+                    <Button variant="ghost" size="sm">
+                      Chi tiết
+                      <ChevronRight className="ml-1 size-4" />
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}

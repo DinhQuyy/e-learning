@@ -276,7 +276,7 @@ export function QuizPlayer({ quiz, context, onComplete }: QuizPlayerProps) {
 
         if (!res.ok) {
           const err = await res.json().catch(() => null);
-          throw new Error(err?.error || "Khong the gui feedback");
+          throw new Error(err?.error || "Không thể gửi feedback");
         }
 
         setHintFeedbackByQuestion((prev) => ({

@@ -4,9 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingStars } from "@/components/features/rating-stars";
 import { getAssetUrl } from "@/lib/directus";
 import type { Review, DirectusUser } from "@/types";
+import { MessageSquareText } from "lucide-react";
 
 interface ReviewCardProps {
   review: Review;
+  replySlot?: React.ReactNode;
 }
 
 function getReviewUser(review: Review): {
@@ -17,7 +19,6 @@ function getReviewUser(review: Review): {
   const fallback = { name: "Học viên", avatar: null as string | null, initials: "HV" };
   const user = review.user_id as DirectusUser | string | null | undefined;
 
-  // If Directus returned only the id or the relation is missing, show a safe fallback
   if (!user || typeof user === "string") {
     return fallback;
   }
@@ -36,7 +37,7 @@ function getReviewUser(review: Review): {
   return { name, avatar: user.avatar, initials };
 }
 
-export function ReviewCard({ review }: ReviewCardProps) {
+export function ReviewCard({ review, replySlot }: ReviewCardProps) {
   const { name, avatar, initials } = getReviewUser(review);
 
   return (
@@ -66,6 +67,30 @@ export function ReviewCard({ review }: ReviewCardProps) {
             {review.comment}
           </p>
         )}
+
+        {/* Instructor reply */}
+        {review.instructor_reply && (
+          <div className="mt-3 rounded-lg border-l-2 border-primary/40 bg-muted/50 p-3">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <MessageSquareText className="size-3.5" />
+              Phản hồi từ giảng viên
+              {review.instructor_reply_at && (
+                <span className="font-normal text-muted-foreground">
+                  &middot;{" "}
+                  {formatDistanceToNow(new Date(review.instructor_reply_at), {
+                    addSuffix: true,
+                    locale: vi,
+                  })}
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">
+              {review.instructor_reply}
+            </p>
+          </div>
+        )}
+
+        {replySlot}
       </div>
     </div>
   );

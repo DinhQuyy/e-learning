@@ -1,44 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   BadgeHelp,
   BookOpenCheck,
   CircleHelp,
-  CreditCard,
-  GraduationCap,
   MessageCircleQuestion,
   ShieldCheck,
-  UserRound,
 } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FaqSearch } from "./faq-search";
 
 export const metadata: Metadata = {
   title: "Câu hỏi thường gặp",
   description: "Tổng hợp các câu hỏi thường gặp về tài khoản, thanh toán và quá trình học trên E-Learning.",
 };
 
-type FaqItem = {
-  question: string;
-  answer: string;
-};
-
-type FaqGroup = {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  items: FaqItem[];
-};
+import type { FaqGroup } from "./faq-search";
 
 const faqGroups: FaqGroup[] = [
   {
     title: "Tài khoản và bảo mật",
     description: "Những vấn đề liên quan đến đăng nhập, đổi mật khẩu và bảo vệ tài khoản.",
-    icon: UserRound,
+    iconName: "UserRound",
     items: [
       {
         question: "Tôi quên mật khẩu, làm sao để lấy lại?",
@@ -65,7 +51,7 @@ const faqGroups: FaqGroup[] = [
   {
     title: "Thanh toán và đơn hàng",
     description: "Giải đáp về thanh toán, hóa đơn, kích hoạt khóa học và hoàn tiền.",
-    icon: CreditCard,
+    iconName: "CreditCard",
     items: [
       {
         question: "Thanh toán thành công nhưng chưa thấy khóa học?",
@@ -92,7 +78,7 @@ const faqGroups: FaqGroup[] = [
   {
     title: "Học tập và chứng chỉ",
     description: "Các câu hỏi về tiến độ học, bài kiểm tra và điều kiện nhận chứng chỉ.",
-    icon: GraduationCap,
+    iconName: "GraduationCap",
     items: [
       {
         question: "Tôi có thể học trên điện thoại không?",
@@ -190,34 +176,8 @@ export default function FaqPage() {
       </section>
 
       <section className="border-y bg-muted/25">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
-          {faqGroups.map((group) => (
-            <Card key={group.title} className="rounded-2xl">
-              <CardHeader className="gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-11 items-center justify-center rounded-full bg-primary/10">
-                    <group.icon className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">{group.title}</CardTitle>
-                    <CardDescription className="mt-1 text-sm">{group.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Accordion type="single" collapsible className="w-full">
-                  {group.items.map((item, index) => (
-                    <AccordionItem key={item.question} value={`${group.title}-${index}`}>
-                      <AccordionTrigger className="text-left">{item.question}</AccordionTrigger>
-                      <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                        {item.answer}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <FaqSearch groups={faqGroups} />
         </div>
       </section>
 

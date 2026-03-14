@@ -29,7 +29,7 @@ export async function POST(
 
     if (!isAdminUser(me.data)) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap" },
+        { error: "Không có quyền truy cập" },
         { status: 403 },
       );
     }
@@ -55,7 +55,7 @@ export async function POST(
     const existingResult = await fetchReactivationRequestById(id);
     if (!existingResult.ok || !existingResult.data) {
       return NextResponse.json(
-        { error: "Khong tim thay yeu cau kich hoat lai" },
+        { error: "Không tìm thấy yêu cầu kích hoạt lại" },
         { status: existingResult.status === 404 ? 404 : 400 },
       );
     }
@@ -74,7 +74,7 @@ export async function POST(
 
     if (!applicantId) {
       return NextResponse.json(
-        { error: "Khong xac dinh duoc nguoi gui yeu cau" },
+        { error: "Không xác định được người gửi yêu cầu" },
         { status: 400 },
       );
     }
@@ -93,7 +93,7 @@ export async function POST(
       const instructorRoleId = await resolveRoleIdByName("instructor");
       if (!instructorRoleId) {
         return NextResponse.json(
-          { error: "Khong tim thay role Instructor trong he thong" },
+          { error: "Không tìm thấy role Instructor trong hệ thống" },
           { status: 500 },
         );
       }
@@ -112,7 +112,7 @@ export async function POST(
       if (!updateUserRes.ok) {
         const message = await getDirectusError(
           updateUserRes,
-          "Khong the cap nhat quyen Instructor",
+          "Không thể cập nhật quyền Instructor",
         );
         return NextResponse.json(
           { error: message },
@@ -157,7 +157,7 @@ export async function POST(
 
       const message = await getDirectusError(
         updateRequestRes,
-        "Khong the cap nhat yeu cau kich hoat lai",
+        "Không thể cập nhật yêu cầu kích hoạt lại",
       );
       return NextResponse.json(
         { error: message },
@@ -178,6 +178,6 @@ export async function POST(
       "POST /api/admin/instructor-reactivations/[id]/review error:",
       error,
     );
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

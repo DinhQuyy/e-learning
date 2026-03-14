@@ -9,7 +9,8 @@ export type PortalNavIcon =
   | "cart"
   | "reviews"
   | "instructor-application"
-  | "new-course";
+  | "new-course"
+  | "earnings";
 
 export interface PortalNavItem {
   label: string;
@@ -37,5 +38,6 @@ export const instructorPortalNavItems: PortalNavItem[] = [
   { label: "Tổng quan", href: "/instructor/dashboard", icon: "dashboard" },
   { label: "Hồ sơ", href: "/instructor/profile", icon: "profile" },
   { label: "Khóa học", href: "/instructor/courses", icon: "courses" },
+  { label: "Doanh thu", href: "/instructor/earnings", icon: "earnings" },
   { label: "Tạo khóa học", href: "/instructor/courses/new", icon: "new-course" },
 ];

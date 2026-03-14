@@ -1040,6 +1040,18 @@ async function createCollections() {
     meta: { one_field: "reviews" },
     schema: { on_delete: "CASCADE" },
   });
+  await addField("reviews", {
+    field: "instructor_reply",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Phản hồi của giảng viên" },
+    schema: {},
+  });
+  await addField("reviews", {
+    field: "instructor_reply_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thời gian phản hồi" },
+    schema: {},
+  });
   log("✓", "Fields & relations: reviews");
 
   // ── 4.9 quizzes ──
@@ -2077,6 +2089,7 @@ async function setPermissions() {
     fields: "*",
   });
   await perm(I, "reviews", "read", { fields: "*" });
+  await perm(I, "reviews", "update", { fields: ["instructor_reply", "instructor_reply_at"] });
   await perm(I, "quiz_attempts", "read", {
     permissions: { quiz_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
     fields: "*",

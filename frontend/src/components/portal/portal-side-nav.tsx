@@ -7,6 +7,7 @@ import {
   Bell,
   BookOpen,
   ClipboardList,
+  DollarSign,
   GraduationCap,
   Heart,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const iconMap: Record<PortalNavIcon, React.ComponentType<{ className?: string }>
   cart: ShoppingCart,
   reviews: Star,
   "instructor-application": GraduationCap,
+  earnings: DollarSign,
   "new-course": PlusCircle,
 };
 

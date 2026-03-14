@@ -54,7 +54,7 @@ Directus admin panel runs at `http://localhost:8055`.
 
 All types defined in `types/index.ts`. Schema type passed to `createDirectus<Schema>()`.
 
-## API Route Map (~43 routes in `app/api/`)
+## API Route Map (~48 routes in `app/api/`)
 
 **Auth (7):**
 `POST /api/auth/login` · `POST /api/auth/register` · `POST /api/auth/logout` · `POST /api/auth/refresh` · `POST /api/auth/forgot-password` · `POST /api/auth/reset-password` · `GET /api/auth/me`
@@ -62,8 +62,8 @@ All types defined in `types/index.ts`. Schema type passed to `createDirectus<Sch
 **E-Commerce (7):**
 `GET|POST /api/cart` · `DELETE /api/cart/[id]` · `GET|POST /api/wishlist` · `DELETE /api/wishlist/[id]` · `GET|POST /api/orders` · `GET /api/orders/[id]` · `POST /api/orders/[id]/pay`
 
-**Instructor (9):**
-`GET /api/instructor/courses` · `GET /api/instructor/courses/[id]` · `GET|POST /api/instructor/courses/[id]/modules` · `PATCH /api/instructor/courses/[id]/modules/[moduleId]` · `PATCH /api/instructor/courses/[id]/modules/reorder` · `POST /api/instructor/courses/[id]/lessons` · `GET /api/instructor/courses/[id]/lessons/[lessonId]` · `POST /api/instructor/quizzes` · `GET|PATCH /api/instructor/quizzes/[id]`
+**Instructor (12):**
+`GET /api/instructor/courses` · `GET /api/instructor/courses/[id]` · `GET|POST /api/instructor/courses/[id]/modules` · `PATCH /api/instructor/courses/[id]/modules/[moduleId]` · `PATCH /api/instructor/courses/[id]/modules/reorder` · `POST /api/instructor/courses/[id]/lessons` · `GET /api/instructor/courses/[id]/lessons/[lessonId]` · `POST /api/instructor/quizzes` · `GET|PATCH /api/instructor/quizzes/[id]` · `POST /api/instructor/courses/[id]/clone` · `PATCH /api/instructor/reviews/[reviewId]/reply`
 
 **Admin (11):**
 `GET /api/admin/users` · `GET /api/admin/users/[id]` · `GET /api/admin/users/roles` · `GET /api/admin/courses` · `GET|PATCH /api/admin/courses/[id]` · `GET /api/admin/categories` · `PATCH /api/admin/categories/[id]` · `GET /api/admin/reviews` · `PATCH /api/admin/reviews/[id]` · `GET /api/admin/orders` · `PATCH /api/admin/orders/[id]` · `GET /api/admin/settings`
@@ -71,8 +71,8 @@ All types defined in `types/index.ts`. Schema type passed to `createDirectus<Sch
 **Student (4):**
 `POST /api/enrollments` · `PATCH /api/progress` · `POST /api/reviews` · `POST /api/quizzes/[id]/submit`
 
-**Other (2):**
-`POST /api/upload` · `GET /api/notifications` · `PATCH /api/notifications/[id]/read` · `PATCH /api/notifications/read-all`
+**Other (5):**
+`POST /api/upload` · `GET /api/notifications` · `PATCH /api/notifications/[id]/read` · `PATCH /api/notifications/read-all` · `POST /api/newsletter`
 
 ## E-Commerce Flow
 
@@ -91,8 +91,8 @@ Payment is mock (simulated). `POST /api/orders/[id]/pay` marks order as `success
 |-------|-------|--------|
 | `(public)` | `/`, `/courses`, `/courses/[slug]`, `/categories` | Everyone |
 | `(auth)` | `/login`, `/register`, `/forgot-password`, `/reset-password` | Unauthenticated only |
-| `(student)` | `/dashboard`, `/my-courses`, `/learn/[slug]`, `/cart`, `/wishlist`, `/checkout`, `/orders`, `/mock-payment/[orderId]`, `/checkout/success/[orderId]`, `/checkout/failed/[orderId]` | Student role |
-| `(instructor)` | `/instructor/*` | Instructor or admin |
+| `(student)` | `/dashboard`, `/my-courses`, `/learn/[slug]`, `/cart`, `/wishlist`, `/checkout`, `/orders`, `/orders/[id]`, `/mock-payment/[orderId]`, `/checkout/success/[orderId]`, `/checkout/failed/[orderId]` | Student role |
+| `(instructor)` | `/instructor/*` (courses, earnings, profile) | Instructor or admin |
 | `(admin)` | `/admin/*` (users, courses, categories, reviews, orders, settings) | Admin only |
 
 ## Authentication Flow
@@ -147,12 +147,14 @@ Query modules in `lib/queries/`: `courses.ts`, `categories.ts`, `instructor.ts`,
 | `progress-tracker.tsx` | Course progress bar and lesson completion |
 | `quiz-player.tsx` | Quiz taking interface (questions, timer, submit) |
 | `rating-stars.tsx` | Star rating display and input |
-| `review-card.tsx` | Individual review display card |
+| `review-card.tsx` | Individual review display card (supports `replySlot` prop + instructor reply display) |
 | `review-form.tsx` | Review submission form (stars + comment) |
+| `review-reply-form.tsx` | Instructor reply form for reviews (toggle open/close, edit existing) |
 | `rich-text-editor.tsx` | TipTap rich text editor wrapper |
 | `search-input.tsx` | Search input with debounce |
 | `wishlist-button.tsx` | Wishlist toggle button (heart icon) |
 | `course-recommendations.tsx` | Horizontal scrollable course recommendation section |
+| `share-certificate-button.tsx` | Certificate sharing (Facebook, LinkedIn, copy link) + PDF download |
 
 ## Course Recommendations
 
@@ -162,6 +164,76 @@ Query functions in `lib/queries/courses.ts`:
 - `getTrendingCourses(enrolledCourseIds, limit)` — highest enrollment courses, excluding enrolled
 
 Used in: `/dashboard` and `/my-courses` pages via `CourseRecommendationSection` component. Extracts category/instructor IDs from student's enrollment data.
+
+## Instructor Features
+
+### Earnings Page (`/instructor/earnings`)
+- Server component with `requireRole(["instructor"])`
+- 4 stat cards: total revenue, this month, last month, total orders
+- Monthly revenue bar chart (`EarningsChart` — Recharts BarChart, `"use client"`)
+- Per-course revenue breakdown table with percentages
+- Query: `getInstructorRevenueDetails(token)` in `lib/queries/instructor.ts`
+
+### Course Cloning
+- `POST /api/instructor/courses/[id]/clone` — deep clones course + modules + lessons
+- Sets cloned course to `status: "draft"`, title: `"Bản sao - {original}"`
+- Creates instructor junction for the cloning user
+- UI: "Nhân bản" button in course dropdown menu (`courses-client.tsx`)
+
+### Review Reply
+- `PATCH /api/instructor/reviews/[reviewId]/reply` — instructor replies to student reviews
+- Verifies instructor owns the course the review belongs to
+- `Review` type extended with `instructor_reply` and `instructor_reply_at` fields
+- UI: `ReviewReplyForm` component in course reviews page, reply shown in `ReviewCard`
+
+### Course Students Table
+- Search by student name/email, filter by status (active/completed/dropped), sort by date/progress/name
+- Client component: `course-students-table.tsx`
+
+## Student UX Enhancements
+
+### Continue Learning (Homepage)
+- `ContinueLearningSection` component (`components/home/continue-learning.tsx`) — client component
+- Shows up to 4 in-progress courses with progress bars on the homepage (below hero)
+- Wrapped in `<Suspense>` on the homepage; hidden when not logged in or no enrollments
+
+### My Courses — Search/Sort
+- Client component `my-courses-client.tsx` with search by course name + sort (progress, date, name A-Z)
+- Uses `SearchInput` component with debounce
+
+### Order Detail Page (`/orders/[id]`)
+- Status timeline, course list, price breakdown, payment method
+- "Thanh toán lại" button for pending orders, "In hoá đơn" with print CSS
+
+### Notification Filters
+- Tab filters in `notifications-list.tsx`: Tất cả, Khoá học, Đánh giá, Hệ thống
+- Client-side filtering on `initialNotifications`
+
+### Certificate Sharing
+- `ShareCertificateButton` in certificate page
+- Share to Facebook, LinkedIn, copy link, download PDF (`window.print()`)
+
+## Public Page Enhancements
+
+### Homepage
+- Platform stats (total courses, students, instructors) via `getPlatformStats()` aggregate queries
+- Testimonials section using top reviews with star ratings and course links
+- `NewsletterStrip` with working email form → `POST /api/newsletter`
+
+### FAQ Search
+- `FaqSearch` client component with keyword filtering and text highlighting
+- Icon names passed as strings (not components) to avoid serialization issues
+
+### Category & Course Detail
+- Category page: sort (newest, popular, rating, price) + level/price filters + breadcrumbs
+- Course detail: smooth scroll for tabs + "Khoá học khác của giảng viên" section
+
+## Loading States
+
+Skeleton `loading.tsx` files added for 15+ routes:
+- Student: my-courses, orders, orders/[id], cart, wishlist, notifications, my-certificates, profile
+- Public: courses/[slug], categories, categories/[slug]
+- Instructor: courses, earnings, profile
 
 ## Important Conventions
 
@@ -185,6 +257,11 @@ React Hook Form + Zod v4 + `@hookform/resolvers`. Note: Zod v4 uses `message` in
 
 ### Toast Notifications
 Use `sonner` (not the deprecated shadcn `toast` component).
+
+### Vietnamese Text
+- All API error messages and notifications use correct Vietnamese diacritics (audited across 15+ files)
+- Currency formatting: `Intl.NumberFormat("vi-VN")` for consistent VND display
+- Client components receiving icon data: pass icon name strings, not LucideIcon components (to avoid serialization errors)
 
 ## Admin Panel
 
@@ -221,6 +298,11 @@ Use `sonner` (not the deprecated shadcn `toast` component).
 - `report-charts.tsx`: EnrollmentTrendChart (LineChart), RatingDistributionChart (horizontal BarChart)
 - All chart components are `"use client"` since Recharts requires client-side rendering
 - Revenue query functions in `lib/queries/admin.ts`: `getRevenueStats()`, `getEnrollmentTrend()`, `getCourseStatusDistribution()`
+- Instructor charts: `earnings-chart.tsx` (BarChart for monthly revenue)
+
+### Platform Stats Query
+- `getPlatformStats()` in `lib/queries/courses.ts` — 3 parallel aggregate queries for courses count, distinct enrolled students, distinct instructors
+- Returns `PlatformStats` interface: `totalCourses`, `totalStudents`, `totalInstructors`
 
 ## Environment Variables
 

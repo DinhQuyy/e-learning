@@ -121,9 +121,9 @@ export async function notifyInstructorApplicationStatus(
   if (status === "APPROVED") {
     return createNotification({
       userId,
-      title: "Duyet ho so giang vien",
+      title: "Duyệt hồ sơ giảng viên",
       message:
-        "Ho so cua ban da duoc duyet. Ban co the dang nhap vao Instructor Portal ngay bay gio.",
+        "Hồ sơ của bạn đã được duyệt. Bạn có thể đăng nhập vào Instructor Portal ngay bây giờ.",
       type: "success",
       link: "/instructor/dashboard",
     });
@@ -132,10 +132,10 @@ export async function notifyInstructorApplicationStatus(
   if (status === "NEEDS_INFO") {
     return createNotification({
       userId,
-      title: "Can bo sung ho so giang vien",
+      title: "Cần bổ sung hồ sơ giảng viên",
       message: adminNote
-        ? `Admin yeu cau bo sung: ${adminNote}`
-        : "Ho so cua ban can bo sung them thong tin. Vui long cap nhat va gui lai.",
+        ? `Admin yêu cầu bổ sung: ${adminNote}`
+        : "Hồ sơ của bạn cần bổ sung thêm thông tin. Vui lòng cập nhật và gửi lại.",
       type: "warning",
       link: "/become-instructor",
     });
@@ -143,10 +143,10 @@ export async function notifyInstructorApplicationStatus(
 
   return createNotification({
     userId,
-    title: "Ho so giang vien bi tu choi",
+    title: "Hồ sơ giảng viên bị từ chối",
     message: adminNote
-      ? `Ly do: ${adminNote}`
-      : "Ho so cua ban chua du dieu kien duyet.",
+      ? `Lý do: ${adminNote}`
+      : "Hồ sơ của bạn chưa đủ điều kiện duyệt.",
     type: "warning",
     link: "/become-instructor",
   });
@@ -160,9 +160,9 @@ export async function notifyInstructorReactivationStatus(
   if (status === "APPROVED") {
     return createNotification({
       userId,
-      title: "Yeu cau kich hoat lai da duoc duyet",
+      title: "Yêu cầu kích hoạt lại đã được duyệt",
       message:
-        "Quyen Instructor da duoc bat lai. Ban co the vao Instructor Portal ngay bay gio.",
+        "Quyền Instructor đã được bật lại. Bạn có thể vào Instructor Portal ngay bây giờ.",
       type: "success",
       link: "/instructor/dashboard",
     });
@@ -170,10 +170,10 @@ export async function notifyInstructorReactivationStatus(
 
   return createNotification({
     userId,
-    title: "Yeu cau kich hoat lai bi tu choi",
+    title: "Yêu cầu kích hoạt lại bị từ chối",
     message: adminNote
-      ? `Ly do: ${adminNote}`
-      : "Admin da tu choi yeu cau kich hoat lai Instructor.",
+      ? `Lý do: ${adminNote}`
+      : "Admin đã từ chối yêu cầu kích hoạt lại Instructor.",
     type: "warning",
     link: "/become-instructor",
   });

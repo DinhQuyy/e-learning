@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Certificate, Course, DirectusUser } from "@/types";
 import { DeleteCertificateButton } from "../../delete-certificate-button";
 import { PrintCertificateButton } from "./print-certificate-button";
+import { ShareCertificateButton } from "./share-certificate-button";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,11 @@ export default async function CertificateDetailPage({
               </Link>
             </Button>
           ) : null}
+          <ShareCertificateButton
+            certificateCode={certificate.certificate_code}
+            courseTitle={course?.title ?? "Khóa học"}
+            learnerName={learnerName}
+          />
           <PrintCertificateButton />
           <DeleteCertificateButton
             certificateId={certificate.id}

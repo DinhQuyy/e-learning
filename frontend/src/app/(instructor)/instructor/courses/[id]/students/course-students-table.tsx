@@ -12,7 +12,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +32,7 @@ import { getAssetUrl } from "@/lib/directus";
 import type { CourseStudent } from "@/lib/queries/instructor";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { Calendar, Globe, Mail, Phone } from "lucide-react";
+import { Calendar, Globe, Mail, Phone, Search } from "lucide-react";
 
 const statusMap: Record<
   string,
@@ -39,11 +47,65 @@ type Props = {
   students: CourseStudent[];
 };
 
+function getStudentName(student: CourseStudent): string {
+  const user = student.user;
+  if (!user || typeof user !== "object") return "Học viên";
+  return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email || "Học viên";
+}
+
+function getStudentEmail(student: CourseStudent): string {
+  const user = student.user;
+  return user && typeof user === "object" ? user.email ?? "" : "";
+}
+
+type SortOption = "date_desc" | "date_asc" | "progress_desc" | "progress_asc" | "name_asc";
+
 export function CourseStudentsTable({ students }: Props) {
   const [selectedStudent, setSelectedStudent] = useState<CourseStudent | null>(
     null
   );
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sort, setSort] = useState<SortOption>("date_desc");
+
+  const filteredStudents = useMemo(() => {
+    let result = students;
+
+    // Search by name or email
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((s) =>
+        getStudentName(s).toLowerCase().includes(q) ||
+        getStudentEmail(s).toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== "all") {
+      result = result.filter((s) => s.status === statusFilter);
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      switch (sort) {
+        case "date_asc":
+          return new Date(a.enrolled_at).getTime() - new Date(b.enrolled_at).getTime();
+        case "date_desc":
+          return new Date(b.enrolled_at).getTime() - new Date(a.enrolled_at).getTime();
+        case "progress_desc":
+          return b.progress_percentage - a.progress_percentage;
+        case "progress_asc":
+          return a.progress_percentage - b.progress_percentage;
+        case "name_asc":
+          return getStudentName(a).localeCompare(getStudentName(b), "vi");
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [students, search, statusFilter, sort]);
 
   const handleOpen = (student: CourseStudent) => {
     setSelectedStudent(student);
@@ -59,6 +121,47 @@ export function CourseStudentsTable({ students }: Props) {
 
   return (
     <>
+      {/* Search, Filter, Sort */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Tìm theo tên hoặc email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Trạng thái" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="active">Đang học</SelectItem>
+            <SelectItem value="completed">Hoàn thành</SelectItem>
+            <SelectItem value="dropped">Đã bỏ</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Sắp xếp" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date_desc">Mới nhất</SelectItem>
+            <SelectItem value="date_asc">Cũ nhất</SelectItem>
+            <SelectItem value="progress_desc">Tiến độ cao → thấp</SelectItem>
+            <SelectItem value="progress_asc">Tiến độ thấp → cao</SelectItem>
+            <SelectItem value="name_asc">Tên A-Z</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {filteredStudents.length === 0 && students.length > 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Không tìm thấy học viên phù hợp.
+        </p>
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -71,15 +174,10 @@ export function CourseStudentsTable({ students }: Props) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {students.map((student) => {
+          {filteredStudents.map((student) => {
             const user = student.user;
-            const name =
-              user && typeof user === "object"
-                ? [user.first_name, user.last_name].filter(Boolean).join(" ") ||
-                  user.email
-                : "Học viên";
-            const email =
-              user && typeof user === "object" ? user.email : undefined;
+            const name = getStudentName(student);
+            const email = getStudentEmail(student) || undefined;
             const avatar =
               user && typeof user === "object" ? user.avatar : undefined;
             const initials =
@@ -154,6 +252,7 @@ export function CourseStudentsTable({ students }: Props) {
           })}
         </TableBody>
       </Table>
+      )}
 
       <StudentDetailDialog
         student={selectedStudent}

@@ -190,7 +190,7 @@ export async function createOrGetEnrollment(
   }
 
   const message =
-    (await tryReadErrorMessage(createRes)) ?? "Khong the dang ky khoa hoc";
+    (await tryReadErrorMessage(createRes)) ?? "Không thể đăng ký khoá học";
   throw new Error(message);
 }
 

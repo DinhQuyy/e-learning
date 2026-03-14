@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     if (!isAdminUser(me.data)) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap" },
+        { error: "Không có quyền truy cập" },
         { status: 403 },
       );
     }
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Khong the tai danh sach yeu cau kich hoat lai" },
+        { error: "Không thể tải danh sách yêu cầu kích hoạt lại" },
         { status: res.status || 500 },
       );
     }
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("GET /api/admin/instructor-reactivations error:", error);
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 

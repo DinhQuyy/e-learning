@@ -30,7 +30,7 @@ export async function POST(
 
     if (!isAdminUser(me.data)) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap" },
+        { error: "Không có quyền truy cập" },
         { status: 403 },
       );
     }
@@ -39,7 +39,7 @@ export async function POST(
     const parsed = reviewSchema.safeParse(body);
 
     if (!parsed.success) {
-      const message = parsed.error.issues[0]?.message || "Du lieu khong hop le";
+      const message = parsed.error.issues[0]?.message || "Dữ liệu không hợp lệ";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -48,7 +48,7 @@ export async function POST(
 
     if (targetStatus !== "APPROVED" && !adminNote) {
       return NextResponse.json(
-        { error: "Vui long nhap ghi chu cho ket qua review nay" },
+        { error: "Vui lòng nhập ghi chú cho kết quả review này" },
         { status: 400 },
       );
     }
@@ -56,7 +56,7 @@ export async function POST(
     const existingResult = await fetchApplicationById(id);
     if (!existingResult.ok || !existingResult.data) {
       return NextResponse.json(
-        { error: "Khong tim thay don dang ky" },
+        { error: "Không tìm thấy đơn đăng ký" },
         { status: existingResult.status === 404 ? 404 : 400 },
       );
     }
@@ -65,7 +65,7 @@ export async function POST(
 
     if (existing.status !== "PENDING" && existing.status !== "NEEDS_INFO") {
       return NextResponse.json(
-        { error: "Don nay da o trang thai ket thuc va khong the review lai" },
+        { error: "Đơn này đã ở trạng thái kết thúc và không thể review lại" },
         { status: 400 },
       );
     }
@@ -75,7 +75,7 @@ export async function POST(
 
     if (!applicantId) {
       return NextResponse.json(
-        { error: "Khong xac dinh duoc nguoi nop don" },
+        { error: "Không xác định được người nộp đơn" },
         { status: 400 },
       );
     }
@@ -95,7 +95,7 @@ export async function POST(
 
       if (!instructorRoleId) {
         return NextResponse.json(
-          { error: "Khong tim thay role Instructor trong he thong" },
+          { error: "Không tìm thấy role Instructor trong hệ thống" },
           { status: 500 },
         );
       }
@@ -114,7 +114,7 @@ export async function POST(
       if (!updateUserRes.ok) {
         const message = await getDirectusError(
           updateUserRes,
-          "Khong the cap nhat role Instructor",
+          "Không thể cập nhật role Instructor",
         );
         return NextResponse.json(
           { error: message },
@@ -159,7 +159,7 @@ export async function POST(
 
       const message = await getDirectusError(
         updateApplicationRes,
-        "Khong the cap nhat trang thai don",
+        "Không thể cập nhật trạng thái đơn",
       );
       return NextResponse.json(
         { error: message },
@@ -188,6 +188,6 @@ export async function POST(
       "POST /api/admin/instructor-applications/[id]/review error:",
       error,
     );
-    return NextResponse.json({ error: "Loi he thong" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

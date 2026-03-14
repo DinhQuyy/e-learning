@@ -17,10 +17,42 @@
       "Bash(find /c/Users/Admin/Downloads/e-learning/frontend/src/app -name \"*.tsx\" -path \"*\\(student\\)*\" -type f)",
       "Bash(ls -la /c/Users/Admin/Downloads/e-learning/frontend/src/app/\\\\\\(public\\\\\\)/)",
       "Bash(grep -E \"\\\\.tsx$|^d\")",
-      "Bash(find \"c:/Users/Admin/Downloads/e-learning/frontend/src/app/\\(instructor\\)\" -name \"*.tsx\")"
+      "Bash(find \"c:/Users/Admin/Downloads/e-learning/frontend/src/app/\\(instructor\\)\" -name \"*.tsx\")",
+      "Bash(xargs grep:*)",
+      "Read(//mnt/c/Users/Admin/Downloads/e-learning/frontend/src/app/**)",
+      "Bash(grep -r \"NotImplemented\\\\|FIXME\\\\|missing\\\\|incomplete\" c:UsersAdminDownloadse-learningfrontendsrc --include=*.tsx --include=*.ts)",
+      "Bash(find /c/Users/Admin/Downloads/e-learning/frontend/src/app/api/instructor -type f -name *.ts)",
+      "Bash(ls \"c:/Users/Admin/Downloads/e-learning/frontend/src/app/\\(student\\)/\\(portal\\)/orders/\")",
+      "Bash(ls -la \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(public\\)\")",
+      "Bash(ls -la \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\\\\login\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\\\\register\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\\\\forgot-password\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\\\\reset-password\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(student\\)\")",
+      "Bash(ls \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(student\\)\\\\\\(portal\\)\")",
+      "Bash(for dir:*)",
+      "Bash(do)",
+      "Bash(echo \"=== \\(student\\)/\\(portal\\)/$dir ===\")",
+      "Read(//c/Users/Admin/Downloads/e-learning/frontend/src/app/\\(student\\)/**)",
+      "Bash(find \"C:\\\\Users\\\\Admin\\\\Downloads\\\\e-learning\\\\frontend\\\\src\\\\app\\\\\\(student\\)\\\\\\(portal\\)\" -maxdepth 1 -type d)",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Bash(ls \"c:/Users/Admin/Downloads/e-learning/frontend/src/app/\\(instructor\\)/instructor/courses/[id]/students/\")",
+      "Bash(grep -r \"VND\\\\|Đ\" /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"khoa\\\\|Khoa\\\\|khoá\\\\|Khoá\" /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"nguoi\\\\|Người\" /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"Error\\\\|error\\\\|failed\\\\|Failed\" /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r khóa /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r khoá /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"Khóa\\\\|khóa\" /c/Users/Admin/Downloads/e-learning/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(node scripts/add-review-reply-fields.mjs)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders"
+      "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders",
+      "c:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(student)\\(portal)\\orders",
+      "c:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\api\\instructor\\reviews\\[reviewId]",
+      "c:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\api\\instructor\\courses\\[id]"
     ]
   }
 }

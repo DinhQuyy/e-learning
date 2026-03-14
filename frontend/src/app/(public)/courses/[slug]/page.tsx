@@ -32,7 +32,7 @@ import { ReviewList } from "./review-list";
 import { CourseCard } from "@/components/features/course-card";
 import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog";
 import { CourseActions } from "./course-actions";
-import { getCourseBySlug, getRelatedCourses } from "@/lib/queries/courses";
+import { getCourseBySlug, getRelatedCourses, getCoursesByInstructor } from "@/lib/queries/courses";
 import { getAssetUrl } from "@/lib/directus";
 import { getCourseImageSrc } from "@/lib/course-image";
 import type {
@@ -65,7 +65,7 @@ function SectionCard({ id, title, children }: SectionCardProps) {
   return (
     <section
       id={id}
-      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.5)]"
+      className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.5)]"
     >
       <h2 className="text-xl font-bold text-slate-900">{title}</h2>
       <div className="mt-5">{children}</div>
@@ -179,12 +179,15 @@ export default async function CourseDetailPage({
   const categoryName = getCategoryName(course);
   const categoryId = getCategoryId(course);
 
-  let relatedCourses: Course[] = [];
-  try {
-    relatedCourses = await getRelatedCourses(course.id, categoryId, 4);
-  } catch {
-    // Best effort only.
-  }
+  const firstInstructorId = instructors[0]?.id ?? null;
+
+  const [relatedCoursesResult, instructorCoursesResult] = await Promise.allSettled([
+    getRelatedCourses(course.id, categoryId, 4),
+    firstInstructorId ? getCoursesByInstructor(firstInstructorId, course.id, 4) : Promise.resolve([]),
+  ]);
+
+  const relatedCourses = relatedCoursesResult.status === "fulfilled" ? relatedCoursesResult.value : [];
+  const instructorCourses = instructorCoursesResult.status === "fulfilled" ? instructorCoursesResult.value : [];
 
   const sortedModules = (course.modules || [])
     .sort((a, b) => a.sort - b.sort)
@@ -265,7 +268,7 @@ export default async function CourseDetailPage({
     { href: "#overview", label: "Tổng quan" },
     { href: "#coursecontent", label: "Nội dung khoá học" },
     { href: "#details", label: "Chi tiết" },
-    { href: "#intructor", label: "Giảng viên" },
+    { href: "#instructor", label: "Giảng viên" },
     { href: "#review", label: "Đánh giá" },
   ];
 
@@ -279,7 +282,7 @@ export default async function CourseDetailPage({
         className="object-cover transition-transform duration-500 group-hover:scale-105"
         sizes="(max-width: 1024px) 100vw, 360px"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="inline-flex size-14 items-center justify-center rounded-full bg-white/85 text-[#2f57ef] shadow-lg backdrop-blur-sm">
           <CirclePlay className="size-8" />
@@ -411,7 +414,7 @@ export default async function CourseDetailPage({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="order-2 space-y-6 lg:order-1">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(15,23,42,0.5)]">
-              <div className="relative aspect-[16/9] overflow-hidden">
+              <div className="relative aspect-video overflow-hidden">
                 <Image
                   src={getCourseImageSrc(course)}
                   alt={course.title}
@@ -595,7 +598,7 @@ export default async function CourseDetailPage({
                 </div>
               </div>
             </SectionCard>
-            <SectionCard id="intructor" title="Giảng viên">
+            <SectionCard id="instructor" title="Giảng viên">
               {instructors.length > 0 ? (
                 <div className="space-y-6">
                   {instructors.map((instructor) => {
@@ -833,6 +836,29 @@ export default async function CourseDetailPage({
           </aside>
         </div>
       </section>
+
+      {instructorCourses.length > 0 && instructors[0] ? (
+        <section className="border-t border-slate-200 bg-[#f6f8fc] py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6">
+              <p className="text-sm font-semibold text-[#2f57ef]">
+                Cùng giảng viên
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                Khoá học khác của{" "}
+                {[instructors[0].first_name, instructors[0].last_name]
+                  .filter(Boolean)
+                  .join(" ") || "giảng viên"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              {instructorCourses.map((c) => (
+                <CourseCard key={c.id} course={c} />
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {relatedCourses.length > 0 ? (
         <section className="border-t border-slate-200 bg-white py-12">

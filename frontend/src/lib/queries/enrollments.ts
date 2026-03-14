@@ -47,7 +47,7 @@ async function hydrateCourseRelations(
   }
 
   const res = await fetch(
-    `${directusUrl}/items/courses?filter[id][_in]=${unresolvedCourseIds.join(",")}&fields=id,title,slug,thumbnail,total_lessons,total_duration,average_rating,level,category_id.name&limit=-1`,
+    `${directusUrl}/items/courses?filter[id][_in]=${unresolvedCourseIds.join(",")}&fields=id,title,slug,thumbnail,total_lessons,total_duration,average_rating,level,category_id.id,category_id.name&limit=-1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -81,7 +81,7 @@ async function hydrateCourseRelations(
 
 export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at,-date_created,-id`,
+    `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.id,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at,-date_created,-id`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -92,7 +92,7 @@ export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   );
 
   if (!res.ok) {
-    throw new Error("Khong the tai danh sach khoa hoc");
+    throw new Error("Không thể tải danh sách khoá học");
   }
 
   const data = await res.json();

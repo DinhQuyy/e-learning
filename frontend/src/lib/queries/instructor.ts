@@ -760,6 +760,129 @@ export async function getRatingDistributionForCourses(
   return totalDistribution;
 }
 
+export interface InstructorRevenueDetails {
+  totalRevenue: number;
+  currentMonthRevenue: number;
+  lastMonthRevenue: number;
+  revenueChange: number;
+  monthlyChart: { month: string; revenue: number }[];
+  coursesRevenue: { id: string; title: string; slug: string; revenue: number; enrollments: number }[];
+  totalOrders: number;
+}
+
+export async function getInstructorRevenueDetails(
+  token: string
+): Promise<InstructorRevenueDetails> {
+  const courses = await getInstructorCourses(token);
+  const courseIds = courses.map((c) => c.id);
+
+  if (courseIds.length === 0) {
+    return {
+      totalRevenue: 0,
+      currentMonthRevenue: 0,
+      lastMonthRevenue: 0,
+      revenueChange: 0,
+      monthlyChart: [],
+      coursesRevenue: [],
+      totalOrders: 0,
+    };
+  }
+
+  const headers = getAuthHeaders(token);
+  const chunks = chunkIds(courseIds);
+
+  // Fetch all order_items for instructor's courses with successful orders
+  type OrderItemRow = { price: number; course_id: string; order_id: { paid_at: string | null; date_created: string } };
+  const allItems: OrderItemRow[] = [];
+
+  for (const chunk of chunks) {
+    const params = new URLSearchParams();
+    params.set("filter[course_id][_in]", chunk.join(","));
+    params.set("filter[order_id][status][_eq]", "success");
+    params.set("fields", "price,course_id,order_id.paid_at,order_id.date_created");
+    params.set("limit", "-1");
+
+    try {
+      const res = await fetch(`${directusUrl}/items/order_items?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      for (const item of data?.data ?? []) {
+        allItems.push(item as OrderItemRow);
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
+  // Calculate totals, monthly, and per-course revenue
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
+
+  let totalRevenue = 0;
+  let currentMonthRevenue = 0;
+  let lastMonthRevenue = 0;
+  const monthlyRevenue: Record<string, number> = {};
+  const courseRevenueMap: Record<string, number> = {};
+
+  for (const item of allItems) {
+    const amount = Number(item.price ?? 0);
+    if (!Number.isFinite(amount)) continue;
+    totalRevenue += amount;
+
+    const courseId = typeof item.course_id === "object"
+      ? String((item.course_id as { id?: string }).id ?? "")
+      : String(item.course_id);
+    courseRevenueMap[courseId] = (courseRevenueMap[courseId] ?? 0) + amount;
+
+    const date = new Date(item.order_id?.paid_at || item.order_id?.date_created || now);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] ?? 0) + amount;
+
+    if (monthKey === currentMonthKey) currentMonthRevenue += amount;
+    if (monthKey === lastMonthKey) lastMonthRevenue += amount;
+  }
+
+  // Build last 6 months chart
+  const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+  const monthlyChart = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthlyChart.push({ month: monthNames[d.getMonth()], revenue: monthlyRevenue[key] ?? 0 });
+  }
+
+  const revenueChange = lastMonthRevenue > 0
+    ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+    : currentMonthRevenue > 0 ? 100 : 0;
+
+  // Per-course revenue with course details
+  const coursesRevenue = courses
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      slug: c.slug,
+      revenue: courseRevenueMap[c.id] ?? 0,
+      enrollments: c.enrollment_count ?? 0,
+    }))
+    .filter((c) => c.revenue > 0)
+    .sort((a, b) => b.revenue - a.revenue);
+
+  return {
+    totalRevenue,
+    currentMonthRevenue,
+    lastMonthRevenue,
+    revenueChange,
+    monthlyChart,
+    coursesRevenue,
+    totalOrders: allItems.length,
+  };
+}
+
 export async function verifyInstructorOwnership(
   token: string,
   courseId: number | string

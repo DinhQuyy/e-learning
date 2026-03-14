@@ -21,6 +21,8 @@ import {
   Archive,
   FilePenLine,
   Check,
+  Copy,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +85,27 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<InstructorCourse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cloningId, setCloningId] = useState<string | null>(null);
+
+  const handleClone = async (courseId: string) => {
+    setCloningId(courseId);
+    try {
+      const res = await fetch(`/api/instructor/courses/${courseId}/clone`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Không thể nhân bản khoá học");
+      }
+      const data = await res.json();
+      toast.success(`Đã nhân bản khoá học: ${data.data?.title}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Có lỗi xảy ra khi nhân bản");
+    } finally {
+      setCloningId(null);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -240,6 +263,18 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
                           Đánh giá
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={cloningId === course.id}
+                        onClick={() => handleClone(course.id)}
+                      >
+                        {cloningId === course.id ? (
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                        ) : (
+                          <Copy className="mr-2 size-4" />
+                        )}
+                        Nhân bản
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="flex items-center">
                           <RefreshCcw className="mr-2 h-4 w-4" />

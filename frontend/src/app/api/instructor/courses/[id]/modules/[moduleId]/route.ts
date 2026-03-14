@@ -26,7 +26,7 @@ export async function PATCH(
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
+      return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
     const body = await request.json();
@@ -41,7 +41,7 @@ export async function PATCH(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
-      const message = errorData?.errors?.[0]?.message || "Khong the cap nhat module.";
+      const message = errorData?.errors?.[0]?.message || "Không thể cập nhật module.";
       return NextResponse.json({ error: message }, { status: res.status });
     }
 
@@ -75,7 +75,7 @@ export async function DELETE(
 
     const isOwner = await verifyOwnership(userId, courseId);
     if (!isOwner) {
-      return NextResponse.json({ error: "Khong co quyen truy cap." }, { status: 403 });
+      return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
     const lessonsRes = await directusFetch(
@@ -97,7 +97,7 @@ export async function DELETE(
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Khong the xoa module." }, { status: res.status });
+      return NextResponse.json({ error: "Không thể xoá module." }, { status: res.status });
     }
 
     await enqueueDeleteIndex("course_module", moduleId);

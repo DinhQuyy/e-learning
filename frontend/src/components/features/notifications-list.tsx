@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { apiPatch } from "@/lib/api-fetch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bell,
   Info,
@@ -73,6 +74,21 @@ export function NotificationsList({
     useState<Notification[]>(initialNotifications);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === "all") return notifications;
+    if (activeFilter === "course") {
+      return notifications.filter((n) => n.type === "enrollment" || n.type === "success");
+    }
+    if (activeFilter === "review") {
+      return notifications.filter((n) => n.type === "review");
+    }
+    if (activeFilter === "system") {
+      return notifications.filter((n) => n.type === "system" || n.type === "info" || n.type === "warning");
+    }
+    return notifications;
+  }, [notifications, activeFilter]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -136,6 +152,24 @@ export function NotificationsList({
 
   return (
     <div className="space-y-4">
+      {/* Filter Tabs */}
+      <Tabs value={activeFilter} onValueChange={setActiveFilter}>
+        <TabsList>
+          <TabsTrigger value="all">
+            Tất cả ({notifications.length})
+          </TabsTrigger>
+          <TabsTrigger value="course">
+            Khoá học
+          </TabsTrigger>
+          <TabsTrigger value="review">
+            Đánh giá
+          </TabsTrigger>
+          <TabsTrigger value="system">
+            Hệ thống
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Actions Bar */}
       {unreadCount > 0 && (
         <div className="flex items-center justify-between">
@@ -161,7 +195,17 @@ export function NotificationsList({
 
       {/* Notifications List */}
       <div className="space-y-2">
-        {notifications.map((notification) => {
+        {filteredNotifications.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Bell className="mb-3 size-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                Không có thông báo trong mục này
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {filteredNotifications.map((notification) => {
           const Icon = getNotificationIcon(notification.type);
           const iconColors = getNotificationIconColor(notification.type);
           const isMarking = markingIds.has(notification.id);

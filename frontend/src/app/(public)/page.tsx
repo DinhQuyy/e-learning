@@ -1,15 +1,18 @@
 ﻿import Link from "next/link";
 import { Poppins } from "next/font/google";
-import { ArrowRight, BookOpen, FolderOpen, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, FolderOpen, Quote, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroCourseSlider } from "@/components/home/hero-course-slider";
 import { LearnifyCourseCard } from "@/components/home/learnify-course-card";
 import { NewsletterStrip } from "@/components/home/newsletter-strip";
 import { BlogTeaserGrid } from "@/components/home/blog-teaser-grid";
+import { Suspense } from "react";
 import {
   getPopularCourses,
   getTopReviews,
+  getPlatformStats,
 } from "@/lib/queries/courses";
+import { ContinueLearningSection } from "@/components/home/continue-learning";
 import {
   getCategories,
   type CategoryWithCount,
@@ -49,11 +52,12 @@ function sortFeaturedCategories(a: CategoryWithCount, b: CategoryWithCount) {
 }
 
 export default async function HomePage() {
-  const [popularResult, categoriesResult, reviewsResult] =
+  const [popularResult, categoriesResult, reviewsResult, statsResult] =
     await Promise.allSettled([
       getPopularCourses(10),
       getCategories(),
       getTopReviews(6),
+      getPlatformStats(),
     ]);
   const popularCourses =
     popularResult.status === "fulfilled" ? popularResult.value : [];
@@ -69,6 +73,7 @@ export default async function HomePage() {
     .sort(sortFeaturedCategories);
   const featuredCategories = childCategories.slice(0, 8);
   const topReviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+  const platformStats = statsResult.status === "fulfilled" ? statsResult.value : null;
 
   const heroCourses = popularCourses.slice(0, 5);
   const popularGridCourses: Course[] = popularCourses.slice(0, 6);
@@ -105,16 +110,16 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(340px,460px)] lg:gap-10">
             <div className="lg:pr-2">
-              <p className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-[var(--learnify-heading)] shadow-sm">
-                <Sparkles className="size-3.5 text-[var(--learnify-primary)]" />
+              <p className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-(--learnify-heading) shadow-sm">
+                <Sparkles className="size-3.5 text-(--learnify-primary)" />
                 Nền tảng học tập trực tuyến linh hoạt
               </p>
-              <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-[var(--learnify-heading)] sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-(--learnify-heading) sm:text-5xl lg:text-6xl">
                 Học trực tuyến
-                <span className="text-[var(--learnify-primary)]"> đơn giản</span>, dễ dàng cùng
+                <span className="text-(--learnify-primary)"> đơn giản</span>, dễ dàng cùng
                 <p>E-Learning</p>
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-[var(--learnify-body)] sm:text-lg">
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-(--learnify-body) sm:text-lg">
                 Khám phá kho khóa học chất lượng, lộ trình học rõ ràng và giảng viên
                 thực chiến để nâng cấp kỹ năng mỗi ngày.
               </p>
@@ -132,7 +137,7 @@ export default async function HomePage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-11 rounded-xl border-[var(--learnify-primary)]/20 bg-white/85 px-6 text-sm font-semibold text-[var(--learnify-heading)] hover:bg-white"
+                  className="h-11 rounded-xl border-(--learnify-primary)/20 bg-white/85 px-6 text-sm font-semibold text-(--learnify-heading) hover:bg-white"
                 >
                   <Link href="/register?role=instructor">Trở thành giảng viên</Link>
                 </Button>
@@ -140,22 +145,22 @@ export default async function HomePage() {
 
               <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
                 <div className="rounded-xl border bg-white/85 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-[var(--learnify-heading)]">
-                    {popularCourses.length > 0 ? `${popularCourses.length}+` : "--"}
+                  <p className="text-lg font-bold text-(--learnify-heading)">
+                    {platformStats?.totalCourses ? `${platformStats.totalCourses}+` : popularCourses.length > 0 ? `${popularCourses.length}+` : "--"}
                   </p>
-                  <p className="text-xs text-[var(--learnify-body)]">Khóa học nổi bật</p>
+                  <p className="text-xs text-(--learnify-body)">Khóa học</p>
                 </div>
                 <div className="rounded-xl border bg-white/85 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-[var(--learnify-heading)]">
-                    {childCategories.length > 0 ? `${childCategories.length}+` : "--"}
+                  <p className="text-lg font-bold text-(--learnify-heading)">
+                    {platformStats?.totalStudents ? `${platformStats.totalStudents.toLocaleString("vi-VN")}+` : "--"}
                   </p>
-                  <p className="text-xs text-[var(--learnify-body)]">Danh mục chuyên sâu</p>
+                  <p className="text-xs text-(--learnify-body)">Học viên</p>
                 </div>
                 <div className="rounded-xl border bg-white/85 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-[var(--learnify-heading)]">
-                    {topReviews.length > 0 ? `${topReviews.length}+` : "--"}
+                  <p className="text-lg font-bold text-(--learnify-heading)">
+                    {platformStats?.totalInstructors ? `${platformStats.totalInstructors}+` : "--"}
                   </p>
-                  <p className="text-xs text-[var(--learnify-body)]">Đánh giá tích cực</p>
+                  <p className="text-xs text-(--learnify-body)">Giảng viên</p>
                 </div>
               </div>
             </div>
@@ -168,23 +173,27 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <Suspense fallback={null}>
+        <ContinueLearningSection />
+      </Suspense>
+
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[var(--learnify-primary)]">
+              <p className="text-sm font-semibold text-(--learnify-primary)">
                 Danh mục nổi bật
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
                 Lựa chọn lĩnh vực bạn quan tâm
               </h2>
-              <p className="mt-2 text-sm text-[var(--learnify-body)]">
+              <p className="mt-2 text-sm text-(--learnify-body)">
                 Chỉ hiển thị các danh mục con có khóa học để bạn chọn nhanh hơn.
               </p>
             </div>
             <Link
               href="/categories"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--learnify-primary)] hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--learnify-primary) hover:underline"
             >
               Xem tất cả
               <ArrowRight className="size-4" />
@@ -199,13 +208,13 @@ export default async function HomePage() {
                   href={`/categories/${category.slug}`}
                   className="learnify-soft-card group rounded-2xl border bg-card/95 p-5 transition-transform duration-200 hover:-translate-y-1"
                 >
-                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[var(--learnify-primary)]/12 text-[var(--learnify-primary)]">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-(--learnify-primary)/12 text-(--learnify-primary)">
                     <FolderOpen className="size-5" />
                   </span>
-                  <h3 className="mt-4 line-clamp-2 text-sm font-semibold text-[var(--learnify-heading)] transition-colors group-hover:text-[var(--learnify-primary)]">
+                  <h3 className="mt-4 line-clamp-2 text-sm font-semibold text-(--learnify-heading) transition-colors group-hover:text-(--learnify-primary)">
                     {category.name}
                   </h3>
-                  <p className="mt-1 text-xs text-[var(--learnify-body)]">
+                  <p className="mt-1 text-xs text-(--learnify-body)">
                     {category.course_count} khóa học
                   </p>
                 </Link>
@@ -228,16 +237,16 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[var(--learnify-primary)]">
+              <p className="text-sm font-semibold text-(--learnify-primary)">
                 Khóa học phổ biến
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
                 Các khóa học được quan tâm nhiều nhất
               </h2>
             </div>
             <Link
               href="/courses?sort=popular"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--learnify-primary)] hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--learnify-primary) hover:underline"
             >
               Xem tất cả khóa học
               <ArrowRight className="size-4" />
@@ -264,6 +273,60 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {topReviews.length > 0 && (
+        <section className="py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 text-center">
+              <p className="text-sm font-semibold text-(--learnify-primary)">
+                Đánh giá từ học viên
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
+                Học viên nói gì về chúng tôi
+              </h2>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {topReviews.slice(0, 6).map((review) => {
+                const userName = review.user_id
+                  ? [review.user_id.first_name, review.user_id.last_name].filter(Boolean).join(" ") || review.user_id.email
+                  : "Học viên";
+                return (
+                  <div
+                    key={review.id}
+                    className="learnify-soft-card rounded-2xl border bg-card/95 p-6"
+                  >
+                    <Quote className="size-6 text-(--learnify-primary)/40" />
+                    <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-(--learnify-body)">
+                      {review.comment}
+                    </p>
+                    <div className="mt-4 flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`size-3.5 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-3 border-t pt-3">
+                      <p className="text-sm font-semibold text-(--learnify-heading)">
+                        {userName}
+                      </p>
+                      {review.course_id && (
+                        <Link
+                          href={`/courses/${review.course_id.slug}`}
+                          className="text-xs text-(--learnify-body) hover:text-(--learnify-primary)"
+                        >
+                          {review.course_id.title}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       <BlogTeaserGrid items={blogTeasers} />
     </div>

@@ -33,7 +33,7 @@ export function MentorPlanCard({ courseId }: { courseId: string | null }) {
         );
         if (!res.ok) {
           const err = await res.json().catch(() => null);
-          throw new Error(err?.error || "Khong the tai mentor plan");
+          throw new Error(err?.error || "Không thể tải mentor plan");
         }
         const payload = await res.json();
         if (mounted) {
@@ -87,7 +87,7 @@ export function MentorPlanCard({ courseId }: { courseId: string | null }) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error || "Khong the gui feedback");
+        throw new Error(err?.error || "Không thể gửi feedback");
       }
       setFeedbackDone(rating);
     } catch (err) {

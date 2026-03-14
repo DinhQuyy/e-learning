@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ReviewCard } from "@/components/features/review-card";
+import { ReviewReplyForm } from "./review-reply-form";
 import { ArrowLeft, Star, MessageSquare } from "lucide-react";
 import Link from "next/link";
 
@@ -195,7 +196,11 @@ export default async function CourseReviewsPage({
         ) : (
           <div className="space-y-4">
             {reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
+              <ReviewCard
+                key={review.id}
+                review={review}
+                replySlot={<ReviewReplyForm review={review} />}
+              />
             ))}
           </div>
         )}

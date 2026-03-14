@@ -248,7 +248,7 @@ export async function DELETE(
     const currentUserId = await getCurrentUserId();
     if (currentUserId && currentUserId === id) {
       return NextResponse.json(
-        { error: "Khong the tu xoa tai khoan dang dang nhap" },
+        { error: "Không thể tự xoá tài khoản đang đăng nhập" },
         { status: 400 }
       );
     }
@@ -261,7 +261,7 @@ export async function DELETE(
 
     if (res.status === 401) {
       return NextResponse.json(
-        { error: "Khong co quyen truy cap" },
+        { error: "Không có quyền truy cập" },
         { status: 401 }
       );
     }
@@ -273,7 +273,7 @@ export async function DELETE(
         {
           error: reason
             ? `Khong the xoa nguoi dung: ${reason}`
-            : "Khong the xoa nguoi dung",
+            : "Không thể xoá người dùng",
           details: error,
         },
         { status: res.status }
@@ -287,7 +287,7 @@ export async function DELETE(
         error:
           error instanceof Error && error.message
             ? error.message
-            : "Loi he thong",
+            : "Lỗi hệ thống",
       },
       { status: 500 }
     );

@@ -4,7 +4,13 @@ import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +30,8 @@ const SAMPLE_QA = {
     {
       id: "course-create-01",
       question: "Tạo khóa học mới ở đâu?",
-      answer: "Bạn vào Instructor Portal, chọn Tạo khóa học mới và điền thông tin cơ bản.",
+      answer:
+        "Bạn vào Cổng giảng viên, chọn Tạo khóa học mới và điền thông tin cơ bản.",
       deep_link: "/instructor/courses/new",
       aliases: ["Tạo khóa học như thế nào?"],
       tags: ["instructor", "course"],
@@ -32,10 +39,24 @@ const SAMPLE_QA = {
   ],
 };
 
+const SOURCE_TYPE_OPTIONS = [
+  { value: "custom_qa", label: "Hỏi đáp tùy chỉnh (khuyến nghị)" },
+  { value: "faq", label: "Câu hỏi thường gặp (FAQ)" },
+] as const;
+
+const VISIBILITY_OPTIONS = [
+  { value: "public", label: "Công khai" },
+  { value: "enrolled_only", label: "Chỉ học viên đã ghi danh" },
+  { value: "instructor_only", label: "Chỉ giảng viên" },
+  { value: "admin_only", label: "Chỉ quản trị viên" },
+] as const;
+
 export function AiCustomQaUploadCard() {
   const [file, setFile] = useState<File | null>(null);
   const [setName, setSetName] = useState("private-faq");
-  const [sourceType, setSourceType] = useState<"custom_qa" | "faq">("custom_qa");
+  const [sourceType, setSourceType] = useState<"custom_qa" | "faq">(
+    "custom_qa"
+  );
   const [visibility, setVisibility] = useState<
     "public" | "enrolled_only" | "instructor_only" | "admin_only"
   >("public");
@@ -45,12 +66,16 @@ export function AiCustomQaUploadCard() {
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const sourceTypeLabel = useMemo(
-    () => (sourceType === "custom_qa" ? "custom_qa (khuyến nghị)" : "faq"),
+    () =>
+      SOURCE_TYPE_OPTIONS.find((option) => option.value === sourceType)?.label ??
+      SOURCE_TYPE_OPTIONS[0].label,
     [sourceType]
   );
 
   const downloadSample = () => {
-    const blob = new Blob([JSON.stringify(SAMPLE_QA, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(SAMPLE_QA, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -62,7 +87,7 @@ export function AiCustomQaUploadCard() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!file) {
-      toast.error("Vui lòng chọn file JSON");
+      toast.error("Vui lòng chọn tệp JSON");
       return;
     }
 
@@ -89,7 +114,7 @@ export function AiCustomQaUploadCard() {
       }
 
       setResult(payload as ImportResult);
-      toast.success("Tải lên QA thành công");
+      toast.success("Tải lên bộ hỏi đáp thành công");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Tải lên thất bại");
     } finally {
@@ -102,22 +127,24 @@ export function AiCustomQaUploadCard() {
       <CardHeader>
         <CardTitle>Tải lên bộ hỏi đáp AI (Quản trị)</CardTitle>
         <CardDescription>
-          Tải file JSON để cập nhật bộ câu hỏi riêng cho AI mà không cần chạy script.
+          Tải tệp JSON để cập nhật bộ câu hỏi riêng cho AI mà không cần chạy
+          script.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" onClick={downloadSample}>
-              Tải file mẫu JSON
+              Tải tệp mẫu JSON
             </Button>
             <span className="text-xs text-muted-foreground">
-              Loại nguồn hiện tại: <span className="font-medium">{sourceTypeLabel}</span>
+              Loại nguồn hiện tại:{" "}
+              <span className="font-medium">{sourceTypeLabel}</span>
             </span>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="qa-file">File JSON</Label>
+            <Label htmlFor="qa-file">Tệp JSON</Label>
             <Input
               id="qa-file"
               type="file"
@@ -142,7 +169,7 @@ export function AiCustomQaUploadCard() {
                 id="course-id"
                 value={courseId}
                 onChange={(event) => setCourseId(event.target.value)}
-                placeholder="uuid hoặc để trống"
+                placeholder="UUID hoặc để trống"
               />
             </div>
           </div>
@@ -154,10 +181,15 @@ export function AiCustomQaUploadCard() {
                 id="source-type"
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={sourceType}
-                onChange={(event) => setSourceType(event.target.value as "custom_qa" | "faq")}
+                onChange={(event) =>
+                  setSourceType(event.target.value as "custom_qa" | "faq")
+                }
               >
-                <option value="custom_qa">custom_qa</option>
-                <option value="faq">faq</option>
+                {SOURCE_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-2">
@@ -176,10 +208,11 @@ export function AiCustomQaUploadCard() {
                   )
                 }
               >
-                <option value="public">public</option>
-                <option value="enrolled_only">enrolled_only</option>
-                <option value="instructor_only">instructor_only</option>
-                <option value="admin_only">admin_only</option>
+                {VISIBILITY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -190,11 +223,13 @@ export function AiCustomQaUploadCard() {
               checked={replaceSet}
               onCheckedChange={(value) => setReplaceSet(Boolean(value))}
             />
-            <Label htmlFor="replace-set">Xóa dữ liệu cũ trong bộ trước khi nhập</Label>
+            <Label htmlFor="replace-set">
+              Xóa dữ liệu cũ trong bộ trước khi nhập
+            </Label>
           </div>
 
           <Button type="submit" disabled={uploading}>
-            {uploading ? "Đang tải lên..." : "Tải lên QA"}
+            {uploading ? "Đang tải lên..." : "Tải lên bộ hỏi đáp"}
           </Button>
         </form>
 

@@ -1,23 +1,27 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   CircleHelp,
-  LayoutGrid,
-  Search,
-  Moon,
-  Sun,
-  LogIn,
-  UserPlus,
   LayoutDashboard,
+  LayoutGrid,
+  LogIn,
   LogOut,
+  Moon,
+  Search,
+  Sun,
+  UserPlus,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+
+import { HeaderCartSheet } from "@/components/layout/header-cart-sheet";
+import { HeaderSearchDialog } from "@/components/layout/header-search-dialog";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-fetch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,15 +30,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeaderCartSheet } from "@/components/layout/header-cart-sheet";
-import { HeaderSearchDialog } from "@/components/layout/header-search-dialog";
-import { MobileNav } from "@/components/layout/mobile-nav";
-import { useAuth } from "@/hooks/use-auth";
-import { useAuthStore } from "@/stores/auth-store";
+import { apiFetch } from "@/lib/api-fetch";
 import { getAssetUrl } from "@/lib/directus";
-import { cn } from "@/lib/utils";
 import { getDashboardPath } from "@/lib/role-routing";
+import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
+import type { DirectusUser } from "@/types";
 
 interface HeaderCategory {
   id: string;
@@ -54,7 +55,11 @@ const fallbackCategories: HeaderCategory[] = [
   { id: "kinh-doanh", name: "Kinh doanh", slug: "kinh-doanh" },
   { id: "lap-trinh", name: "Lập trình", slug: "lap-trinh" },
   { id: "ngoai-ngu", name: "Ngoại ngữ", slug: "ngoai-ngu" },
-  { id: "phat-trien-ca-nhan", name: "Phát triển bản thân", slug: "phat-trien-ca-nhan" },
+  {
+    id: "phat-trien-ca-nhan",
+    name: "Phát triển bản thân",
+    slug: "phat-trien-ca-nhan",
+  },
   { id: "thiet-ke", name: "Thiết kế", slug: "thiet-ke" },
 ];
 
@@ -78,14 +83,8 @@ function getSafeInitials(user: {
   const email = typeof user.email === "string" ? user.email.trim() : "";
 
   const fromName = `${first[0] ?? ""}${last[0] ?? ""}`.trim();
-  if (fromName) {
-    return fromName.toUpperCase();
-  }
-
-  if (email) {
-    return email.slice(0, 2).toUpperCase();
-  }
-
+  if (fromName) return fromName.toUpperCase();
+  if (email) return email.slice(0, 2).toUpperCase();
   return "U";
 }
 
@@ -99,43 +98,67 @@ function getSafeDisplayName(user: {
   const last = typeof user.last_name === "string" ? user.last_name.trim() : "";
   const fullName = [first, last].filter(Boolean).join(" ");
 
-  if (fullName) {
-    return fullName;
-  }
-
+  if (fullName) return fullName;
   if (typeof user.email === "string" && user.email.trim().length > 0) {
     return user.email;
   }
-
   return "User";
 }
 
-export function Header() {
+function normalizeRoleName(
+  role: DirectusUser["role"] | null | undefined
+): string | null {
+  if (!role) return null;
+
+  if (typeof role === "object" && typeof role.name === "string") {
+    const name = role.name.toLowerCase();
+    return name === "administrator" ? "admin" : name;
+  }
+
+  if (typeof role === "string" && role.trim().length > 0) {
+    const name = role.trim().toLowerCase();
+    return name === "administrator" ? "admin" : name;
+  }
+
+  return null;
+}
+
+interface HeaderProps {
+  initialUser?: DirectusUser | null;
+}
+
+export function Header({ initialUser = null }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoggedIn, role } = useAuth();
-  const logout = useAuthStore((s) => s.logout);
-  const { theme, setTheme } = useTheme();
-
+  const [hydrated, setHydrated] = useState(false);
   const [categories, setCategories] = useState<HeaderCategory[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  const user = useAuthStore((s) => s.user);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+  const logout = useAuthStore((s) => s.logout);
+  const { theme, setTheme } = useTheme();
+
   useEffect(() => {
-    let mounted = true;
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
 
     apiFetch("/api/categories")
       .then((res) => (res.ok ? res.json() : { data: [] }))
       .then((json: { data?: HeaderCategory[] }) => {
-        if (!mounted) return;
+        if (!alive) return;
         setCategories(Array.isArray(json.data) ? json.data : []);
       })
       .catch(() => {
-        if (!mounted) return;
+        if (!alive) return;
         setCategories([]);
       });
 
     return () => {
-      mounted = false;
+      alive = false;
     };
   }, []);
 
@@ -145,13 +168,19 @@ export function Header() {
     router.refresh();
   };
 
-  const userInitials = user ? getSafeInitials(user) : "";
-  const userDisplayName = user ? getSafeDisplayName(user) : "";
+  const activeUser = hydrated && !isAuthLoading ? user : initialUser;
+  const role = normalizeRoleName(activeUser?.role);
+  const isLoggedIn = Boolean(activeUser);
+  const userInitials = activeUser ? getSafeInitials(activeUser) : "";
+  const userDisplayName = activeUser ? getSafeDisplayName(activeUser) : "";
   const userEmail =
-    user && typeof user.email === "string" && user.email.trim().length > 0
-      ? user.email
+    activeUser &&
+    typeof activeUser.email === "string" &&
+    activeUser.email.trim().length > 0
+      ? activeUser.email
       : "";
   const dashboardPath = getDashboardPath(role);
+  const interactionReady = hydrated;
 
   const topCategories = useMemo(() => {
     const source =
@@ -170,11 +199,14 @@ export function Header() {
       ? pathname === "/"
       : pathname === href || pathname.startsWith(`${href}/`);
 
+  const categoryButtonClass =
+    "hidden h-10 rounded-full border-border/70 px-4 text-sm font-semibold lg:inline-flex";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-[84px] lg:px-8">
         <div className="flex items-center gap-2 lg:gap-6">
-          <MobileNav />
+          <MobileNav isLoggedIn={isLoggedIn} dashboardPath={dashboardPath} />
 
           <Link href="/" className="flex items-center gap-2 rounded-xl pr-2">
             <span
@@ -193,78 +225,83 @@ export function Header() {
             </div>
           </Link>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden h-10 rounded-full border-border/70 px-4 text-sm font-semibold lg:inline-flex"
-              >
-                <LayoutGrid className="size-4 text-[#2f57ef]" />
-                Danh mục
-                <ChevronDown className="size-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[540px] p-0">
-              <div className="grid grid-cols-[1.2fr_1fr]">
-                <div className="border-r p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Danh mục nổi bật
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {primaryCategories.map((category) => (
-                      <Link
-                        key={category.id}
-                        href={category.slug ? `/categories/${category.slug}` : "/categories"}
-                        className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                      >
-                        {category.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-3 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Khám phá nhanh
-                  </p>
-                  <Link
-                    href="/courses?sort=popular"
-                    className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                  >
-                    Khóa học phổ biến
-                  </Link>
-                  <Link
-                    href="/courses?sort=newest"
-                    className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                  >
-                    Khóa học mới nhất
-                  </Link>
-                  <Link
-                    href="/categories"
-                    className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                  >
-                    Tất cả danh mục
-                  </Link>
-
-                  {secondaryCategories.length > 0 && (
-                    <div className="border-t pt-3">
-                      {secondaryCategories.slice(0, 3).map((category) => (
+          {interactionReady ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={categoryButtonClass}>
+                  <LayoutGrid className="size-4 text-[#2f57ef]" />
+                  Danh mục
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[540px] p-0">
+                <div className="grid grid-cols-[1.2fr_1fr]">
+                  <div className="border-r p-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Danh mục nổi bật
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {primaryCategories.map((category) => (
                         <Link
                           key={category.id}
                           href={category.slug ? `/categories/${category.slug}` : "/categories"}
-                          className="block rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                         >
                           {category.name}
                         </Link>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  </div>
+                  <div className="space-y-3 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Khám phá nhanh
+                    </p>
+                    <Link
+                      href="/courses?sort=popular"
+                      className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                      Khóa học phổ biến
+                    </Link>
+                    <Link
+                      href="/courses?sort=newest"
+                      className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                      Khóa học mới nhất
+                    </Link>
+                    <Link
+                      href="/categories"
+                      className="block rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                      Tất cả danh mục
+                    </Link>
 
-          <nav className="hidden xl:flex items-center gap-1">
+                    {secondaryCategories.length > 0 ? (
+                      <div className="border-t pt-3">
+                        {secondaryCategories.slice(0, 3).map((category) => (
+                          <Link
+                            key={category.id}
+                            href={category.slug ? `/categories/${category.slug}` : "/categories"}
+                            className="block rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            {category.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="outline" size="sm" asChild className={categoryButtonClass}>
+              <Link href="/categories">
+                <LayoutGrid className="size-4 text-[#2f57ef]" />
+                Danh mục
+              </Link>
+            </Button>
+          )}
+
+          <nav className="hidden items-center gap-1 xl:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -288,12 +325,13 @@ export function Header() {
             size="icon"
             aria-label="Tìm kiếm"
             className="rounded-full"
+            disabled={!interactionReady}
             onClick={() => setSearchOpen(true)}
           >
             <Search className="size-4" />
           </Button>
 
-          {isLoggedIn && <HeaderCartSheet />}
+          {isLoggedIn ? <HeaderCartSheet /> : null}
 
           <Button
             variant="ghost"
@@ -318,48 +356,75 @@ export function Header() {
             </Link>
           </Button>
 
-          {isLoggedIn && user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-9 w-9 rounded-full"
-                  aria-label="Menu người dùng"
-                >
+          {isLoggedIn && activeUser ? (
+            interactionReady ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-9 w-9 rounded-full"
+                    aria-label="Menu người dùng"
+                  >
+                    <Avatar className="size-9 border border-border/60">
+                      <AvatarImage
+                        src={getAssetUrl(activeUser.avatar)}
+                        alt={userDisplayName}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {userDisplayName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {userEmail || "Không có email"}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => router.push(dashboardPath)}
+                    className="cursor-pointer"
+                  >
+                    <LayoutDashboard className="size-4" />
+                    Bảng điều khiển
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                    variant="destructive"
+                  >
+                    <LogOut className="size-4" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="ghost"
+                asChild
+                className="relative h-9 w-9 rounded-full"
+              >
+                <Link href={dashboardPath} aria-label="Menu người dùng">
                   <Avatar className="size-9 border border-border/60">
-                    <AvatarImage src={getAssetUrl(user.avatar)} alt={userDisplayName} />
-                    <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                    <AvatarImage
+                      src={getAssetUrl(activeUser.avatar)}
+                      alt={userDisplayName}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {userInitials}
+                    </AvatarFallback>
                   </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{userDisplayName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {userEmail || "Không có email"}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => router.push(dashboardPath)}
-                  className="cursor-pointer"
-                >
-                  <LayoutDashboard className="size-4" />
-                  Bảng điều khiển
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="cursor-pointer"
-                  variant="destructive"
-                >
-                  <LogOut className="size-4" />
-                  Đăng xuất
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </Link>
+              </Button>
+            )
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
               <Button
@@ -390,15 +455,18 @@ export function Header() {
           )}
         </div>
       </div>
-      <HeaderSearchDialog
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        categories={topCategories.map((item) => ({
-          id: item.id,
-          name: item.name,
-          slug: item.slug,
-        }))}
-      />
+
+      {interactionReady ? (
+        <HeaderSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          categories={topCategories.map((item) => ({
+            id: item.id,
+            name: item.name,
+            slug: item.slug,
+          }))}
+        />
+      ) : null}
     </header>
   );
 }

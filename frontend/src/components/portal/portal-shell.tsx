@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/header";
 import { PortalHero, type PortalHeroStat } from "@/components/portal/portal-hero";
 import { PortalSideNav } from "@/components/portal/portal-side-nav";
 import type { PortalNavItem } from "@/components/portal/portal-nav-config";
+import type { DirectusUser } from "@/types";
 
 const poppins = Poppins({
   subsets: ["latin", "latin-ext"],
@@ -17,6 +18,7 @@ interface PortalShellProps {
   greeting: string;
   stats: PortalHeroStat[];
   navItems: PortalNavItem[];
+  initialUser?: DirectusUser | null;
   children: React.ReactNode;
 }
 
@@ -28,11 +30,12 @@ export function PortalShell({
   greeting,
   stats,
   navItems,
+  initialUser = null,
   children,
 }: PortalShellProps) {
   return (
     <div className={`${poppins.className} learnify-home learnify-portal min-h-screen bg-[#f6f8fc]`}>
-      <Header />
+      <Header initialUser={initialUser} />
       <main className="mx-auto w-full max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <PortalHero
           roleLabel={roleLabel}

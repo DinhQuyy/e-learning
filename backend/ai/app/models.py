@@ -117,6 +117,13 @@ class MentorTaskModel(BaseModel):
     eta_min: int
     why: str
     cta: CtaModel
+    recommendation_id: str | None = None
+    course_id: str | None = None
+    course_title: str | None = None
+    lesson_id: str | None = None
+    priority: int | None = None
+    risk_score: float | None = None
+    risk_band: Literal['low', 'medium', 'high'] | None = None
 
 
 class MentorOverdueModel(BaseModel):
@@ -124,12 +131,21 @@ class MentorOverdueModel(BaseModel):
     title: str
     reason: str
     cta: CtaModel
+    recommendation_id: str | None = None
+    course_id: str | None = None
+    course_title: str | None = None
+    priority: int | None = None
+    risk_score: float | None = None
+    risk_band: Literal['low', 'medium', 'high'] | None = None
 
 
 class MentorMetricsModel(BaseModel):
     progress_pct: float
     streak_days: int
     last_activity: date | None
+    active_courses: int = 0
+    at_risk_courses: int = 0
+    weekly_minutes: int = 0
 
 
 class MentorOutput(BaseModel):
@@ -201,6 +217,85 @@ class MentorRequest(BaseModel):
     course_id: str
     conversation_id: str | None = None
     context: dict[str, Any] = Field(default_factory=dict)
+
+
+class MentorRecommendationClickRequest(BaseModel):
+    user_id: str
+    recommendation_id: str
+
+
+class MentorRecommendationDismissRequest(BaseModel):
+    user_id: str
+    recommendation_id: str
+    reason: str | None = None
+
+
+class StatusResponse(BaseModel):
+    status: Literal['ok']
+
+
+class MentorInterventionLogRequest(BaseModel):
+    instructor_id: str
+    student_id: str
+    course_id: str
+    lesson_id: str | None = None
+    recommendation_id: str | None = None
+    action_type: Literal['nudge', 'micro_plan', 'recovery_plan']
+    channel: Literal['in_app', 'email', 'multi']
+    status: Literal['sent', 'failed'] = 'sent'
+    title: str
+    message: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MentorInterventionLogResponse(BaseModel):
+    status: Literal['ok']
+    intervention_id: str
+
+
+class InstructorRiskRequest(BaseModel):
+    course_ids: list[str] = Field(default_factory=list)
+    limit: int = Field(default=12, ge=1, le=100)
+
+
+class InstructorRiskItem(BaseModel):
+    user_id: str
+    course_id: str
+    risk_score: float
+    risk_band: Literal['low', 'medium', 'high']
+    inactive_days: int
+    failed_quiz_attempts_7d: int
+    streak_days: int
+    time_spent_week_sec: int
+    progress_pct: float
+    last_activity_at: datetime | None = None
+    recommended_action: str
+
+
+class InstructorRiskResponse(BaseModel):
+    items: list[InstructorRiskItem] = Field(default_factory=list)
+
+
+class MentorAnalyticsRequest(BaseModel):
+    course_ids: list[str] = Field(default_factory=list)
+    lookback_days: int = Field(default=30, ge=1, le=180)
+
+
+class MentorAnalyticsResponse(BaseModel):
+    lookback_days: int
+    shown: int
+    clicked: int
+    dismissed: int
+    completed: int
+    ctr: float
+    completion_rate: float
+    clicked_completion_rate: float
+    non_clicked_completion_rate: float
+    completion_lift_pp: float
+    completion_lift_ratio: float
+    interventions_sent: int
+    notification_interventions: int
+    email_interventions: int
 
 
 class AssignmentRequest(BaseModel):

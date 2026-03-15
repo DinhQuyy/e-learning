@@ -18,7 +18,6 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -539,6 +538,8 @@ export default async function CourseDetailPage({
                       }
                     >
                       <AccordionTrigger
+                        id={`module-trigger-${moduleItem.id}`}
+                        aria-controls={`module-content-${moduleItem.id}`}
                         className={
                           isFocusedModule
                             ? "px-5 py-4 text-left font-semibold text-cyan-950 hover:bg-cyan-50 hover:no-underline"
@@ -559,7 +560,11 @@ export default async function CourseDetailPage({
                           </span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent
+                        id={`module-content-${moduleItem.id}`}
+                        aria-labelledby={`module-trigger-${moduleItem.id}`}
+                        className="p-0"
+                      >
                         <ul className="divide-y border-t border-slate-200">
                           {moduleItem.lessons.map((lesson) => {
                             const lessonData = lesson as Lesson;

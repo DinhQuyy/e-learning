@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MentorEmailPreferencesCard } from "@/components/features/mentor-email-preferences-card";
 import { Loader2, Upload, Save, KeyRound, User } from "lucide-react";
 import { toast } from "sonner";
 import Cropper, { Area } from "react-easy-crop";
@@ -355,6 +356,17 @@ export default function ProfilePage() {
           </Button>
         </CardContent>
       </Card>
+
+      <MentorEmailPreferencesCard
+        accountEmail={user.email}
+        initialEnabled={user.mentor_notification_email_enabled}
+        initialActiveNotificationEmail={user.mentor_notification_email}
+        initialActiveNotificationEmailVerified={user.mentor_notification_email_verified}
+        initialPendingNotificationEmail={user.mentor_notification_email_pending}
+        initialPendingVerificationExpiresAt={
+          user.mentor_notification_email_verification_expires_at
+        }
+      />
 
       <Card>
         <CardHeader>

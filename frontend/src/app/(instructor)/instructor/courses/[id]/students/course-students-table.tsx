@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { Calendar, Globe, Mail, Phone, Search } from "lucide-react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -22,17 +25,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getAssetUrl } from "@/lib/directus";
 import type { CourseStudent } from "@/lib/queries/instructor";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-import { Calendar, Globe, Mail, Phone, Search } from "lucide-react";
 
 const statusMap: Record<
   string,
@@ -61,9 +62,7 @@ function getStudentEmail(student: CourseStudent): string {
 type SortOption = "date_desc" | "date_asc" | "progress_desc" | "progress_asc" | "name_asc";
 
 export function CourseStudentsTable({ students }: Props) {
-  const [selectedStudent, setSelectedStudent] = useState<CourseStudent | null>(
-    null
-  );
+  const [selectedStudent, setSelectedStudent] = useState<CourseStudent | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -170,14 +169,19 @@ export function CourseStudentsTable({ students }: Props) {
             <TableHead>Ngày đăng ký</TableHead>
             <TableHead>Tiến độ</TableHead>
             <TableHead>Trạng thái</TableHead>
-            <TableHead className="text-right pr-2">Chi tiết</TableHead>
+            <TableHead className="pr-2 text-right">Chi tiết</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filteredStudents.map((student) => {
             const user = student.user;
-            const name = getStudentName(student);
-            const email = getStudentEmail(student) || undefined;
+            const name =
+              user && typeof user === "object"
+                ? [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+                  user.email
+                : "Học viên";
+            const email =
+              user && typeof user === "object" ? user.email : undefined;
             const avatar =
               user && typeof user === "object" ? user.avatar : undefined;
             const initials =
@@ -198,24 +202,20 @@ export function CourseStudentsTable({ students }: Props) {
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">
                       <AvatarImage src={getAssetUrl(avatar)} alt={name} />
-                      <AvatarFallback className="text-xs">
-                        {initials}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="font-medium text-sm">{name}</span>
-                      {user && typeof user === "object" && user.headline && (
-                        <span className="text-xs text-muted-foreground line-clamp-1">
+                      <span className="text-sm font-medium">{name}</span>
+                      {user && typeof user === "object" && user.headline ? (
+                        <span className="line-clamp-1 text-xs text-muted-foreground">
                           {user.headline}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-muted-foreground">
-                    {email ?? "—"}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{email ?? "—"}</span>
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
@@ -225,11 +225,8 @@ export function CourseStudentsTable({ students }: Props) {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2 min-w-[140px]">
-                    <Progress
-                      value={student.progress_percentage}
-                      className="h-2 w-20"
-                    />
+                  <div className="flex min-w-[140px] items-center gap-2">
+                    <Progress value={student.progress_percentage} className="h-2 w-20" />
                     <span className="text-xs text-muted-foreground">
                       {Math.round(student.progress_percentage)}%
                     </span>
@@ -239,11 +236,7 @@ export function CourseStudentsTable({ students }: Props) {
                   <Badge variant={status.variant}>{status.label}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpen(student)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleOpen(student)}>
                     Xem chi tiết
                   </Button>
                 </TableCell>
@@ -275,9 +268,7 @@ function StudentDetailDialog({
   const user = student?.user;
   const name = useMemo(() => {
     if (!user || typeof user !== "object") return "Học viên";
-    return (
-      [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email
-    );
+    return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email;
   }, [user]);
 
   const roleLabel = useMemo(() => {
@@ -295,38 +286,35 @@ function StudentDetailDialog({
     return user.social_links as Record<string, string>;
   }, [user]);
 
-  const courseStatus =
-    (student && statusMap[student.status]) ?? statusMap.active;
-
+  const courseStatus = (student && statusMap[student.status]) ?? statusMap.active;
   const enrolledDate =
     student?.enrolled_at &&
     format(new Date(student.enrolled_at), "dd/MM/yyyy", { locale: vi });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12 sm:px-6">
           <DialogTitle>Chi tiết học viên</DialogTitle>
           <DialogDescription>
             Thông tin hồ sơ và tiến độ học tập của {name}
           </DialogDescription>
         </DialogHeader>
 
-        {student && (
-          <div className="grid gap-6 md:grid-cols-[240px,1fr]">
-            <div className="rounded-lg border bg-muted/40 p-4">
+        {student ? (
+          <div className="overflow-y-auto px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+            <div className="grid gap-4 xl:grid-cols-[260px,minmax(0,1fr)] xl:items-start">
+              <div className="rounded-lg border bg-muted/40 p-4">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={getAssetUrl(user?.avatar)} alt={name} />
                   <AvatarFallback className="text-lg">{name[0]}</AvatarFallback>
                 </Avatar>
-                <div className="mt-3 space-y-1">
-                  <div className="text-lg font-semibold">{name}</div>
-                  {user && typeof user === "object" && user.headline && (
-                    <p className="text-sm text-muted-foreground">
-                      {user.headline}
-                    </p>
-                  )}
+                <div className="mt-3 min-w-0 space-y-1">
+                  <div className="break-words text-lg font-semibold">{name}</div>
+                  {user && typeof user === "object" && user.headline ? (
+                    <p className="break-words text-sm text-muted-foreground">{user.headline}</p>
+                  ) : null}
                 </div>
                 <div className="mt-3 flex flex-wrap justify-center gap-2">
                   <Badge
@@ -341,34 +329,28 @@ function StudentDetailDialog({
                       : "Bị hạn chế"}
                   </Badge>
                   <Badge variant="outline">{roleLabel}</Badge>
-                  <Badge variant={courseStatus.variant}>
-                    {courseStatus.label}
-                  </Badge>
+                  <Badge variant={courseStatus.variant}>{courseStatus.label}</Badge>
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2 text-sm">
+              <div className="mt-4 space-y-3 text-sm">
                 <DetailRow
                   icon={<Mail className="h-4 w-4" />}
                   label="Email"
-                  value={
-                    user && typeof user === "object" ? user.email : "Chưa có"
-                  }
+                  value={user && typeof user === "object" ? user.email : "Chưa có"}
                 />
-                {user && typeof user === "object" && user.phone && (
+                {user && typeof user === "object" && user.phone ? (
                   <DetailRow
                     icon={<Phone className="h-4 w-4" />}
                     label="Số điện thoại"
                     value={user.phone}
                   />
-                )}
+                ) : null}
                 <DetailRow
                   icon={<Calendar className="h-4 w-4" />}
                   label="Ngày tham gia"
                   value={
-                    user &&
-                    typeof user === "object" &&
-                    user.date_created
+                    user && typeof user === "object" && user.date_created
                       ? format(new Date(user.date_created), "dd/MM/yyyy", {
                           locale: vi,
                         })
@@ -378,25 +360,20 @@ function StudentDetailDialog({
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-lg border p-4">
-                <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-4">
+                <div className="rounded-lg border p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold">Tiến độ khoá học</p>
+                    <p className="text-sm font-semibold">Tiến độ khóa học</p>
                     <p className="text-xs text-muted-foreground">
                       Ghi danh {enrolledDate ?? "—"}
                     </p>
                   </div>
-                  <Badge variant={courseStatus.variant}>
-                    {courseStatus.label}
-                  </Badge>
+                  <Badge variant={courseStatus.variant}>{courseStatus.label}</Badge>
                 </div>
-                <div className="mt-4 flex items-center gap-3">
-                  <Progress
-                    value={student.progress_percentage}
-                    className="h-2 flex-1"
-                  />
-                  <span className="text-sm font-medium">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <Progress value={student.progress_percentage} className="h-2 flex-1" />
+                  <span className="shrink-0 text-sm font-medium">
                     {Math.round(student.progress_percentage)}%
                   </span>
                 </div>
@@ -406,7 +383,7 @@ function StudentDetailDialog({
                 <p className="text-sm font-semibold">Hồ sơ học viên</p>
                 <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                   {user && typeof user === "object" && user.bio ? (
-                    <p className="whitespace-pre-wrap">{user.bio}</p>
+                    <p className="whitespace-pre-wrap break-words">{user.bio}</p>
                   ) : (
                     <p>Chưa có mô tả cá nhân.</p>
                   )}
@@ -423,10 +400,10 @@ function StudentDetailDialog({
                         href={value}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
+                        className="flex max-w-full items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
                       >
-                        <Globe className="h-3.5 w-3.5" />
-                        <span className="capitalize">{key}</span>
+                        <Globe className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate capitalize">{key}</span>
                       </a>
                     ))}
                   </div>
@@ -437,8 +414,9 @@ function StudentDetailDialog({
                 )}
               </div>
             </div>
+            </div>
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -454,11 +432,11 @@ function DetailRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <span className="text-primary">{icon}</span>
-      <div className="flex flex-col">
+    <div className="flex items-start gap-2 text-muted-foreground">
+      <span className="mt-0.5 shrink-0 text-primary">{icon}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-xs uppercase tracking-wide">{label}</span>
-        <span className="text-sm text-foreground">{value}</span>
+        <span className="break-words text-sm text-foreground">{value}</span>
       </div>
     </div>
   );

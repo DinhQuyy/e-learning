@@ -118,7 +118,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
             Chỉ số dịch vụ AI (24h)
           </CardTitle>
           <CardDescription>
-            Theo dõi hiệu năng các nhánh của Trợ lý AI như hỗ trợ, tài liệu, mentor và assignment.
+            Theo dõi hiệu năng các nhánh của Trợ lý AI như hỗ trợ, tài liệu, mentor và bài tập.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -199,6 +199,70 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
               <p className="text-xl font-semibold">
                 {reportData.aiDailyMetrics.summary.positive_feedback_change_pct >= 0 ? "+" : ""}
                 {reportData.aiDailyMetrics.summary.positive_feedback_change_pct.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Phễu tương tác mentor</CardTitle>
+          <CardDescription>
+            Theo dõi CTR, mức tăng tỷ lệ hoàn thành và số lần can thiệp của
+            mentor trong {reportData.mentorAnalytics.lookback_days} ngày gần
+            nhất.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">
+                Lượt hiển thị đề xuất
+              </p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.mentorAnalytics.shown)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">CTR</p>
+              <p className="text-xl font-semibold">
+                {(reportData.mentorAnalytics.ctr * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">
+                Tỷ lệ hoàn thành
+              </p>
+              <p className="text-xl font-semibold">
+                {(reportData.mentorAnalytics.completion_rate * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">
+                Mức tăng hoàn thành
+              </p>
+              <p className="text-xl font-semibold">
+                {reportData.mentorAnalytics.completion_lift_pp >= 0 ? "+" : ""}
+                {(reportData.mentorAnalytics.completion_lift_pp * 100).toFixed(
+                  1
+                )}{" "}
+                điểm %
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {reportData.mentorAnalytics.completion_lift_ratio >= 0 ? "+" : ""}
+                {reportData.mentorAnalytics.completion_lift_ratio.toFixed(1)}%
+                {" "}so với nhóm không nhấp
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-xs text-muted-foreground">Lượt can thiệp</p>
+              <p className="text-xl font-semibold">
+                {numberFormatter.format(reportData.mentorAnalytics.interventions_sent)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                thông báo {reportData.mentorAnalytics.notification_interventions} / email{" "}
+                {reportData.mentorAnalytics.email_interventions}
               </p>
             </div>
           </div>

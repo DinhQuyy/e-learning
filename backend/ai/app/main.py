@@ -26,14 +26,25 @@ from .models import (
     IndexingRequeueResponse,
     IndexingStatusResponse,
     IndexDocumentRequest,
+    InstructorRiskRequest,
+    InstructorRiskResponse,
     LearningEventRequest,
+    MentorAnalyticsRequest,
+    MentorAnalyticsResponse,
     MentorRequest,
+    MentorRecommendationClickRequest,
+    MentorRecommendationDismissRequest,
+    MentorInterventionLogRequest,
+    MentorInterventionLogResponse,
     MetricsResponse,
     ReferenceSuggestionsResponse,
+    StatusResponse,
 )
 from .redis_client import get_redis
 from .indexing import build_custom_qa_content, build_custom_qa_source_id, purge_document_set
 from .services import (
+    augment_mentor_output_with_context,
+    build_instructor_risk_items,
     build_mentor_context,
     clear_runtime_caches,
     list_assistant_suggestions,
@@ -49,16 +60,30 @@ from .store import (
     ensure_conversation,
     get_indexing_status,
     get_daily_metrics,
+    get_mentor_analytics,
     get_metrics,
+    log_mentor_intervention,
+    mark_mentor_recommendation_clicked,
+    mark_mentor_recommendation_dismissed,
+    mark_mentor_recommendations_completed,
     list_documents_for_requeue,
     log_message,
     record_event,
     refresh_learning_progress,
     save_feedback,
+    save_mentor_recommendations,
     upsert_daily_metrics,
 )
 
 app = FastAPI(title='E-Learning AI API', version='0.1.0')
+
+
+def _attach_recommendation_ids(items: list[dict[str, Any]], recommendation_ids: list[str]) -> None:
+    for index, recommendation_id in enumerate(recommendation_ids):
+        if index >= len(items):
+            break
+        if recommendation_id:
+            items[index]['recommendation_id'] = recommendation_id
 
 
 @app.on_event('startup')
@@ -321,13 +346,31 @@ def mentor_summary(payload: MentorRequest, _auth: None = Depends(verify_internal
         course_id=payload.course_id,
     )
 
-    mentor_context = build_mentor_context(payload.context)
+    mentor_context = build_mentor_context(payload.user_id, payload.context)
     log_message(
         conversation_id=conversation_id,
         role='user',
         content=json.dumps({'course_id': payload.course_id, 'context': mentor_context}, ensure_ascii=False),
     )
     output, latency_ms, prompt_tokens, completion_tokens = run_mentor(mentor_context)
+    output = augment_mentor_output_with_context(output, mentor_context)
+
+    today_plan = output.get('today_plan') if isinstance(output.get('today_plan'), list) else []
+    overdue = output.get('overdue') if isinstance(output.get('overdue'), list) else []
+    today_ids = save_mentor_recommendations(
+        conversation_id=conversation_id,
+        user_id=payload.user_id,
+        items=today_plan,
+        source_bucket='today_plan',
+    )
+    overdue_ids = save_mentor_recommendations(
+        conversation_id=conversation_id,
+        user_id=payload.user_id,
+        items=overdue,
+        source_bucket='overdue',
+    )
+    _attach_recommendation_ids(today_plan, today_ids)
+    _attach_recommendation_ids(overdue, overdue_ids)
 
     assistant_message_id = log_message(
         conversation_id=conversation_id,
@@ -347,6 +390,69 @@ def mentor_summary(payload: MentorRequest, _auth: None = Depends(verify_internal
             'data': output,
         }
     )
+
+
+@app.post('/v1/mentor/recommendation-click', response_model=StatusResponse)
+def mentor_recommendation_click(
+    payload: MentorRecommendationClickRequest, _auth: None = Depends(verify_internal_key)
+) -> StatusResponse:
+    updated = mark_mentor_recommendation_clicked(payload.user_id, payload.recommendation_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail='Recommendation not found')
+    return StatusResponse(status='ok')
+
+
+@app.post('/v1/mentor/recommendation-dismiss', response_model=StatusResponse)
+def mentor_recommendation_dismiss(
+    payload: MentorRecommendationDismissRequest, _auth: None = Depends(verify_internal_key)
+) -> StatusResponse:
+    updated = mark_mentor_recommendation_dismissed(
+        payload.user_id,
+        payload.recommendation_id,
+        payload.reason,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail='Recommendation not found')
+    return StatusResponse(status='ok')
+
+
+@app.post('/v1/mentor/interventions/log', response_model=MentorInterventionLogResponse)
+def mentor_interventions_log(
+    payload: MentorInterventionLogRequest, _auth: None = Depends(verify_internal_key)
+) -> MentorInterventionLogResponse:
+    intervention_id = log_mentor_intervention(
+        instructor_id=payload.instructor_id,
+        student_id=payload.student_id,
+        course_id=payload.course_id,
+        lesson_id=payload.lesson_id,
+        recommendation_id=payload.recommendation_id,
+        action_type=payload.action_type,
+        channel=payload.channel,
+        status=payload.status,
+        title=payload.title,
+        message=payload.message,
+        metadata=payload.metadata,
+    )
+    return MentorInterventionLogResponse(status='ok', intervention_id=intervention_id)
+
+
+@app.post('/v1/mentor/analytics', response_model=MentorAnalyticsResponse)
+def mentor_analytics(
+    payload: MentorAnalyticsRequest, _auth: None = Depends(verify_internal_key)
+) -> MentorAnalyticsResponse:
+    snapshot = get_mentor_analytics(
+        course_ids=payload.course_ids,
+        lookback_days=payload.lookback_days,
+    )
+    return MentorAnalyticsResponse(**snapshot)
+
+
+@app.post('/v1/instructor/risk', response_model=InstructorRiskResponse)
+def instructor_risk(
+    payload: InstructorRiskRequest, _auth: None = Depends(verify_internal_key)
+) -> InstructorRiskResponse:
+    items = build_instructor_risk_items(payload.course_ids, limit=payload.limit)
+    return InstructorRiskResponse(items=items)
 
 
 @app.post('/v1/assignment/hint')
@@ -415,6 +521,12 @@ def learning_event(payload: LearningEventRequest, _auth: None = Depends(verify_i
     )
 
     refresh_learning_progress(user_id=payload.user_id, course_id=payload.course_id)
+    if payload.event_type == 'lesson_complete' and payload.lesson_id:
+        mark_mentor_recommendations_completed(
+            user_id=payload.user_id,
+            course_id=payload.course_id,
+            lesson_id=payload.lesson_id,
+        )
     return {'status': 'ok'}
 
 

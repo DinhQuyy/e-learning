@@ -43,10 +43,15 @@ function getCoursePrice(course: Course): number {
 }
 
 export function HeaderCartSheet() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItemData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const loadCart = useCallback(async () => {
     try {
@@ -60,15 +65,17 @@ export function HeaderCartSheet() {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     loadCart();
-  }, [loadCart]);
+  }, [mounted, loadCart]);
 
   useEffect(() => {
+    if (!mounted) return;
     if (!open) return;
 
     setIsLoading(true);
     loadCart().finally(() => setIsLoading(false));
-  }, [open, loadCart]);
+  }, [mounted, open, loadCart]);
 
   const handleRemove = async (itemId: string) => {
     setRemovingId(itemId);
@@ -93,6 +100,16 @@ export function HeaderCartSheet() {
       }, 0),
     [items]
   );
+
+  if (!mounted) {
+    return (
+      <Button asChild variant="ghost" size="icon" className="relative rounded-full">
+        <Link href="/cart" aria-label="Giỏ hàng">
+          <ShoppingCart className="size-4" />
+        </Link>
+      </Button>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

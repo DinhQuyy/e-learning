@@ -1,4 +1,10 @@
 import { directusUrl } from "@/lib/directus";
+import { postAiApiRaw } from "@/lib/ai-client";
+import {
+  instructorRiskResponseSchema,
+  mentorAnalyticsResponseSchema,
+} from "@/lib/ai-schemas";
+import { z } from "zod";
 import type { Course, Enrollment, Review, DirectusUser } from "@/types";
 
 interface InstructorStats {
@@ -20,6 +26,37 @@ export interface CourseStudent {
   progress_percentage: number;
   status: string;
   last_accessed: string | null;
+}
+
+export interface InstructorAtRiskStudent {
+  enrollment_id: string;
+  user: DirectusUser;
+  course: Course;
+  progress_percentage: number;
+  risk_score: number;
+  risk_band: "low" | "medium" | "high";
+  inactive_days: number;
+  failed_quiz_attempts_7d: number;
+  streak_days: number;
+  last_activity_at: string | null;
+  recommended_action: string;
+}
+
+export interface InstructorMentorAnalytics {
+  lookback_days: number;
+  shown: number;
+  clicked: number;
+  dismissed: number;
+  completed: number;
+  ctr: number;
+  completion_rate: number;
+  clicked_completion_rate: number;
+  non_clicked_completion_rate: number;
+  completion_lift_pp: number;
+  completion_lift_ratio: number;
+  interventions_sent: number;
+  notification_interventions: number;
+  email_interventions: number;
 }
 
 type CountResult = { map: Map<string, number>; success: boolean };
@@ -73,6 +110,14 @@ function dedupeEnrollmentsByUserCourse(enrollments: Enrollment[]): Enrollment[] 
 
 function createEmptyRatingDistribution(): Record<number, number> {
   return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+}
+
+function daysBetween(value: string | null | undefined): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return 0;
+  const diffMs = Date.now() - parsed;
+  return Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
 }
 
 function normalizeRating(rawRating: unknown): number | null {
@@ -369,6 +414,91 @@ async function enrichEnrollments(
   });
 }
 
+async function fetchInstructorRiskRows(
+  courseIds: string[],
+  limit: number
+): Promise<Map<string, z.infer<typeof instructorRiskResponseSchema>["items"][number]>> {
+  const map = new Map<
+    string,
+    z.infer<typeof instructorRiskResponseSchema>["items"][number]
+  >();
+
+  if (courseIds.length === 0) return map;
+
+  try {
+    const raw = await postAiApiRaw("/v1/instructor/risk", {
+      course_ids: courseIds,
+      limit,
+    });
+    const parsed = instructorRiskResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      return map;
+    }
+
+    for (const item of parsed.data.items) {
+      map.set(`${item.user_id}:${item.course_id}`, item);
+    }
+  } catch {
+    // keep dashboard best-effort
+  }
+
+  return map;
+}
+
+async function fetchMentorAnalyticsRows(
+  courseIds: string[],
+  lookbackDays: number
+): Promise<InstructorMentorAnalytics | null> {
+  try {
+    const raw = await postAiApiRaw("/v1/mentor/analytics", {
+      course_ids: courseIds,
+      lookback_days: lookbackDays,
+    });
+    const parsed = mentorAnalyticsResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function fallbackRiskForEnrollment(
+  enrollment: Enrollment
+): Omit<InstructorAtRiskStudent, "enrollment_id" | "user" | "course" | "progress_percentage"> {
+  const progress = Number(enrollment.progress_percentage ?? 0);
+  const inactiveDays = daysBetween(enrollment.enrolled_at ?? enrollment.date_created ?? null);
+
+  let riskScore = 8;
+  let riskBand: InstructorAtRiskStudent["risk_band"] = "low";
+  let recommendedAction = "Theo dõi thêm trước khi can thiệp mạnh.";
+
+  if (progress <= 0 && inactiveDays >= 14) {
+    riskScore = 72;
+    riskBand = "high";
+    recommendedAction = "Can thiệp khởi động lại khóa học ngay trong tuần này.";
+  } else if (progress <= 10 && inactiveDays >= 7) {
+    riskScore = 58;
+    riskBand = "medium";
+    recommendedAction = "Đẩy micro-plan 15-20 phút để kéo học viên quay lại.";
+  } else if (progress < 30 && inactiveDays >= 3) {
+    riskScore = 42;
+    riskBand = "medium";
+    recommendedAction = "Nhắc học viên hoàn thành bài tiếp theo để giữ nhịp.";
+  }
+
+  return {
+    risk_score: riskScore,
+    risk_band: riskBand,
+    inactive_days: inactiveDays,
+    failed_quiz_attempts_7d: 0,
+    streak_days: 0,
+    last_activity_at: null,
+    recommended_action: recommendedAction,
+  };
+}
+
 export async function getInstructorCourses(
   token: string
 ): Promise<InstructorCourse[]> {
@@ -660,6 +790,115 @@ export async function getCourseStudents(
     if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
     return bTime - aTime;
   });
+}
+
+export async function getInstructorAtRiskStudents(
+  token: string,
+  courseIds: string[],
+  limit: number = 12
+): Promise<InstructorAtRiskStudent[]> {
+  if (courseIds.length === 0) return [];
+
+  const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 12;
+  const queryLimit = Math.min(Math.max(requestedLimit * 8, 50), 240);
+  const chunks = chunkIds(courseIds);
+  const headers = getAuthHeaders(token);
+
+  const chunkResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams();
+      params.set("filter[course_id][_in]", chunk.join(","));
+      params.set("filter[status][_neq]", "cancelled");
+      params.set(
+        "fields",
+        "id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons"
+      );
+      params.set("sort", "-date_created,-enrolled_at");
+      params.set("limit", String(queryLimit));
+
+      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
+        headers,
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) return [] as Enrollment[];
+
+      const payload = await res.json();
+      return (payload?.data ?? []) as Enrollment[];
+    })
+  );
+
+  const enrollments = await enrichEnrollments(
+    dedupeEnrollmentsByUserCourse(chunkResults.flat()),
+    token
+  );
+  const riskRows = await fetchInstructorRiskRows(courseIds, Math.min(queryLimit, 100));
+
+  const merged = enrollments
+    .map((enrollment) => {
+      const user = enrollment.user_id as DirectusUser | null;
+      const course = enrollment.course_id as Course | null;
+      if (!user || typeof user !== "object" || !course || typeof course !== "object") {
+        return null;
+      }
+
+      const key = `${user.id}:${course.id}`;
+      const risk = riskRows.get(key);
+      const fallback = fallbackRiskForEnrollment(enrollment);
+
+      return {
+        enrollment_id: enrollment.id,
+        user,
+        course,
+        progress_percentage: Number(enrollment.progress_percentage ?? 0),
+        risk_score: Number(risk?.risk_score ?? fallback.risk_score),
+        risk_band: (risk?.risk_band ?? fallback.risk_band) as InstructorAtRiskStudent["risk_band"],
+        inactive_days: Number(risk?.inactive_days ?? fallback.inactive_days),
+        failed_quiz_attempts_7d: Number(
+          risk?.failed_quiz_attempts_7d ?? fallback.failed_quiz_attempts_7d
+        ),
+        streak_days: Number(risk?.streak_days ?? fallback.streak_days),
+        last_activity_at: risk?.last_activity_at ?? fallback.last_activity_at,
+        recommended_action: risk?.recommended_action ?? fallback.recommended_action,
+      } satisfies InstructorAtRiskStudent;
+    })
+    .filter((item): item is InstructorAtRiskStudent => item !== null)
+    .sort((a, b) => {
+      if (b.risk_score !== a.risk_score) return b.risk_score - a.risk_score;
+      if (b.inactive_days !== a.inactive_days) return b.inactive_days - a.inactive_days;
+      return a.progress_percentage - b.progress_percentage;
+    });
+
+  return merged.slice(0, requestedLimit);
+}
+
+export async function getInstructorMentorAnalytics(
+  _token: string,
+  courseIds: string[],
+  lookbackDays: number = 30
+): Promise<InstructorMentorAnalytics> {
+  const fallback: InstructorMentorAnalytics = {
+    lookback_days: lookbackDays,
+    shown: 0,
+    clicked: 0,
+    dismissed: 0,
+    completed: 0,
+    ctr: 0,
+    completion_rate: 0,
+    clicked_completion_rate: 0,
+    non_clicked_completion_rate: 0,
+    completion_lift_pp: 0,
+    completion_lift_ratio: 0,
+    interventions_sent: 0,
+    notification_interventions: 0,
+    email_interventions: 0,
+  };
+
+  if (courseIds.length === 0) {
+    return fallback;
+  }
+
+  return (await fetchMentorAnalyticsRows(courseIds, lookbackDays)) ?? fallback;
 }
 
 export async function getCourseReviews(

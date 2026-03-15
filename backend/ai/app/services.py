@@ -33,7 +33,13 @@ from .prompts import (
 )
 from .redis_client import get_redis
 from .retrieval import format_context, retrieve_chunks
-from .store import list_feedback_training_examples, log_policy_violation
+from .risk import compute_risk_score
+from .store import (
+    list_feedback_training_examples,
+    list_instructor_risk_rows,
+    list_learning_progress_for_user_courses,
+    log_policy_violation,
+)
 
 _STYLE_EXAMPLE_CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
 _STRICT_QA_CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
@@ -1996,16 +2002,161 @@ def run_assignment(
     return output, chunks, latency_ms, prompt_tokens, completion_tokens
 
 
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _mentor_why(course: dict[str, Any]) -> str:
+    inactive_days = int(course.get("inactive_days") or 0)
+    failed_quiz_attempts = int(course.get("failed_quiz_attempts_7d") or 0)
+    progress_pct = float(course.get("progress_pct") or 0)
+
+    if failed_quiz_attempts >= 2:
+        return "Bạn vừa gặp nhiều lỗi ở quiz, nên nên ôn lại phần này trước khi học tiếp."
+    if inactive_days >= 7:
+        return "Khóa học này đã bị gián đoạn khá lâu, nên cần kéo lại nhịp học ngay."
+    if inactive_days >= 3:
+        return "Bạn đang mất nhịp ở khóa học này, hoàn thành bài này sẽ giúp quay lại guồng học."
+    if progress_pct < 20:
+        return "Đây là bước nhỏ để khởi động lại khóa học mà không bị quá tải."
+    return "Giữ nhịp học ổn định để tăng tiến độ và tránh dồn bài về sau."
+
+
+def _mentor_priority(course: dict[str, Any], lesson_index: int) -> int:
+    risk_score = float(course.get("risk_score") or 0)
+    progress_pct = float(course.get("progress_pct") or 0)
+    inactive_days = int(course.get("inactive_days") or 0)
+    failed_quiz_attempts = int(course.get("failed_quiz_attempts_7d") or 0)
+
+    priority = risk_score
+    priority += max(0, 18 - lesson_index * 7)
+    priority += max(0.0, (100 - progress_pct) * 0.08)
+    if inactive_days >= 3:
+        priority += 8
+    if failed_quiz_attempts >= 2:
+        priority += 12
+
+    return int(round(priority))
+
+
+def _fallback_course_state(course: dict[str, Any]) -> dict[str, Any]:
+    pending_lessons = course.get("pending_lessons", [])
+    last_activity = _parse_iso_datetime(course.get("last_activity_at"))
+    inactive_days = 0
+    if last_activity is not None:
+        inactive_days = max(0, (datetime.now(tz=timezone.utc) - last_activity).days)
+
+    progress_pct = float(course.get("progress_pct") or 0)
+    risk_score, risk_band = compute_risk_score(
+        inactive_days=inactive_days,
+        failed_quiz_attempts_7d=0,
+        weekly_completed_lessons=0,
+        progress_pct=progress_pct,
+        pending_lessons=len(pending_lessons),
+        has_recent_activity=last_activity is not None and inactive_days <= 1,
+    )
+
+    return {
+        "inactive_days": inactive_days,
+        "failed_quiz_attempts_7d": 0,
+        "weekly_completed_lessons": 0,
+        "risk_score": risk_score,
+        "risk_band": risk_band,
+        "streak_days": 0,
+        "time_spent_week_sec": 0,
+        "last_activity_at": course.get("last_activity_at"),
+    }
+
+
+def _merge_course_states(user_id: str, courses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    course_ids = [str(course.get("course_id") or "") for course in courses if course.get("course_id")]
+    progress_rows = list_learning_progress_for_user_courses(user_id, course_ids)
+    progress_map = {
+        str(row.get("course_id")): row
+        for row in progress_rows
+        if row.get("course_id")
+    }
+
+    merged: list[dict[str, Any]] = []
+    for course in courses:
+        course_id = str(course.get("course_id") or "").strip()
+        if not course_id:
+            continue
+
+        row = progress_map.get(course_id)
+        fallback = _fallback_course_state(course)
+        resolved = dict(course)
+        resolved["inactive_days"] = int((row or fallback).get("inactive_days") or 0)
+        resolved["failed_quiz_attempts_7d"] = int(
+            (row or fallback).get("failed_quiz_attempts_7d") or 0
+        )
+        resolved["weekly_completed_lessons"] = int(
+            (row or fallback).get("weekly_completed_lessons") or 0
+        )
+        resolved["risk_score"] = float((row or fallback).get("risk_score") or 0)
+        resolved["risk_band"] = str((row or fallback).get("risk_band") or "low")
+        resolved["streak_days"] = int((row or fallback).get("streak_days") or 0)
+        resolved["time_spent_week_sec"] = int((row or fallback).get("time_spent_week_sec") or 0)
+        resolved["last_activity_at"] = (
+            row.get("last_activity_at").isoformat()
+            if row and row.get("last_activity_at")
+            else fallback.get("last_activity_at")
+        )
+        merged.append(resolved)
+
+    merged.sort(
+        key=lambda item: (
+            float(item.get("risk_score") or 0),
+            int(item.get("inactive_days") or 0),
+            int(item.get("failed_quiz_attempts_7d") or 0),
+            -float(item.get("progress_pct") or 0),
+        ),
+        reverse=True,
+    )
+    return merged
+
+
 def build_overdue_from_context(context: dict[str, Any], overdue_days: int) -> list[dict[str, Any]]:
+    courses = context.get("courses")
+    if isinstance(courses, list) and courses:
+        items: list[dict[str, Any]] = []
+        for course in courses:
+            pending = course.get("pending_lessons", [])
+            inactive_days = int(course.get("inactive_days") or 0)
+            if inactive_days < overdue_days or not pending:
+                continue
+            lesson = pending[0]
+            items.append(
+                {
+                    "lesson_id": str(lesson.get("id", "")),
+                    "title": str(lesson.get("title", "Bài học chưa hoàn thành")),
+                    "reason": f"Khóa {course.get('course_title', 'này')} không có hoạt động trong {inactive_days} ngày.",
+                    "cta": {
+                        "label": "Tiếp tục học",
+                        "href": str(lesson.get("href", "/my-courses")),
+                    },
+                    "course_id": str(course.get("course_id", "")),
+                    "course_title": str(course.get("course_title", "")),
+                    "priority": int(round(float(course.get("risk_score") or 0) + 15)),
+                    "risk_score": float(course.get("risk_score") or 0),
+                    "risk_band": str(course.get("risk_band") or "low"),
+                }
+            )
+        return items[:3]
+
     pending = context.get("pending_lessons", [])
     last_activity = context.get("last_activity_at")
 
     if not pending or not last_activity:
         return []
 
-    try:
-        last = datetime.fromisoformat(str(last_activity).replace("Z", "+00:00"))
-    except ValueError:
+    last = _parse_iso_datetime(last_activity)
+    if last is None:
         return []
 
     inactive_days = (datetime.now(tz=timezone.utc) - last).days
@@ -2029,6 +2180,40 @@ def build_overdue_from_context(context: dict[str, Any], overdue_days: int) -> li
 
 
 def build_today_plan(context: dict[str, Any]) -> list[dict[str, Any]]:
+    courses = context.get("courses")
+    if isinstance(courses, list) and courses:
+        candidates: list[dict[str, Any]] = []
+        for course in courses:
+            pending = course.get("pending_lessons", [])
+            for lesson_index, lesson in enumerate(pending[:2]):
+                candidates.append(
+                    {
+                        "task": f"{course.get('course_title', 'Khóa học')}: {lesson.get('title', 'Bài học')}",
+                        "eta_min": int(lesson.get("eta_min", 20)),
+                        "why": _mentor_why(course),
+                        "cta": {
+                            "label": "Mở bài học",
+                            "href": str(lesson.get("href", "/my-courses")),
+                        },
+                        "course_id": str(course.get("course_id", "")),
+                        "course_title": str(course.get("course_title", "")),
+                        "lesson_id": str(lesson.get("id", "")),
+                        "priority": _mentor_priority(course, lesson_index),
+                        "risk_score": float(course.get("risk_score") or 0),
+                        "risk_band": str(course.get("risk_band") or "low"),
+                    }
+                )
+
+        candidates.sort(
+            key=lambda item: (
+                int(item.get("priority") or 0),
+                float(item.get("risk_score") or 0),
+            ),
+            reverse=True,
+        )
+        if candidates:
+            return candidates[:4]
+
     pending = context.get("pending_lessons", [])
     plans: list[dict[str, Any]] = []
 
@@ -2059,16 +2244,84 @@ def build_today_plan(context: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def build_metrics(context: dict[str, Any]) -> dict[str, Any]:
+    courses = context.get("courses")
+    if isinstance(courses, list) and courses:
+        last_activity_values = [
+            _parse_iso_datetime(course.get("last_activity_at"))
+            for course in courses
+            if course.get("last_activity_at")
+        ]
+        most_recent = max(last_activity_values) if last_activity_values else None
+        progress_values = [float(course.get("progress_pct") or 0) for course in courses]
+        return {
+            "progress_pct": round(sum(progress_values) / len(progress_values), 2)
+            if progress_values
+            else 0.0,
+            "streak_days": max((int(course.get("streak_days") or 0) for course in courses), default=0),
+            "last_activity": most_recent.date().isoformat() if most_recent else None,
+            "active_courses": len(courses),
+            "at_risk_courses": sum(
+                1 for course in courses if str(course.get("risk_band") or "low") != "low"
+            ),
+            "weekly_minutes": sum(
+                int(course.get("time_spent_week_sec") or 0) for course in courses
+            )
+            // 60,
+        }
+
     metrics = context.get("metrics", {})
     return {
         "progress_pct": float(metrics.get("progress_pct", 0)),
         "streak_days": int(metrics.get("streak_days", 0)),
         "last_activity": metrics.get("last_activity"),
+        "active_courses": int(metrics.get("active_courses", 0)),
+        "at_risk_courses": int(metrics.get("at_risk_courses", 0)),
+        "weekly_minutes": int(metrics.get("weekly_minutes", 0)),
     }
 
 
-def build_mentor_context(context: dict[str, Any]) -> dict[str, Any]:
+def augment_mentor_output_with_context(output: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    for key in ("today_plan", "overdue"):
+        source_items = context.get(key, [])
+        target_items = output.get(key, [])
+        if not isinstance(source_items, list) or not isinstance(target_items, list):
+            continue
+
+        for index, item in enumerate(target_items):
+            if index >= len(source_items) or not isinstance(item, dict):
+                continue
+            source_item = source_items[index]
+            if not isinstance(source_item, dict):
+                continue
+            for metadata_key in (
+                "course_id",
+                "course_title",
+                "lesson_id",
+                "priority",
+                "risk_score",
+                "risk_band",
+                "recommendation_id",
+            ):
+                if metadata_key in source_item and metadata_key not in item:
+                    item[metadata_key] = source_item.get(metadata_key)
+    return output
+
+
+def build_mentor_context(user_id: str, context: dict[str, Any]) -> dict[str, Any]:
     settings = get_settings()
+    courses = context.get("courses")
+    if isinstance(courses, list) and courses:
+        enriched_courses = _merge_course_states(user_id, [course for course in courses if isinstance(course, dict)])
+        mentor_context = {
+            "courses": enriched_courses,
+        }
+        mentor_context["metrics"] = build_metrics(mentor_context)
+        mentor_context["overdue"] = build_overdue_from_context(
+            mentor_context, settings.mentor_overdue_days
+        )
+        mentor_context["today_plan"] = build_today_plan(mentor_context)
+        return mentor_context
+
     metrics = build_metrics(context)
     overdue = build_overdue_from_context(context, settings.mentor_overdue_days)
     today_plan = build_today_plan(context)
@@ -2078,3 +2331,37 @@ def build_mentor_context(context: dict[str, Any]) -> dict[str, Any]:
         "overdue": overdue,
         "today_plan": today_plan,
     }
+
+
+def build_instructor_risk_items(course_ids: list[str], limit: int = 12) -> list[dict[str, Any]]:
+    rows = list_instructor_risk_rows(course_ids, limit=limit)
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        risk_band = str(row.get("risk_band") or "low")
+        inactive_days = int(row.get("inactive_days") or 0)
+        failed_quiz_attempts = int(row.get("failed_quiz_attempts_7d") or 0)
+        if failed_quiz_attempts >= 2:
+            action = "Ôn lại lesson gần nhất và xem lại quiz vừa làm sai."
+        elif inactive_days >= 7:
+            action = "Gửi can thiệp khởi động lại khóa học trong tuần này."
+        elif risk_band == "medium":
+            action = "Đẩy một micro-plan 15-20 phút để giữ nhịp học."
+        else:
+            action = "Theo dõi thêm trước khi can thiệp mạnh."
+
+        items.append(
+            {
+                "user_id": str(row.get("user_id") or ""),
+                "course_id": str(row.get("course_id") or ""),
+                "risk_score": float(row.get("risk_score") or 0),
+                "risk_band": risk_band,
+                "inactive_days": inactive_days,
+                "failed_quiz_attempts_7d": failed_quiz_attempts,
+                "streak_days": int(row.get("streak_days") or 0),
+                "time_spent_week_sec": int(row.get("time_spent_week_sec") or 0),
+                "progress_pct": float(row.get("progress_pct") or 0),
+                "last_activity_at": row.get("last_activity_at"),
+                "recommended_action": action,
+            }
+        )
+    return items

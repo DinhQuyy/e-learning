@@ -49,6 +49,8 @@ const SOURCE_BADGES: Record<ReferenceSourceType, { label: string; className: str
   quiz: { label: "Quiz", className: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200", Icon: FileText },
 };
 
+const HIDDEN_WIDGET_PATH_PREFIXES = ["/admin", "/login", "/register", "/forgot-password", "/reset-password"];
+
 function normalizeForMatch(value: string): string {
   return value
     .replaceAll("đ", "d")
@@ -143,7 +145,7 @@ function AssistantLoadingState() {
 export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {}) {
   const pathname = usePathname();
   const resolvedPath = currentPath ?? pathname ?? "";
-  const isAdminPath = resolvedPath.startsWith("/admin");
+  const shouldHideWidget = HIDDEN_WIDGET_PATH_PREFIXES.some((prefix) => resolvedPath.startsWith(prefix));
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -217,13 +219,13 @@ export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {})
   }, []);
 
   useEffect(() => {
-    if (!open || isAdminPath) return;
+    if (!open || shouldHideWidget) return;
     setSuggestionSeed(Date.now());
     setShowAllSuggestions(false);
-  }, [open, isAdminPath]);
+  }, [open, shouldHideWidget]);
 
   useEffect(() => {
-    if (!open || isAdminPath) return;
+    if (!open || shouldHideWidget) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSuggestionsLoading(true);
@@ -249,7 +251,7 @@ export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {})
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [open, query, mode, isAdminPath]);
+  }, [open, query, mode, shouldHideWidget]);
 
   useEffect(() => {
     setShowAllSuggestions(false);
@@ -336,20 +338,27 @@ export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {})
     }
   }
 
-  if (isAdminPath) return null;
+  if (shouldHideWidget) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="fixed bottom-5 right-5 z-50 h-11 rounded-full bg-slate-950 px-4 text-white shadow-[0_20px_40px_-18px_rgba(15,23,42,0.72)] hover:bg-slate-900">
-          <span className="mr-2 inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-          <Sparkles className="mr-2 size-4" />
-          Trợ lý AI
-        </Button>
-      </DialogTrigger>
+    <>
+      <div aria-hidden className="pointer-events-none h-24 sm:h-28 lg:h-24" />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            aria-label="AI assistant"
+            title="AI assistant"
+            className="fixed bottom-4 right-4 z-50 size-12 rounded-full bg-slate-950 p-0 text-[0px] text-white shadow-[0_20px_40px_-18px_rgba(15,23,42,0.72)] hover:bg-slate-900 sm:bottom-5 sm:right-5 sm:size-14"
+          >
+            <span className="absolute right-1.5 top-1.5 inline-flex size-2.5 rounded-full border border-slate-950 bg-emerald-400" />
+            <Sparkles className="size-5 sm:size-[1.35rem]" />
+            Trợ lý AI
+          </Button>
+        </DialogTrigger>
 
-      <DialogContent className="overflow-hidden border-0 p-0 shadow-2xl sm:max-w-5xl">
-        <DialogTitle className="sr-only">Trợ lý AI</DialogTitle>
+        <DialogContent className="overflow-hidden border-0 p-0 shadow-2xl sm:max-w-5xl">
+          <DialogTitle className="sr-only">Trợ lý AI</DialogTitle>
 
         <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.18),_transparent_34%),linear-gradient(135deg,#020617,#0f172a_55%,#164e63)] px-5 py-4 text-white">
           <div className="flex items-center justify-between gap-4">
@@ -788,7 +797,8 @@ export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {})
             )}
           </section>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Share2, Check, Link as LinkIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Link as LinkIcon, Share2 } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,11 +11,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 export function ShareButton({ title, slug }: { title: string; slug: string }) {
   const [copied, setCopied] = useState(false);
-  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/courses/${slug}`;
+  const [canNativeShare, setCanNativeShare] = useState(false);
+  const [url, setUrl] = useState(() => {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+    return appUrl ? `${appUrl}/courses/${slug}` : `/courses/${slug}`;
+  });
+
+  useEffect(() => {
+    const origin = window.location.origin.replace(/\/$/, "");
+    setUrl(`${origin}/courses/${slug}`);
+    setCanNativeShare(typeof navigator.share === "function");
+  }, [slug]);
 
   const handleCopyLink = async () => {
     try {
@@ -27,15 +38,16 @@ export function ShareButton({ title, slug }: { title: string; slug: string }) {
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title, url });
       } catch {
         // User cancelled share
       }
-    } else {
-      handleCopyLink();
+      return;
     }
+
+    await handleCopyLink();
   };
 
   return (
@@ -43,7 +55,7 @@ export function ShareButton({ title, slug }: { title: string; slug: string }) {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-full">
           <Share2 className="mr-2 size-4" />
-          Chia sẻ khoá học
+          Chia sẻ khóa học
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="w-56">
@@ -69,12 +81,12 @@ export function ShareButton({ title, slug }: { title: string; slug: string }) {
           </svg>
           Facebook
         </DropdownMenuItem>
-        {typeof navigator !== "undefined" && "share" in navigator && (
+        {canNativeShare ? (
           <DropdownMenuItem onClick={handleNativeShare}>
             <Share2 className="mr-2 size-4" />
-            Thêm tuỳ chọn...
+            Thêm tùy chọn...
           </DropdownMenuItem>
-        )}
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

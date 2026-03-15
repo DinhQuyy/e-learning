@@ -149,11 +149,14 @@ export default async function StudentDashboard() {
     return 0;
   });
   const recentEnrollments = sortedActiveEnrollments.slice(0, 4);
-  const firstRecentCourse = recentEnrollments[0]?.course_id;
-  const mentorCourseId =
-    firstRecentCourse && typeof firstRecentCourse === "object"
-      ? ((firstRecentCourse as Course).id ?? null)
-      : null;
+  const mentorCourseIds = sortedActiveEnrollments
+    .map((enrollment) =>
+      typeof enrollment.course_id === "object"
+        ? ((enrollment.course_id as Course).id ?? null)
+        : null
+    )
+    .filter((courseId): courseId is string => Boolean(courseId))
+    .slice(0, 6);
 
   // Extract data for recommendations
   const enrolledCourseIds: string[] = [];
@@ -206,7 +209,7 @@ export default async function StudentDashboard() {
         </div>
       </section>
 
-      <MentorPlanCard courseId={mentorCourseId} />
+      <MentorPlanCard courseIds={mentorCourseIds} />
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#eef3ff] to-[#f5f8ff] shadow-[0_14px_30px_-24px_rgba(47,87,239,0.6)]">

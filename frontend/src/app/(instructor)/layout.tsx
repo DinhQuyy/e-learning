@@ -1,7 +1,8 @@
 import { BookOpen, Star, Users } from "lucide-react";
-import { getUserDisplayName, requireRole } from "@/lib/dal";
+
 import { PortalShell } from "@/components/portal/portal-shell";
 import { instructorPortalNavItems } from "@/components/portal/portal-nav-config";
+import { getUserDisplayName, requireRole } from "@/lib/dal";
 import { getInstructorStats } from "@/lib/queries/instructor";
 
 export default async function InstructorLayout({
@@ -20,7 +21,6 @@ export default async function InstructorLayout({
       avatar={user.avatar}
       subtitle="Quản lý khóa học, theo dõi học viên và nâng cao chất lượng giảng dạy."
       greeting={`Xin chào, ${displayName}`}
-      navItems={instructorPortalNavItems}
       stats={[
         {
           label: "Khóa học",
@@ -38,6 +38,8 @@ export default async function InstructorLayout({
           icon: <Star className="size-3.5" />,
         },
       ]}
+      navItems={instructorPortalNavItems}
+      initialUser={user}
     >
       {children}
     </PortalShell>

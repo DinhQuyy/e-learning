@@ -15,6 +15,7 @@ const ROLE_COOKIE_OPTIONS = {
 const publicPaths = [
   "/",
   "/courses",
+  "/continue-learning",
   "/categories",
   "/instructors",
   "/login",
@@ -49,6 +50,32 @@ function hasPortalAccess(
   }
 
   return true;
+}
+
+function redirectPrivilegedUserAwayFromLearnPath(
+  request: NextRequest,
+  role: string | null | undefined,
+): NextResponse | null {
+  const normalizedRole = normalizeRoleName(role);
+  if (
+    normalizedRole !== "admin" &&
+    normalizedRole !== "instructor"
+  ) {
+    return null;
+  }
+
+  if (!request.nextUrl.pathname.startsWith("/learn/")) {
+    return null;
+  }
+
+  const [, , rawCourseSlug] = request.nextUrl.pathname.split("/");
+  if (!rawCourseSlug) {
+    return NextResponse.redirect(new URL("/courses", request.url));
+  }
+
+  return NextResponse.redirect(
+    new URL(`/courses/${rawCourseSlug}`, request.url),
+  );
 }
 
 async function resolveRoleFromAccessToken(
@@ -102,6 +129,14 @@ export async function proxy(request: NextRequest) {
   // Require authentication for all other routes
   if (!token) {
     return handleMissingAccessToken(request);
+  }
+
+  const learnRedirect = redirectPrivilegedUserAwayFromLearnPath(
+    request,
+    userRole,
+  );
+  if (learnRedirect) {
+    return learnRedirect;
   }
 
   // Role-based access control with stale-cookie self-heal:

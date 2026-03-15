@@ -1,10 +1,11 @@
 import { Award, BookOpen, CheckCircle2 } from "lucide-react";
+
+import { PortalShell } from "@/components/portal/portal-shell";
+import { studentPortalNavItems } from "@/components/portal/portal-nav-config";
 import { getUserDisplayName, requireAuth } from "@/lib/dal";
 import { partitionEnrollments } from "@/lib/enrollment-helpers";
 import { recalcEnrollmentsProgress } from "@/lib/enrollment-progress";
 import { getUserEnrollments } from "@/lib/queries/enrollments";
-import { PortalShell } from "@/components/portal/portal-shell";
-import { studentPortalNavItems } from "@/components/portal/portal-nav-config";
 
 export default async function StudentPortalLayout({
   children,
@@ -15,7 +16,6 @@ export default async function StudentPortalLayout({
   const displayName = getUserDisplayName(user);
 
   const enrollmentsRaw = await getUserEnrollments(token);
-
   const enrollments = await recalcEnrollmentsProgress(enrollmentsRaw, token);
   const { active, completed } = partitionEnrollments(enrollments);
 
@@ -26,7 +26,6 @@ export default async function StudentPortalLayout({
       avatar={user.avatar}
       subtitle="Theo dõi tiến độ học tập, khóa học và đơn hàng của bạn."
       greeting={`Xin chào, ${displayName}`}
-      navItems={studentPortalNavItems}
       stats={[
         {
           label: "Khóa học đang học",
@@ -44,6 +43,8 @@ export default async function StudentPortalLayout({
           icon: <Award className="size-3.5" />,
         },
       ]}
+      navItems={studentPortalNavItems}
+      initialUser={user}
     >
       {children}
     </PortalShell>

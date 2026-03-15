@@ -8,6 +8,8 @@ const ctaSchema = z.object({
   href: z.string(),
 });
 
+const riskBandSchema = z.enum(["low", "medium", "high"]);
+
 export const helpdeskResponseSchema = z.object({
   mode: z.literal('helpdesk'),
   answer_title: z.string(),
@@ -69,6 +71,13 @@ export const mentorResponseSchema = z.object({
       eta_min: z.number(),
       why: z.string(),
       cta: ctaSchema,
+      recommendation_id: z.string().uuid().optional().nullable(),
+      course_id: z.string().optional().nullable(),
+      course_title: z.string().optional().nullable(),
+      lesson_id: z.string().optional().nullable(),
+      priority: z.number().optional().nullable(),
+      risk_score: z.number().optional().nullable(),
+      risk_band: riskBandSchema.optional().nullable(),
     })
   ),
   overdue: z.array(
@@ -77,12 +86,21 @@ export const mentorResponseSchema = z.object({
       title: z.string(),
       reason: z.string(),
       cta: ctaSchema,
+      recommendation_id: z.string().uuid().optional().nullable(),
+      course_id: z.string().optional().nullable(),
+      course_title: z.string().optional().nullable(),
+      priority: z.number().optional().nullable(),
+      risk_score: z.number().optional().nullable(),
+      risk_band: riskBandSchema.optional().nullable(),
     })
   ),
   metrics: z.object({
     progress_pct: z.number(),
     streak_days: z.number(),
     last_activity: z.string().nullable().optional(),
+    active_courses: z.number().optional(),
+    at_risk_courses: z.number().optional(),
+    weekly_minutes: z.number().optional(),
   }),
   fallback_used: z.boolean().optional(),
   cache_hit: z.boolean().optional(),
@@ -118,6 +136,54 @@ export const aiFeedbackRequestSchema = z.object({
 export const aiFeedbackResponseSchema = z.object({
   status: z.literal("ok"),
   feedback_id: z.string().uuid(),
+});
+
+export const statusResponseSchema = z.object({
+  status: z.literal("ok"),
+});
+
+export const mentorRecommendationClickRequestSchema = z.object({
+  recommendation_id: z.string().uuid(),
+});
+
+export const mentorRecommendationDismissRequestSchema = z.object({
+  recommendation_id: z.string().uuid(),
+  reason: z.string().trim().max(300).optional(),
+});
+
+export const instructorRiskResponseSchema = z.object({
+  items: z.array(
+    z.object({
+      user_id: z.string(),
+      course_id: z.string(),
+      risk_score: z.number(),
+      risk_band: riskBandSchema,
+      inactive_days: z.number(),
+      failed_quiz_attempts_7d: z.number(),
+      streak_days: z.number(),
+      time_spent_week_sec: z.number(),
+      progress_pct: z.number(),
+      last_activity_at: z.string().datetime().nullable().optional(),
+      recommended_action: z.string(),
+    })
+  ),
+});
+
+export const mentorAnalyticsResponseSchema = z.object({
+  lookback_days: z.number(),
+  shown: z.number(),
+  clicked: z.number(),
+  dismissed: z.number(),
+  completed: z.number(),
+  ctr: z.number(),
+  completion_rate: z.number(),
+  clicked_completion_rate: z.number(),
+  non_clicked_completion_rate: z.number(),
+  completion_lift_pp: z.number(),
+  completion_lift_ratio: z.number(),
+  interventions_sent: z.number(),
+  notification_interventions: z.number(),
+  email_interventions: z.number(),
 });
 
 export const helpdeskSuggestionsResponseSchema = z.object({
@@ -200,6 +266,11 @@ export type MentorResponse = z.infer<typeof mentorResponseSchema>;
 export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
 export type AiFeedbackRequest = z.infer<typeof aiFeedbackRequestSchema>;
 export type AiFeedbackResponse = z.infer<typeof aiFeedbackResponseSchema>;
+export type StatusResponse = z.infer<typeof statusResponseSchema>;
+export type MentorRecommendationClickRequest = z.infer<typeof mentorRecommendationClickRequestSchema>;
+export type MentorRecommendationDismissRequest = z.infer<typeof mentorRecommendationDismissRequestSchema>;
+export type InstructorRiskResponse = z.infer<typeof instructorRiskResponseSchema>;
+export type MentorAnalyticsResponse = z.infer<typeof mentorAnalyticsResponseSchema>;
 export type HelpdeskSuggestionsResponse = z.infer<typeof helpdeskSuggestionsResponseSchema>;
 export type ReferencesSuggestionsResponse = z.infer<typeof referencesSuggestionsResponseSchema>;
 export type AssistantSuggestionsResponse = z.infer<typeof assistantSuggestionsResponseSchema>;

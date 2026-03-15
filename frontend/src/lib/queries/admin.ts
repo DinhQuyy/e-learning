@@ -1,5 +1,5 @@
 import { directusUrl } from "@/lib/directus";
-import { callAiApiRaw } from "@/lib/ai-client";
+import { callAiApiRaw, postAiApiRaw } from "@/lib/ai-client";
 
 // ── Shared types ──
 
@@ -75,6 +75,7 @@ interface ReportDataResult {
   }>;
   aiMetrics: AiMetricsResult;
   aiDailyMetrics: AiDailyMetricsResult;
+  mentorAnalytics: MentorAnalyticsResult;
 }
 
 interface RevenueStatsResult {
@@ -171,6 +172,23 @@ interface AiDailyMetricsResult {
   summary: AiDailyMetricsSummary;
 }
 
+interface MentorAnalyticsResult {
+  lookback_days: number;
+  shown: number;
+  clicked: number;
+  dismissed: number;
+  completed: number;
+  ctr: number;
+  completion_rate: number;
+  clicked_completion_rate: number;
+  non_clicked_completion_rate: number;
+  completion_lift_pp: number;
+  completion_lift_ratio: number;
+  interventions_sent: number;
+  notification_interventions: number;
+  email_interventions: number;
+}
+
 const EMPTY_AI_METRICS: AiMetricsResult = {
   total_requests_24h: 0,
   p95_latency_ms: 0,
@@ -179,6 +197,23 @@ const EMPTY_AI_METRICS: AiMetricsResult = {
   fallback_rate_24h: 0,
   positive_feedback_24h: 0,
   negative_feedback_24h: 0,
+};
+
+const EMPTY_MENTOR_ANALYTICS: MentorAnalyticsResult = {
+  lookback_days: 30,
+  shown: 0,
+  clicked: 0,
+  dismissed: 0,
+  completed: 0,
+  ctr: 0,
+  completion_rate: 0,
+  clicked_completion_rate: 0,
+  non_clicked_completion_rate: 0,
+  completion_lift_pp: 0,
+  completion_lift_ratio: 0,
+  interventions_sent: 0,
+  notification_interventions: 0,
+  email_interventions: 0,
 };
 
 function toFiniteNumber(value: unknown): number {
@@ -259,6 +294,26 @@ function normalizeAiDailyMetrics(raw: unknown, days: number): AiDailyMetricsResu
   };
 }
 
+function normalizeMentorAnalytics(raw: unknown): MentorAnalyticsResult {
+  const data = readObject(raw);
+  return {
+    lookback_days: toPositiveInt(data.lookback_days),
+    shown: toPositiveInt(data.shown),
+    clicked: toPositiveInt(data.clicked),
+    dismissed: toPositiveInt(data.dismissed),
+    completed: toPositiveInt(data.completed),
+    ctr: toFiniteNumber(data.ctr),
+    completion_rate: toFiniteNumber(data.completion_rate),
+    clicked_completion_rate: toFiniteNumber(data.clicked_completion_rate),
+    non_clicked_completion_rate: toFiniteNumber(data.non_clicked_completion_rate),
+    completion_lift_pp: toFiniteNumber(data.completion_lift_pp),
+    completion_lift_ratio: toFiniteNumber(data.completion_lift_ratio),
+    interventions_sent: toPositiveInt(data.interventions_sent),
+    notification_interventions: toPositiveInt(data.notification_interventions),
+    email_interventions: toPositiveInt(data.email_interventions),
+  };
+}
+
 async function getAiMetrics(): Promise<AiMetricsResult> {
   try {
     const raw = await callAiApiRaw("/v1/admin/metrics");
@@ -277,6 +332,18 @@ async function getAiDailyMetrics(days: number = 14): Promise<AiDailyMetricsResul
     return normalizeAiDailyMetrics(raw, safeDays);
   } catch {
     return createEmptyAiDailyMetrics(safeDays);
+  }
+}
+
+async function getMentorAnalytics(days: number = 30): Promise<MentorAnalyticsResult> {
+  try {
+    const raw = await postAiApiRaw("/v1/mentor/analytics", {
+      lookback_days: days,
+      course_ids: [],
+    });
+    return normalizeMentorAnalytics(raw);
+  } catch {
+    return { ...EMPTY_MENTOR_ANALYTICS, lookback_days: days };
   }
 }
 
@@ -744,9 +811,10 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     .sort((a, b) => b.totalStudents - a.totalStudents)
     .slice(0, 10);
 
-  const [aiMetrics, aiDailyMetrics] = await Promise.all([
+  const [aiMetrics, aiDailyMetrics, mentorAnalytics] = await Promise.all([
     getAiMetrics(),
     getAiDailyMetrics(14),
+    getMentorAnalytics(30),
   ]);
 
   return {
@@ -756,6 +824,7 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     topInstructors,
     aiMetrics,
     aiDailyMetrics,
+    mentorAnalytics,
   };
 }
 

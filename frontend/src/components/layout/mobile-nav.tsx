@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
@@ -13,6 +13,7 @@ import {
   Tag,
   UserPlus,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -22,9 +23,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { getDashboardPath } from "@/lib/role-routing";
 
 const navLinks = [
   { href: "/", label: "Trang chủ", icon: Home },
@@ -34,11 +33,33 @@ const navLinks = [
   { href: "/help", label: "Hỗ trợ", icon: CircleHelp },
 ];
 
-export function MobileNav() {
+interface MobileNavProps {
+  isLoggedIn: boolean;
+  dashboardPath: string;
+}
+
+export function MobileNav({ isLoggedIn, dashboardPath }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const { isLoggedIn, role } = useAuth();
-  const dashboardPath = getDashboardPath(role);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="rounded-full lg:hidden"
+        aria-label="Menu"
+        disabled
+      >
+        <Menu className="size-5" />
+      </Button>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

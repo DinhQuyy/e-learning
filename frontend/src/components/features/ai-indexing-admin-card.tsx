@@ -34,15 +34,15 @@ type RequeueResult = {
 };
 
 const SOURCE_OPTIONS = [
-  { value: "", label: "Tat ca nguon" },
-  { value: "course_lesson", label: "course_lesson" },
-  { value: "course_module", label: "course_module" },
-  { value: "quiz", label: "quiz" },
-  { value: "system_docs", label: "system_docs" },
-  { value: "custom_qa", label: "custom_qa" },
-  { value: "faq", label: "faq" },
-  { value: "policy", label: "policy" },
-  { value: "references", label: "references" },
+  { value: "", label: "Tất cả nguồn" },
+  { value: "course_lesson", label: "Bài học khóa học" },
+  { value: "course_module", label: "Chương khóa học" },
+  { value: "quiz", label: "Bài kiểm tra" },
+  { value: "system_docs", label: "Tài liệu hệ thống" },
+  { value: "custom_qa", label: "Hỏi đáp tùy chỉnh" },
+  { value: "faq", label: "Câu hỏi thường gặp" },
+  { value: "policy", label: "Chính sách" },
+  { value: "references", label: "Tài liệu tham khảo" },
 ];
 
 function readErrorMessage(raw: unknown, fallback: string): string {
@@ -80,12 +80,15 @@ export function AiIndexingAdminCard() {
         const response = await apiGet("/api/admin/ai/indexing/status");
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(readErrorMessage(payload, "Khong the tai trang thai indexing"));
+          throw new Error(
+            readErrorMessage(payload, "Không thể tải trạng thái lập chỉ mục")
+          );
         }
         setStatus(payload as IndexingStatusPayload);
         setError(null);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Loi khong xac dinh";
+        const message =
+          err instanceof Error ? err.message : "Lỗi không xác định";
         setError(message);
       } finally {
         setLoading(false);
@@ -110,7 +113,7 @@ export function AiIndexingAdminCard() {
 
   const oldestPendingLabel = useMemo(() => {
     if (!status?.oldest_pending_updated_at) {
-      return "Khong co";
+      return "Không có";
     }
     const date = new Date(status.oldest_pending_updated_at);
     if (Number.isNaN(date.getTime())) {
@@ -137,15 +140,22 @@ export function AiIndexingAdminCard() {
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(readErrorMessage(payload, "Khong the dua tai lieu vao hang doi reindex"));
+        throw new Error(
+          readErrorMessage(
+            payload,
+            "Không thể đưa tài liệu vào hàng đợi lập chỉ mục lại"
+          )
+        );
       }
 
       const result = payload as RequeueResult;
       setLastRequeueResult(result);
-      toast.success(`Da dua ${result.queued} tai lieu vao hang doi.`);
+      toast.success(`Đã đưa ${result.queued} tài liệu vào hàng đợi.`);
       await loadStatus("refresh");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Reindex that bai");
+      toast.error(
+        err instanceof Error ? err.message : "Lập chỉ mục lại thất bại"
+      );
     } finally {
       setRequeueLoading(false);
     }
@@ -156,17 +166,18 @@ export function AiIndexingAdminCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5" />
-          Trang thai AI Indexing
+          Trạng thái lập chỉ mục AI
         </CardTitle>
         <CardDescription>
-          Theo doi hang doi indexing va retry reindex cho cac tai lieu chua duoc xu ly.
+          Theo dõi hàng đợi lập chỉ mục và thử lại cho các tài liệu chưa được
+          xử lý.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Dang tai trang thai indexing...
+            Đang tải trạng thái lập chỉ mục...
           </div>
         ) : null}
 
@@ -179,38 +190,42 @@ export function AiIndexingAdminCard() {
         {status ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Queue depth</p>
+              <p className="text-xs text-muted-foreground">Độ sâu hàng đợi</p>
               <p className="text-lg font-semibold">{status.queue_depth}</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Tai lieu tong</p>
+              <p className="text-xs text-muted-foreground">Tổng tài liệu</p>
               <p className="text-lg font-semibold">{status.total_documents}</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Da indexed</p>
+              <p className="text-xs text-muted-foreground">Đã lập chỉ mục</p>
               <p className="text-lg font-semibold">{status.indexed_documents}</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Dang cho indexing</p>
+              <p className="text-xs text-muted-foreground">
+                Đang chờ lập chỉ mục
+              </p>
               <p className="text-lg font-semibold">{status.pending_documents}</p>
               <p className="text-xs text-muted-foreground">{pendingRate.toFixed(1)}%</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Tong chunk</p>
+              <p className="text-xs text-muted-foreground">Tổng phân đoạn</p>
               <p className="text-lg font-semibold">{status.total_chunks}</p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-xs text-muted-foreground">Pending cu nhat</p>
+              <p className="text-xs text-muted-foreground">
+                Tài liệu chờ lâu nhất
+              </p>
               <p className="text-sm font-medium">{oldestPendingLabel}</p>
             </div>
           </div>
         ) : null}
 
         <div className="rounded-lg border p-4">
-          <p className="mb-3 text-sm font-medium">Reindex retry</p>
+          <p className="mb-3 text-sm font-medium">Thử lại lập chỉ mục</p>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="source-type">Nguon</Label>
+              <Label htmlFor="source-type">Nguồn</Label>
               <select
                 id="source-type"
                 value={sourceType}
@@ -226,17 +241,17 @@ export function AiIndexingAdminCard() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="course-id">Course ID (tuy chon)</Label>
+              <Label htmlFor="course-id">Mã khóa học (tùy chọn)</Label>
               <Input
                 id="course-id"
                 value={courseId}
                 onChange={(event) => setCourseId(event.target.value)}
-                placeholder="UUID course"
+                placeholder="UUID khóa học"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="limit">Gioi han moi lan</Label>
+              <Label htmlFor="limit">Giới hạn mỗi lần</Label>
               <Input
                 id="limit"
                 type="number"
@@ -254,7 +269,9 @@ export function AiIndexingAdminCard() {
               checked={pendingOnly}
               onCheckedChange={(value) => setPendingOnly(Boolean(value))}
             />
-            <Label htmlFor="pending-only">Chi requeue tai lieu chua co chunk</Label>
+            <Label htmlFor="pending-only">
+              Chỉ đưa lại vào hàng đợi các tài liệu chưa có phân đoạn
+            </Label>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -264,7 +281,7 @@ export function AiIndexingAdminCard() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Lam moi
+              Làm mới
             </Button>
             <Button type="button" onClick={() => void handleRequeue()} disabled={requeueLoading}>
               {requeueLoading ? (
@@ -272,19 +289,18 @@ export function AiIndexingAdminCard() {
               ) : (
                 <RotateCw className="mr-2 h-4 w-4" />
               )}
-              Requeue retry
+              Đưa vào hàng đợi lại
             </Button>
           </div>
         </div>
 
         {lastRequeueResult ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            Da queue lai {lastRequeueResult.queued} tai lieu. Queue hien tai:{" "}
-            {lastRequeueResult.queue_depth}.
+            Đã đưa lại {lastRequeueResult.queued} tài liệu vào hàng đợi. Độ sâu
+            hàng đợi hiện tại: {lastRequeueResult.queue_depth}.
           </div>
         ) : null}
       </CardContent>
     </Card>
   );
 }
-

@@ -197,6 +197,64 @@ async function addUserFields() {
       schema: {},
     },
     {
+      field: "mentor_notification_email_enabled",
+      type: "boolean",
+      meta: {
+        interface: "boolean",
+        note: "Bat/tat email nhac hoc tu AI Mentor",
+      },
+      schema: { default_value: true },
+    },
+    {
+      field: "mentor_notification_email",
+      type: "string",
+      meta: {
+        interface: "input",
+        note: "Email nhan nhac hoc da xac minh",
+      },
+      schema: { max_length: 255, is_nullable: true },
+    },
+    {
+      field: "mentor_notification_email_verified",
+      type: "boolean",
+      meta: {
+        interface: "boolean",
+        note: "Trang thai xac minh email nhac hoc",
+        hidden: true,
+      },
+      schema: { default_value: false },
+    },
+    {
+      field: "mentor_notification_email_pending",
+      type: "string",
+      meta: {
+        interface: "input",
+        note: "Email nhac hoc dang cho xac minh",
+        hidden: true,
+      },
+      schema: { max_length: 255, is_nullable: true },
+    },
+    {
+      field: "mentor_notification_email_verification_token",
+      type: "string",
+      meta: {
+        interface: "input",
+        note: "Token xac minh email nhac hoc",
+        hidden: true,
+      },
+      schema: { max_length: 255, is_nullable: true },
+    },
+    {
+      field: "mentor_notification_email_verification_expires_at",
+      type: "timestamp",
+      meta: {
+        interface: "datetime",
+        note: "Thoi gian het han xac minh email nhac hoc",
+        hidden: true,
+      },
+      schema: { is_nullable: true },
+    },
+    {
       field: "date_created",
       type: "timestamp",
       meta: {

@@ -81,15 +81,15 @@ export default async function CoursePlayerLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f7ff]">
-      <aside className="hidden lg:flex lg:w-[360px] lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white/90 lg:backdrop-blur">
-        <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
+      <aside className="hidden lg:flex lg:min-h-0 lg:w-[360px] lg:flex-col lg:overflow-hidden lg:border-r lg:border-slate-200 lg:bg-white/90 lg:backdrop-blur">
+        <div className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
           <Link
             href="/my-courses"
             className="inline-flex text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
             &larr; Khóa học của tôi
           </Link>
-          <h2 className="mt-3 line-clamp-2 text-base font-semibold text-slate-900">
+          <h2 className="mt-3 line-clamp-3 break-words text-base font-semibold leading-6 text-slate-900">
             {course.title}
           </h2>
           <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
@@ -131,17 +131,17 @@ export default async function CoursePlayerLayout({
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-[min(90vw,360px)] border-slate-200 bg-white p-0"
+                className="gap-0 overflow-hidden w-screen max-w-full border-slate-200 bg-white p-0 sm:w-[min(90vw,360px)] sm:max-w-[360px]"
               >
                 <SheetTitle className="sr-only">Điều hướng khóa học</SheetTitle>
-                <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
+                <div className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
                   <Link
                     href="/my-courses"
                     className="inline-flex text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
                   >
                     &larr; Khóa học của tôi
                   </Link>
-                  <h2 className="mt-3 line-clamp-2 text-base font-semibold text-slate-900">
+                  <h2 className="mt-3 line-clamp-3 break-words text-base font-semibold leading-6 text-slate-900">
                     {course.title}
                   </h2>
                   <div className="mt-4 flex items-center justify-between text-xs text-slate-600">

@@ -65,18 +65,18 @@ export function CourseToolbar({
   const showEnd = totalCourses === 0 ? 0 : endIndex;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_24px_45px_-35px_rgba(15,23,42,0.5)] backdrop-blur">
+    <div className="rounded-2xl border border-border bg-card/95 p-4 shadow-[0_24px_45px_-35px_rgba(15,23,42,0.5)] backdrop-blur">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-4">
-          <ul className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1">
+          <ul className="flex items-center gap-2 rounded-full border border-border bg-muted/50 p-1">
             <li>
               <button
                 type="button"
                 onClick={() => updateView("grid")}
                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                   currentView === "grid"
-                    ? "bg-white text-[#2f57ef] shadow-sm"
-                    : "text-slate-500 hover:bg-white/80 hover:text-slate-700"
+                    ? "bg-background text-[#2f57ef] shadow-sm"
+                    : "text-muted-foreground hover:bg-background/80 hover:text-foreground"
                 }`}
                 title="Xem dạng lưới"
               >
@@ -90,8 +90,8 @@ export function CourseToolbar({
                 onClick={() => updateView("list")}
                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                   currentView === "list"
-                    ? "bg-white text-[#2f57ef] shadow-sm"
-                    : "text-slate-500 hover:bg-white/80 hover:text-slate-700"
+                    ? "bg-background text-[#2f57ef] shadow-sm"
+                    : "text-muted-foreground hover:bg-background/80 hover:text-foreground"
                 }`}
                 title="Xem dạng danh sách"
               >
@@ -101,20 +101,20 @@ export function CourseToolbar({
             </li>
           </ul>
 
-          <p className="text-sm text-slate-600">
-            Hiển thị <span className="font-semibold text-slate-900">{showStart}</span>-
-            <span className="font-semibold text-slate-900">{showEnd}</span> trên{" "}
-            <span className="font-semibold text-slate-900">{totalCourses}</span> khóa
+          <p className="text-sm text-muted-foreground">
+            Hiển thị <span className="font-semibold text-foreground">{showStart}</span>-
+            <span className="font-semibold text-foreground">{showEnd}</span> trên{" "}
+            <span className="font-semibold text-foreground">{totalCourses}</span> khóa
             học
           </p>
         </div>
 
         <div className="flex w-full items-end gap-3 sm:w-auto">
-          <span className="pb-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className="pb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Sắp xếp theo
           </span>
           <Select value={currentSort || "newest"} onValueChange={updateSort}>
-            <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-white text-sm sm:w-[190px]">
+            <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-sm sm:w-[190px]">
               <SelectValue placeholder="Chọn cách sắp xếp" />
             </SelectTrigger>
             <SelectContent>

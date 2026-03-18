@@ -4,21 +4,30 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Award,
+  Bell,
+  BookOpen,
   ChevronDown,
-  CircleHelp,
+  GraduationCap,
+  Heart,
   LayoutDashboard,
   LayoutGrid,
   LogIn,
   LogOut,
   Moon,
+  PlusCircle,
   Search,
+  ShoppingBag,
   Sun,
+  TrendingUp,
+  User,
   UserPlus,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { HeaderCartSheet } from "@/components/layout/header-cart-sheet";
 import { HeaderSearchDialog } from "@/components/layout/header-search-dialog";
+import { KognifyLogo } from "@/components/layout/logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -45,9 +54,8 @@ interface HeaderCategory {
 }
 
 const navLinks = [
-  { href: "/", label: "Trang chủ" },
   { href: "/courses", label: "Khóa học" },
-  { href: "/pricing", label: "Bảng giá" },
+  { href: "/become-instructor", label: "Trở thành giảng viên" },
   { href: "/help", label: "Hỗ trợ" },
 ];
 
@@ -208,21 +216,8 @@ export function Header({ initialUser = null }: HeaderProps) {
         <div className="flex items-center gap-2 lg:gap-6">
           <MobileNav isLoggedIn={isLoggedIn} dashboardPath={dashboardPath} />
 
-          <Link href="/" className="flex items-center gap-2 rounded-xl pr-2">
-            <span
-              className="inline-flex size-9 items-center justify-center rounded-lg text-sm font-extrabold text-white"
-              style={{
-                backgroundImage: "linear-gradient(90deg, #2f57ef, #b966e7)",
-              }}
-            >
-              E
-            </span>
-            <div className="hidden sm:block">
-              <p className="text-sm font-bold leading-none">E-Learning</p>
-              <p className="mt-1 text-[11px] leading-none text-muted-foreground">
-                Học tập trực tuyến
-              </p>
-            </div>
+          <Link href="/" className="rounded-xl pr-2" aria-label="Kognify - Trang chủ">
+            <KognifyLogo />
           </Link>
 
           {interactionReady ? (
@@ -344,18 +339,6 @@ export function Header({ initialUser = null }: HeaderProps) {
             <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="hidden rounded-full lg:inline-flex"
-            aria-label="Trung tâm hỗ trợ"
-          >
-            <Link href="/help">
-              <CircleHelp className="size-4" />
-            </Link>
-          </Button>
-
           {isLoggedIn && activeUser ? (
             interactionReady ? (
               <DropdownMenu>
@@ -367,40 +350,116 @@ export function Header({ initialUser = null }: HeaderProps) {
                   >
                     <Avatar className="size-9 border border-border/60">
                       <AvatarImage
-                        src={getAssetUrl(activeUser.avatar)}
+                        src={activeUser.avatar ? getAssetUrl(activeUser.avatar) : undefined}
                         alt={userDisplayName}
                       />
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback
+                        className="text-xs font-bold text-white"
+                        style={{ background: "linear-gradient(135deg, #2f57ef, #b966e7)" }}
+                      >
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {userDisplayName}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {userEmail || "Không có email"}
-                      </p>
+                <DropdownMenuContent align="end" className={role === "admin" ? "w-56" : "w-64"}>
+                  {/* User info */}
+                  <div className="flex items-center gap-3 px-3 py-3">
+                    <Avatar className="size-10 shrink-0 border border-border/60">
+                      <AvatarImage src={activeUser.avatar ? getAssetUrl(activeUser.avatar) : undefined} alt={userDisplayName} />
+                      <AvatarFallback
+                        className="text-xs font-bold text-white"
+                        style={{ background: "linear-gradient(135deg, #2f57ef, #b966e7)" }}
+                      >
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold leading-none">{userDisplayName}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">{userEmail || "Không có email"}</p>
+                      <span className="mt-1 inline-block rounded-full bg-[#2f57ef]/10 px-2 py-0.5 text-[10px] font-semibold text-[#2f57ef]">
+                        {role === "admin" ? "Quản trị viên" : role === "instructor" ? "Giảng viên" : "Học viên"}
+                      </span>
                     </div>
-                  </DropdownMenuLabel>
+                  </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => router.push(dashboardPath)}
-                    className="cursor-pointer"
-                  >
-                    <LayoutDashboard className="size-4" />
-                    Bảng điều khiển
-                  </DropdownMenuItem>
+
+                  {/* Student nav */}
+                  {role === "student" && (
+                    <>
+                      <DropdownMenuItem onClick={() => router.push("/dashboard")} className="cursor-pointer gap-3 px-3 py-2">
+                        <LayoutDashboard className="size-4 text-[#2f57ef]" />
+                        Tổng quan
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer gap-3 px-3 py-2">
+                        <User className="size-4 text-slate-500" />
+                        Hồ sơ
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/my-courses")} className="cursor-pointer gap-3 px-3 py-2">
+                        <BookOpen className="size-4 text-slate-500" />
+                        Khóa học của tôi
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/wishlist")} className="cursor-pointer gap-3 px-3 py-2">
+                        <Heart className="size-4 text-slate-500" />
+                        Yêu thích
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/my-certificates")} className="cursor-pointer gap-3 px-3 py-2">
+                        <Award className="size-4 text-slate-500" />
+                        Chứng chỉ
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/orders")} className="cursor-pointer gap-3 px-3 py-2">
+                        <ShoppingBag className="size-4 text-slate-500" />
+                        Đơn hàng
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/notifications")} className="cursor-pointer gap-3 px-3 py-2">
+                        <Bell className="size-4 text-slate-500" />
+                        Thông báo
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => router.push("/become-instructor")} className="cursor-pointer gap-3 px-3 py-2">
+                        <GraduationCap className="size-4 text-[#b966e7]" />
+                        <span className="text-[#b966e7] font-medium">Trở thành giảng viên</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {/* Instructor nav */}
+                  {role === "instructor" && (
+                    <>
+                      <DropdownMenuItem onClick={() => router.push("/instructor/dashboard")} className="cursor-pointer gap-3 px-3 py-2">
+                        <LayoutDashboard className="size-4 text-[#2f57ef]" />
+                        Tổng quan
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/instructor/profile")} className="cursor-pointer gap-3 px-3 py-2">
+                        <User className="size-4 text-slate-500" />
+                        Hồ sơ
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/instructor/courses")} className="cursor-pointer gap-3 px-3 py-2">
+                        <BookOpen className="size-4 text-slate-500" />
+                        Quản lý khóa học
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/instructor/earnings")} className="cursor-pointer gap-3 px-3 py-2">
+                        <TrendingUp className="size-4 text-slate-500" />
+                        Doanh thu
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => router.push("/instructor/courses/new")} className="cursor-pointer gap-3 px-3 py-2">
+                        <PlusCircle className="size-4 text-[#2f57ef]" />
+                        <span className="font-medium text-[#2f57ef]">Tạo khóa học mới</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {/* Admin nav */}
+                  {role === "admin" && (
+                    <DropdownMenuItem onClick={() => router.push(dashboardPath)} className="cursor-pointer">
+                      <LayoutDashboard className="size-4" />
+                      Bảng điều khiển
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer"
-                    variant="destructive"
-                  >
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-3 px-3 py-2" variant="destructive">
                     <LogOut className="size-4" />
                     Đăng xuất
                   </DropdownMenuItem>
@@ -415,10 +474,13 @@ export function Header({ initialUser = null }: HeaderProps) {
                 <Link href={dashboardPath} aria-label="Menu người dùng">
                   <Avatar className="size-9 border border-border/60">
                     <AvatarImage
-                      src={getAssetUrl(activeUser.avatar)}
+                      src={activeUser.avatar ? getAssetUrl(activeUser.avatar) : undefined}
                       alt={userDisplayName}
                     />
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback
+                      className="text-xs font-bold text-white"
+                      style={{ background: "linear-gradient(135deg, #2f57ef, #b966e7)" }}
+                    >
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>

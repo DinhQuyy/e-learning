@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CheckCircle, ChevronDown, FileText, PlayCircle } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { Course, Lesson, Module } from "@/types";
 
@@ -68,10 +67,8 @@ export function CourseSidebar({
   };
 
   return (
-    <div className="flex h-full flex-col">
-    
-
-      <ScrollArea className="flex-1">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="space-y-2 p-3">
           {modules.map((mod, modIdx) => {
             const lessons = (mod.lessons || []) as Lesson[];
@@ -133,7 +130,7 @@ export function CourseSidebar({
                           ) : (
                             <LessonIcon className="size-4 shrink-0" />
                           )}
-                          <span className="flex-1 truncate font-medium">{lesson.title}</span>
+                          <span className="flex-1 wrap-break-word font-medium leading-snug">{lesson.title}</span>
                           {lesson.duration > 0 ? (
                             <span className="shrink-0 text-[11px] text-slate-500">
                               {formatDuration(lesson.duration)}
@@ -148,7 +145,7 @@ export function CourseSidebar({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

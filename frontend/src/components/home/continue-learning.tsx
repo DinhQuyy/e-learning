@@ -80,7 +80,7 @@ export async function ContinueLearningSection() {
               <Link
                 key={enrollment.id}
                 href={`/learn/${course.slug}`}
-                className="group flex gap-3 rounded-2xl border bg-white/90 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                className="group flex gap-3 rounded-2xl border border-border bg-card/90 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="relative size-16 shrink-0 overflow-hidden rounded-xl sm:size-20">
                   <Image

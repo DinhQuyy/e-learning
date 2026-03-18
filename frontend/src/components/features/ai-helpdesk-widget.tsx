@@ -342,7 +342,6 @@ export function AiHelpdeskWidget({ currentPath }: { currentPath?: string } = {})
 
   return (
     <>
-      <div aria-hidden className="pointer-events-none h-24 sm:h-28 lg:h-24" />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button

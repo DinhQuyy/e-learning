@@ -344,6 +344,21 @@ export default function OrderDetailPage() {
             </Card>
           )}
 
+          {order.status === "failed" && (
+            <Card className="print:hidden">
+              <CardContent className="space-y-2 p-4">
+                <Link href={`/mock-payment/${order.id}`}>
+                  <Button className="w-full">Thử lại thanh toán</Button>
+                </Link>
+                <Link href="/cart">
+                  <Button variant="outline" className="w-full text-sm">
+                    Quay lại giỏ hàng
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
           {order.status === "success" && (
             <Card className="print:hidden">
               <CardContent className="p-4">

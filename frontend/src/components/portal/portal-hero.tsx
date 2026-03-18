@@ -49,8 +49,11 @@ export function PortalHero({
       <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="size-20 border-2 border-white/70 shadow-lg">
-            <AvatarImage src={getAssetUrl(avatar)} alt={safeDisplayName} />
-            <AvatarFallback className="text-lg font-semibold text-slate-900">
+            <AvatarImage src={avatar ? getAssetUrl(avatar) : undefined} alt={safeDisplayName} />
+            <AvatarFallback
+              className="text-xl font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #2f57ef, #b966e7)" }}
+            >
               {getInitials(safeDisplayName) || "U"}
             </AvatarFallback>
           </Avatar>

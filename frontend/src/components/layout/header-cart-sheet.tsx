@@ -36,10 +36,13 @@ function formatPrice(price: number): string {
 }
 
 function getCoursePrice(course: Course): number {
-  if (course.discount_price !== null && course.discount_price < course.price) {
-    return course.discount_price;
-  }
-  return course.price;
+  const price = Number(course.price ?? 0);
+  const dp =
+    course.discount_price !== null && course.discount_price !== undefined
+      ? Number(course.discount_price)
+      : null;
+  if (dp !== null && dp >= 0 && dp < price) return dp;
+  return price;
 }
 
 export function HeaderCartSheet() {
@@ -196,9 +199,9 @@ export function HeaderCartSheet() {
                               {coursePrice === 0 ? "Miễn phí" : formatPrice(coursePrice)}
                             </span>
                             {course.discount_price !== null &&
-                              course.discount_price < course.price && (
+                              Number(course.discount_price) < Number(course.price ?? 0) && (
                                 <span className="text-xs text-muted-foreground line-through">
-                                  {formatPrice(course.price)}
+                                  {formatPrice(Number(course.price))}
                                 </span>
                               )}
                           </div>

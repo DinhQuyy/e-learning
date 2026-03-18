@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Menu, ExternalLink } from "lucide-react";
+import { BookOpen, ExternalLink, Menu } from "lucide-react";
 import { requireAuth } from "@/lib/dal";
 import { directusUrl } from "@/lib/directus";
 import {
@@ -8,6 +8,7 @@ import {
   getCourseProgress,
 } from "@/lib/queries/enrollments";
 import { CourseSidebar } from "@/components/features/course-sidebar";
+import { ResizableSidebar } from "@/components/features/resizable-sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -45,14 +46,10 @@ export default async function CoursePlayerLayout({
   const { courseSlug } = await params;
 
   const course = await getCourseBySlug(token, courseSlug);
-  if (!course) {
-    redirect("/my-courses");
-  }
+  if (!course) redirect("/my-courses");
 
   const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
-  if (!enrollment) {
-    redirect(`/courses/${courseSlug}`);
-  }
+  if (!enrollment) redirect(`/courses/${courseSlug}`);
 
   const progressRecords = await getCourseProgress(token, enrollment.id);
   const completedLessonIds = progressRecords
@@ -76,54 +73,65 @@ export default async function CoursePlayerLayout({
     (acc: number, mod: Module) => acc + (mod.lessons?.length ?? 0),
     0
   );
+  const completedCount = completedLessonIds.length;
   const progressPercent =
-    totalLessons > 0 ? Math.round((completedLessonIds.length / totalLessons) * 100) : 0;
+    totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f7ff]">
-      <aside className="hidden lg:flex lg:w-[360px] lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white/90 lg:backdrop-blur">
-        <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
-          <Link
-            href="/my-courses"
-            className="inline-flex text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
-          >
-            &larr; Khóa học của tôi
-          </Link>
-          <h2 className="mt-3 line-clamp-2 text-base font-semibold text-slate-900">
-            {course.title}
-          </h2>
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
-            <span>Tiến độ</span>
-            <span className="font-semibold text-slate-800">{progressPercent}%</span>
+      {/* ── Desktop Sidebar (resizable) ── */}
+      <ResizableSidebar
+        header={
+          <div className="border-b border-slate-100 bg-linear-to-br from-[#2f57ef]/5 via-white to-[#b966e7]/5 px-5 py-5">
+            <Link
+              href="/my-courses"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-[#2f57ef]"
+            >
+              <BookOpen className="size-3.5" />
+              Khóa học của tôi
+            </Link>
+            <h2 className="mt-2.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+              {course.title}
+            </h2>
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Tiến độ học tập</span>
+                <span className="font-semibold text-[#2f57ef]">{progressPercent}%</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-linear-to-r from-[#2f57ef] to-[#b966e7] transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                {completedCount}/{totalLessons} bài đã hoàn thành
+              </p>
+            </div>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#2f57ef] to-[#b966e7]"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-slate-600">
-           Hoàn thành {completedLessonIds.length}/{totalLessons} bài học
-          </p>
-        </div>
+        }
+      >
         <CourseSidebar
           course={courseWithSortedModules}
           currentLessonSlug=""
           completedLessonIds={completedLessonIds}
           totalLessons={totalLessons}
-          completedCount={completedLessonIds.length}
+          completedCount={completedCount}
         />
-      </aside>
+      </ResizableSidebar>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="border-b border-slate-200 bg-white/85 backdrop-blur">
-          <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
+      {/* ── Main content ── */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top header */}
+        <header className="z-10 border-b border-slate-200/80 bg-white/90 shadow-[0_1px_8px_-2px_rgba(15,23,42,0.08)] backdrop-blur-md">
+          <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
+            {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 lg:hidden"
+                  className="shrink-0 rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden"
                 >
                   <Menu className="size-5" />
                   <span className="sr-only">Mở menu khóa học</span>
@@ -131,48 +139,51 @@ export default async function CoursePlayerLayout({
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-[min(90vw,360px)] border-slate-200 bg-white p-0"
+                className="w-[min(90vw,320px)] border-slate-200 bg-white p-0"
               >
                 <SheetTitle className="sr-only">Điều hướng khóa học</SheetTitle>
-                <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] via-[#f7f9ff] to-[#f6efff] px-5 py-5">
+                <div className="border-b border-slate-100 bg-linear-to-br from-[#2f57ef]/5 via-white to-[#b966e7]/5 px-5 py-5">
                   <Link
                     href="/my-courses"
-                    className="inline-flex text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#2f57ef]"
                   >
-                    &larr; Khóa học của tôi
+                    <BookOpen className="size-3.5" />
+                    Khóa học của tôi
                   </Link>
-                  <h2 className="mt-3 line-clamp-2 text-base font-semibold text-slate-900">
+                  <h2 className="mt-2.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
                     {course.title}
                   </h2>
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
-                    <span>Tiến độ</span>
-                    <span className="font-semibold text-slate-800">{progressPercent}%</span>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Tiến độ</span>
+                      <span className="font-semibold text-[#2f57ef]">{progressPercent}%</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#2f57ef] to-[#b966e7]"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {completedCount}/{totalLessons} bài đã hoàn thành
+                    </p>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#2f57ef] to-[#b966e7]"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600">
-                   Hoàn thành {completedLessonIds.length}/{totalLessons} bài học
-                  </p>
                 </div>
                 <CourseSidebar
                   course={courseWithSortedModules}
                   currentLessonSlug=""
                   completedLessonIds={completedLessonIds}
                   totalLessons={totalLessons}
-                  completedCount={completedLessonIds.length}
+                  completedCount={completedCount}
                 />
               </SheetContent>
             </Sheet>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Khóa học
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#2f57ef]/70">
+                Đang học
               </p>
-              <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
+              <h1 className="truncate text-sm font-semibold text-slate-800 sm:text-base">
                 {course.title}
               </h1>
             </div>
@@ -181,17 +192,17 @@ export default async function CoursePlayerLayout({
               asChild
               variant="outline"
               size="sm"
-              className="hidden border-slate-300 bg-white text-slate-700 hover:bg-slate-100 sm:inline-flex"
+              className="hidden shrink-0 rounded-xl border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 sm:inline-flex"
             >
               <Link href={`/courses/${courseSlug}`}>
                 Chi tiết khóa học
-                <ExternalLink className="ml-2 size-4" />
+                <ExternalLink className="ml-1.5 size-3.5" />
               </Link>
             </Button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(47,87,239,0.08),transparent_34%),radial-gradient(circle_at_top_right,rgba(185,102,231,0.08),transparent_38%),#f8fafe]">
+        <main className="flex-1 overflow-y-auto bg-[#f4f7ff]">
           {children}
         </main>
       </div>

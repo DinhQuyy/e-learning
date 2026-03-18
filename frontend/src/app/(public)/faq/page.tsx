@@ -15,7 +15,7 @@ import { FaqSearch } from "./faq-search";
 
 export const metadata: Metadata = {
   title: "Câu hỏi thường gặp",
-  description: "Tổng hợp các câu hỏi thường gặp về tài khoản, thanh toán và quá trình học trên E-Learning.",
+  description: "Tổng hợp các câu hỏi thường gặp về tài khoản, thanh toán và quá trình học trên Kognify.",
 };
 
 import type { FaqGroup } from "./faq-search";

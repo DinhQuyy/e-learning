@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Be_Vietnam_Pro } from "next/font/google";
 import { AiHelpdeskWidget } from "@/components/features/ai-helpdesk-widget";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const poppins = Poppins({
-  subsets: ["latin", "latin-ext"],
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "latin-ext", "vietnamese"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
   display: "swap",
@@ -15,12 +15,12 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: {
-    default: "E-Learning Platform",
-    template: "%s | E-Learning",
+    default: "Kognify",
+    template: "%s | Kognify",
   },
   description:
-    "Nền tảng học trực tuyến hàng đầu Việt Nam. Học mọi thứ, mọi lúc, mọi nơi với các khóa học chất lượng cao.",
-  keywords: ["học trực tuyến", "e-learning", "khóa học online", "giáo dục"],
+    "Kognify — Nền tảng học trực tuyến hàng đầu Việt Nam. Nâng tầm nhận thức, học mọi lúc mọi nơi với các khóa học chất lượng cao.",
+  keywords: ["Kognify", "học trực tuyến", "e-learning", "khóa học online", "giáo dục"],
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${poppins.variable} font-sans antialiased`}
+        className={`${beVietnamPro.variable} font-sans antialiased`}
       >
         <ThemeProvider>
           <AuthProvider>

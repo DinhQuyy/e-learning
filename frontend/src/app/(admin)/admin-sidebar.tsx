@@ -176,7 +176,7 @@ export function AdminSidebar({
         <Shield className="h-7 w-7 text-blue-400" />
         <div>
           <h2 className="text-sm font-bold text-white">Quản trị hệ thống</h2>
-          <p className="text-xs text-slate-400">Bảng quản trị E-Learning</p>
+          <p className="text-xs text-slate-400">Bảng quản trị Kognify</p>
         </div>
       </div>
       <Separator className="bg-slate-700" />
@@ -203,7 +203,7 @@ export function AdminSidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/dashboard">
+              <Link href="/">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Trang chủ học viên
               </Link>

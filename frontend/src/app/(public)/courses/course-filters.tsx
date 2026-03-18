@@ -306,21 +306,21 @@ export function CourseFilters({
 
   return (
     <aside className="space-y-5">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <h4 className="mb-4 text-base font-semibold text-slate-900">Tìm kiếm</h4>
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <h4 className="mb-4 text-base font-semibold text-foreground">Tìm kiếm</h4>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder="Tìm kiếm khóa học"
-            className="h-11 rounded-xl border-slate-200 bg-white pl-10 pr-9 text-sm text-slate-700 placeholder:text-slate-400"
+            className="h-11 rounded-xl border-border bg-card pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground"
           />
           {searchValue ? (
             <button
               type="button"
               onClick={() => setSearchValue("")}
-              className="absolute right-2 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="absolute right-2 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-muted-foreground"
               aria-label="Xóa tìm kiếm"
             >
               <X className="size-4" />
@@ -329,16 +329,16 @@ export function CourseFilters({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <div className="relative border-b border-slate-200/90 bg-gradient-to-r from-[#f4f7ff] via-[#f8faff] to-white px-5 py-4">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <div className="relative border-b border-border bg-linear-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4 dark:from-[#2f57ef]/10 dark:to-[#b966e7]/10">
           <div className="pointer-events-none absolute -right-8 top-0 h-20 w-20 rounded-full bg-[#2f57ef]/10 blur-2xl" />
           <div className="pointer-events-none absolute -left-8 bottom-0 h-16 w-16 rounded-full bg-sky-300/20 blur-2xl" />
           <div className="relative">
             <div>
-              <h4 className="text-base font-semibold text-slate-900">
+              <h4 className="text-base font-semibold text-foreground">
                 Danh mục khóa học
               </h4>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Chọn theo nhóm lĩnh vực hoặc chuyên mục chi tiết
               </p>
             </div>
@@ -347,14 +347,14 @@ export function CourseFilters({
             <button
               type="button"
               onClick={expandAllParents}
-              className="rounded-full border border-[#2f57ef]/20 bg-white px-3 py-1 text-xs font-semibold text-[#2f57ef] transition-colors hover:bg-[#eef3ff]"
+              className="rounded-full border border-[#2f57ef]/20 bg-card px-3 py-1 text-xs font-semibold text-[#2f57ef] transition-colors hover:bg-[#eef3ff] dark:hover:bg-[#2f57ef]/15"
             >
               Mở tất cả
             </button>
             <button
               type="button"
               onClick={collapseAllParents}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent"
             >
               Thu gọn
             </button>
@@ -371,7 +371,7 @@ export function CourseFilters({
                   "flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-all",
                   !currentCategory
                     ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef] shadow-[0_10px_24px_-20px_rgba(47,87,239,0.75)]"
-                    : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    : "border-border text-foreground hover:border-border/80 hover:bg-accent"
                 )}
               >
                 <span className="inline-flex items-center gap-2">
@@ -392,13 +392,13 @@ export function CourseFilters({
               const tone = getCategoryTone(group.parent.slug);
 
               return (
-                <li key={group.parent.id} className="rounded-xl border border-slate-200/90 bg-white p-1.5">
+                <li key={group.parent.id} className="rounded-xl border border-border bg-card p-1.5">
                   <div className="flex items-center gap-1.5">
                     {group.children.length > 0 ? (
                       <button
                         type="button"
                         onClick={() => toggleParent(group.parent.id)}
-                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         aria-label={isExpanded ? "Thu gọn danh mục con" : "Mở rộng danh mục con"}
                       >
                         <ChevronRight
@@ -433,7 +433,7 @@ export function CourseFilters({
                           ? tone.active
                           : hasActiveChild
                             ? tone.related
-                            : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            : "border-border text-foreground hover:border-border/80 hover:bg-accent"
                       )}
                     >
                       <span className="inline-flex min-w-0 items-center gap-2.5">
@@ -470,14 +470,14 @@ export function CourseFilters({
                                 "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-all",
                                 childActive
                                   ? tone.active
-                                  : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                  : "border-border text-muted-foreground hover:border-border/80 hover:bg-accent"
                               )}
                             >
                               <span className="inline-flex min-w-0 items-center gap-2">
-                                <span className="inline-flex size-1.5 shrink-0 rounded-full bg-slate-300" />
+                                <span className="inline-flex size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
                                 <span className="line-clamp-1">{child.name}</span>
                               </span>
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                                 {child.course_count}
                               </span>
                             </button>
@@ -493,8 +493,8 @@ export function CourseFilters({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <h4 className="mb-4 text-base font-semibold text-slate-900">Đánh giá</h4>
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <h4 className="mb-4 text-base font-semibold text-foreground">Đánh giá</h4>
         <ul className="space-y-2">
           {ratingOptions.map((option) => {
             const active = (currentRating || "all") === option.value;
@@ -509,7 +509,7 @@ export function CourseFilters({
                     "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition-colors",
                     active
                       ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:bg-accent"
                   )}
                 >
                   <span className="inline-flex items-center gap-1.5">
@@ -523,8 +523,8 @@ export function CourseFilters({
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <h4 className="mb-4 text-base font-semibold text-slate-900">Hình thức</h4>
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <h4 className="mb-4 text-base font-semibold text-foreground">Hình thức</h4>
         <ul className="space-y-2">
           {priceOptions.map((option) => {
             const active = (currentPrice || "all") === option.value;
@@ -539,7 +539,7 @@ export function CourseFilters({
                     "flex w-full items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
                     active
                       ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:bg-accent"
                   )}
                 >
                   {option.label}
@@ -550,8 +550,8 @@ export function CourseFilters({
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
-        <h4 className="mb-4 text-base font-semibold text-slate-900">Cấp độ</h4>
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_38px_-35px_rgba(15,23,42,0.55)]">
+        <h4 className="mb-4 text-base font-semibold text-foreground">Cấp độ</h4>
         <ul className="space-y-2">
           {levels.map((level) => {
             const active = (currentLevel || "all") === level.value;
@@ -566,7 +566,7 @@ export function CourseFilters({
                     "flex w-full items-center rounded-xl border px-3 py-2 text-left text-sm transition-colors",
                     active
                       ? "border-[#2f57ef]/35 bg-[#eef3ff] text-[#2f57ef]"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:bg-accent"
                   )}
                 >
                   {level.label}
@@ -582,7 +582,7 @@ export function CourseFilters({
           type="button"
           variant="outline"
           onClick={clearFilters}
-          className="h-11 w-full rounded-xl border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="h-11 w-full rounded-xl border-slate-300 bg-white text-sm font-semibold text-foreground hover:bg-slate-50"
         >
           Xóa bộ lọc
         </Button>

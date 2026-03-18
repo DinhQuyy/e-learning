@@ -1,49 +1,45 @@
 import { readItems, aggregate } from "@directus/sdk";
-import { directus, directusUrl } from "../directus";
+import { directus } from "../directus";
 import type { Course } from "@/types";
-
-const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
 
 type RatingMap = Record<string, { avg: number; count: number }>;
 type EnrollmentMap = Record<string, number>;
 
 async function fetchRatingsByCourse(courseIds: string[]): Promise<RatingMap> {
   const result: RatingMap = {};
-  if (!serverToken || courseIds.length === 0) return result;
+  if (courseIds.length === 0) return result;
 
   try {
+    const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
+    const url = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
     const params = new URLSearchParams();
     params.set("filter[status][_eq]", "approved");
     params.set("filter[course_id][_in]", courseIds.join(","));
     params.append("groupBy[]", "course_id");
     params.append("aggregate[count]", "id");
     params.append("aggregate[avg]", "rating");
+    params.append("limit", "-1");
 
-    const res = await fetch(
-      `${directusUrl}/items/reviews?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${serverToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      }
-    );
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (serverToken) headers["Authorization"] = `Bearer ${serverToken}`;
+
+    const res = await fetch(`${url}/items/reviews?${params.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
 
     if (!res.ok) return result;
 
     const data = await res.json();
     for (const item of data.data ?? []) {
       const courseId =
-        item.course_id?.id ??
-        item["course_id"] ??
-        item["course_id.id"] ??
-        item["course_id._eq"];
+        (item.course_id as { id?: string } | null)?.id ??
+        (typeof item.course_id === "string" ? item.course_id : null);
 
       if (!courseId) continue;
 
       result[String(courseId)] = {
-        avg: parseFloat(item?.avg?.rating ?? "0") || 0,
+        avg: parseFloat(String(item?.avg?.rating ?? "0")) || 0,
         count: Number(item?.count?.id ?? 0),
       };
     }
@@ -58,34 +54,32 @@ async function fetchEnrollmentCountsByCourse(
   courseIds: string[]
 ): Promise<EnrollmentMap> {
   const result: EnrollmentMap = {};
-  if (!serverToken || courseIds.length === 0) return result;
+  if (courseIds.length === 0) return result;
 
   try {
+    const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
+    const url = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
     const params = new URLSearchParams();
     params.set("filter[course_id][_in]", courseIds.join(","));
     params.append("groupBy[]", "course_id");
     params.append("aggregate[countDistinct]", "user_id");
+    params.append("limit", "-1");
 
-    const res = await fetch(
-      `${directusUrl}/items/enrollments?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${serverToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      }
-    );
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (serverToken) headers["Authorization"] = `Bearer ${serverToken}`;
+
+    const res = await fetch(`${url}/items/enrollments?${params.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
 
     if (!res.ok) return result;
 
     const data = await res.json();
     for (const item of data.data ?? []) {
       const courseId =
-        item.course_id?.id ??
-        item["course_id"] ??
-        item["course_id.id"] ??
-        item["course_id._eq"];
+        (item.course_id as { id?: string } | null)?.id ??
+        (typeof item.course_id === "string" ? item.course_id : null);
 
       if (!courseId) continue;
       result[String(courseId)] = Number(
@@ -762,21 +756,23 @@ export async function getRecommendedByInstructors(
   enrolledInstructorIds: string[],
   limit = 8
 ): Promise<Course[]> {
-  if (!serverToken || enrolledInstructorIds.length === 0) return [];
+  if (enrolledInstructorIds.length === 0) return [];
 
   try {
+    const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
+    const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
     const params = new URLSearchParams();
     params.set("filter[user_id][_in]", enrolledInstructorIds.join(","));
     params.set("fields", "course_id");
     params.set("limit", "-1");
 
+    const junctionHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (serverToken) junctionHeaders["Authorization"] = `Bearer ${serverToken}`;
+
     const junctionRes = await fetch(
       `${directusUrl}/items/courses_instructors?${params.toString()}`,
       {
-        headers: {
-          Authorization: `Bearer ${serverToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: junctionHeaders,
         cache: "no-store",
       }
     );
@@ -849,6 +845,8 @@ export interface PlatformStats {
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
+  const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
+  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };

@@ -57,7 +57,7 @@ interface AdminReview {
 
 interface ReportDataResult {
   popularCourses: Array<{
-    id: number;
+    id: string;
     title: string;
     slug?: string;
     total_enrollments: number;
@@ -65,6 +65,7 @@ interface ReportDataResult {
   }>;
   enrollments: Array<{ enrolled_at: string }>;
   ratingDistribution: Array<{ rating: number; count: number }>;
+  aiServiceOnline: boolean;
   topInstructors: Array<{
     id: string;
     name: string;
@@ -314,12 +315,12 @@ function normalizeMentorAnalytics(raw: unknown): MentorAnalyticsResult {
   };
 }
 
-async function getAiMetrics(): Promise<AiMetricsResult> {
+async function getAiMetrics(): Promise<{ result: AiMetricsResult; online: boolean }> {
   try {
     const raw = await callAiApiRaw("/v1/admin/metrics");
-    return normalizeAiMetrics(raw);
+    return { result: normalizeAiMetrics(raw), online: true };
   } catch {
-    return EMPTY_AI_METRICS;
+    return { result: EMPTY_AI_METRICS, online: false };
   }
 }
 
@@ -714,17 +715,16 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
 
   const popularCourses = publishedCourses
     .map((course) => {
-      const numericId = Number(course.id);
       const averageRating = Number(course.average_rating ?? 0);
       return {
-        id: Number.isFinite(numericId) ? numericId : 0,
+        id: course.id,
         title: typeof course.title === "string" ? course.title : "N/A",
         slug: typeof course.slug === "string" ? course.slug : "",
         total_enrollments: enrollmentCountByCourseId.get(course.id) ?? 0,
         average_rating: Number.isFinite(averageRating) ? averageRating : 0,
       };
     })
-    .filter((course) => course.id > 0)
+    .filter((course) => Boolean(course.id) && course.total_enrollments > 0)
     .sort((a, b) => b.total_enrollments - a.total_enrollments)
     .slice(0, 10);
 
@@ -811,7 +811,7 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     .sort((a, b) => b.totalStudents - a.totalStudents)
     .slice(0, 10);
 
-  const [aiMetrics, aiDailyMetrics, mentorAnalytics] = await Promise.all([
+  const [{ result: aiMetrics, online: aiServiceOnline }, aiDailyMetrics, mentorAnalytics] = await Promise.all([
     getAiMetrics(),
     getAiDailyMetrics(14),
     getMentorAnalytics(30),
@@ -821,6 +821,7 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     popularCourses,
     enrollments,
     ratingDistribution: ratingDistRes,
+    aiServiceOnline,
     topInstructors,
     aiMetrics,
     aiDailyMetrics,

@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   description:
     "Kognify — Nền tảng học trực tuyến hàng đầu Việt Nam. Nâng tầm nhận thức, học mọi lúc mọi nơi với các khóa học chất lượng cao.",
-  keywords: ["Kognify", "học trực tuyến", "e-learning", "khóa học online", "giáo dục"],
+  keywords: ["Kognify", "học trực tuyến", "e-learning", "khóa học online", "giáo dục", "học mọi lúc mọi nơi", "nền tảng học tập", "giáo dục trực tuyến"],
 };
 
 export default function RootLayout({

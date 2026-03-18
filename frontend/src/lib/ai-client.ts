@@ -3,10 +3,6 @@ import { z } from 'zod';
 const aiApiUrl = process.env.AI_API_URL || 'http://localhost:8090';
 const aiInternalKey = process.env.AI_INTERNAL_KEY || '';
 
-if (!aiInternalKey) {
-  console.warn('AI_INTERNAL_KEY is not configured. AI routes will fail authentication.');
-}
-
 type AiEnvelope<T> = {
   data: T;
   conversationId: string | null;

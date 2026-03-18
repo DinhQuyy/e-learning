@@ -110,24 +110,37 @@ export function CourseCard({ course }: CourseCardProps) {
         </CardContent>
         <CardFooter className="flex items-center justify-between border-t p-4 pt-3">
           <div className="flex items-center gap-2">
-            {course.discount_price !== null && course.discount_price < course.price ? (
-              <>
-                <span className="text-sm font-bold text-primary">
-                  {formatPrice(course.discount_price)}
-                </span>
-                <span className="text-xs text-muted-foreground line-through">
-                  {formatPrice(course.price)}
-                </span>
-              </>
-            ) : course.price === 0 ? (
-              <span className="text-sm font-bold text-green-600">
-                Miễn phí
-              </span>
-            ) : (
-              <span className="text-sm font-bold">
-                {formatPrice(course.price)}
-              </span>
-            )}
+            {(() => {
+              const price = Number(course.price ?? 0);
+              const dp = course.discount_price !== null && course.discount_price !== undefined
+                ? Number(course.discount_price)
+                : null;
+              const hasDiscount = dp !== null && dp >= 0 && dp < price;
+              const effectivePrice = hasDiscount ? dp : price;
+
+              if (effectivePrice === 0) {
+                return (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                    Miễn phí
+                  </span>
+                );
+              }
+              if (hasDiscount && dp !== null) {
+                return (
+                  <>
+                    <span className="text-sm font-bold text-primary">
+                      {formatPrice(dp)}
+                    </span>
+                    <span className="text-xs text-muted-foreground line-through">
+                      {formatPrice(price)}
+                    </span>
+                  </>
+                );
+              }
+              return (
+                <span className="text-sm font-bold">{formatPrice(price)}</span>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Users className="size-3" />

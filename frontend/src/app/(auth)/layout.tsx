@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { ArrowRight, BookOpen, Sparkles, TrendingUp } from "lucide-react";
+import { KognifyLogo } from "@/components/layout/logo";
 
 export default function AuthLayout({
   children,
@@ -12,22 +13,16 @@ export default function AuthLayout({
       <div className="pointer-events-none absolute -right-28 bottom-10 size-72 rounded-full bg-[#b966e7]/15 blur-3xl" />
 
       <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1fr_460px]">
-        <section className="hidden rounded-3xl border border-[#2f57ef]/15 bg-white/80 p-8 shadow-lg backdrop-blur lg:block">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#2f57ef]">
-            <span
-              className="inline-flex size-8 items-center justify-center rounded-lg text-xs font-extrabold text-white"
-              style={{ backgroundImage: "linear-gradient(90deg, #2f57ef, #b966e7)" }}
-            >
-              E
-            </span>
-            E-Learning
+        <section className="hidden rounded-3xl border border-[#2f57ef]/15 bg-card/90 p-8 shadow-lg backdrop-blur lg:block">
+          <Link href="/">
+            <KognifyLogo size="sm" />
           </Link>
 
-          <h1 className="mt-6 text-3xl font-bold leading-tight text-[#192335]">
+          <h1 className="mt-6 text-3xl font-bold leading-tight text-foreground">
             Học trực tuyến để nâng cấp kỹ năng
             <span className="text-[#2f57ef]"> nhanh hơn</span>
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[#6b7385]">
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             Gia nhập cộng đồng học viên để tiếp cận khóa học chất lượng, giảng viên thực chiến
             và lộ trình học tập rõ ràng theo từng mục tiêu.
           </p>

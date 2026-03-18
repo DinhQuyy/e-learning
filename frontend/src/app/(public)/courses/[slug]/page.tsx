@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Poppins } from "next/font/google";
 import { notFound } from "next/navigation";
 import {
   Award,
@@ -29,6 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingStars } from "@/components/features/rating-stars";
 import { ShareButton } from "./share-button";
 import { ReviewList } from "./review-list";
+import { CourseTabs } from "./course-tabs";
 import { CourseCard } from "@/components/features/course-card";
 import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog";
 import { CourseActions } from "./course-actions";
@@ -46,11 +46,6 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-const poppins = Poppins({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
 interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -66,9 +61,9 @@ function SectionCard({ id, title, children }: SectionCardProps) {
   return (
     <section
       id={id}
-      className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.5)]"
+      className="scroll-mt-28 rounded-2xl border border-border bg-card p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.5)]"
     >
-      <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+      <h2 className="text-xl font-bold text-foreground">{title}</h2>
       <div className="mt-5">{children}</div>
     </section>
   );
@@ -165,7 +160,7 @@ export async function generateMetadata({
     description:
       stripHtml(course.short_description) ||
       stripHtml(course.description) ||
-      `Khoá học ${course.title} trên E-Learning.`,
+      `Khoá học ${course.title} trên Kognify.`,
     openGraph: {
       title: course.title,
       description: stripHtml(course.description) || undefined,
@@ -227,8 +222,12 @@ export default async function CourseDetailPage({
           ? String(sortedModules[0].id)
           : null;
 
+  // Include reviews that are either "approved" or have no status field (public role may omit it)
   const approvedReviews = (course.reviews || []).filter(
-    (review) => (review as Review).status === "approved",
+    (review) => {
+      const r = review as Review;
+      return !r.status || r.status === "approved";
+    },
   ) as Review[];
 
   const averageRating =
@@ -247,11 +246,15 @@ export default async function CourseDetailPage({
     { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   );
 
+  const totalReviewCount =
+    (course as { review_count?: number }).review_count ??
+    approvedReviews.length;
+
   const ratingDistribution = [5, 4, 3, 2, 1].map((star) => {
     const count = ratingCounts[star] ?? 0;
     const percentage =
-      approvedReviews.length > 0
-        ? Math.round((count / approvedReviews.length) * 100)
+      totalReviewCount > 0
+        ? Math.round((count / totalReviewCount) * 100)
         : 0;
     return { star, percentage };
   });
@@ -293,14 +296,6 @@ export default async function CourseDetailPage({
     stripHtml(course.short_description) ||
     "Khoá học thực chiến được thiết kế với lộ trình rõ ràng và cập nhật liên tục.";
 
-  const tabItems = [
-    { href: "#overview", label: "Tổng quan" },
-    { href: "#coursecontent", label: "Nội dung khoá học" },
-    { href: "#details", label: "Chi tiết" },
-    { href: "#instructor", label: "Giảng viên" },
-    { href: "#review", label: "Đánh giá" },
-  ];
-
   const previewNode = (
     <div className="relative aspect-video overflow-hidden">
       <Image
@@ -324,7 +319,7 @@ export default async function CourseDetailPage({
   );
 
   return (
-    <div className={`${poppins.className} bg-[#f6f8fc] text-slate-900`}>
+    <div className="bg-muted/30 text-foreground">
       <section className="relative overflow-hidden border-b border-slate-200 bg-[#0f172a] text-white">
         <div className="absolute inset-0">
           <Image
@@ -410,7 +405,7 @@ export default async function CourseDetailPage({
                         alt={fullName}
                         className="object-cover"
                       />
-                      <AvatarFallback className="text-xs text-slate-900">
+                      <AvatarFallback className="text-xs">
                         {(instructor.first_name?.[0] ?? "") +
                           (instructor.last_name?.[0] ?? "")}
                       </AvatarFallback>
@@ -442,7 +437,7 @@ export default async function CourseDetailPage({
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="order-2 space-y-6 lg:order-1">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(15,23,42,0.5)]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_48px_-38px_rgba(15,23,42,0.5)]">
               <div className="relative aspect-video overflow-hidden">
                 <Image
                   src={getCourseImageSrc(course)}
@@ -454,58 +449,45 @@ export default async function CourseDetailPage({
               </div>
             </div>
 
-            <nav className="sticky top-20 z-20 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-              <ul className="flex min-w-max items-center gap-1 p-2 text-sm font-semibold text-slate-600">
-                {tabItems.map((item) => (
-                  <li key={item.href}>
-                    <a
-                      href={item.href}
-                      className="inline-flex rounded-xl px-4 py-2.5 transition-colors hover:bg-[#eef3ff] hover:text-[#2f57ef]"
-                    >
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+            <CourseTabs />
 
             <SectionCard id="overview" title="Bạn sẽ học được gì">
-              <p className="text-sm leading-relaxed text-slate-600">{heroDescription}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{heroDescription}</p>
 
               {learningPoints.length > 0 ? (
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {learningPoints.map((item, index) => (
                     <div
                       key={`${item}-${index}`}
-                      className="flex items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-3"
+                      className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-3 py-3"
                     >
                       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                      <span className="text-sm text-slate-700">{item}</span>
+                      <span className="text-sm text-foreground">{item}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-slate-500">
+                <p className="mt-4 text-sm text-muted-foreground">
                   Nội dung mục tiêu học tập đang được cập nhật.
                 </p>
               )}
 
               {course.content ? (
                 <div
-                  className="prose prose-slate mt-6 max-w-none border-t border-slate-200 pt-6 prose-a:text-[#2f57ef]"
+                  className="prose prose-slate dark:prose-invert mt-6 max-w-none border-t border-border pt-6 prose-a:text-[#2f57ef]"
                   dangerouslySetInnerHTML={{ __html: course.content }}
                 />
               ) : null}
             </SectionCard>
 
             <SectionCard id="coursecontent" title="Nội dung khoá học">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {sortedModules.length} chương • {totalLessons} bài học • {formatDuration(course.total_duration)}
               </p>
 
               {fromAiReferences && (focusedModuleId || focusedLessonId) ? (
                 <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
-                  <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                  <Badge className="rounded-full bg-background text-cyan-700 ring-1 ring-cyan-200">
                     Trợ lý AI
                   </Badge>
                   <span>
@@ -520,7 +502,7 @@ export default async function CourseDetailPage({
                 <Accordion
                   type="multiple"
                   defaultValue={defaultOpenModule ? [defaultOpenModule] : []}
-                  className="mt-4 divide-y rounded-xl border border-slate-200"
+                  className="mt-4 divide-y rounded-xl border border-border"
                 >
                   {sortedModules.map((moduleItem) => {
                     const isFocusedModule =
@@ -533,7 +515,7 @@ export default async function CourseDetailPage({
                       id={`module-${moduleItem.id}`}
                       className={
                         isFocusedModule
-                          ? "border-0 rounded-2xl bg-cyan-50/80 ring-1 ring-cyan-200 shadow-sm"
+                          ? "border-0 rounded-2xl bg-cyan-50/80 dark:bg-cyan-950/30 ring-1 ring-cyan-200 shadow-sm"
                           : "border-0"
                       }
                     >
@@ -542,20 +524,20 @@ export default async function CourseDetailPage({
                         aria-controls={`module-content-${moduleItem.id}`}
                         className={
                           isFocusedModule
-                            ? "px-5 py-4 text-left font-semibold text-cyan-950 hover:bg-cyan-50 hover:no-underline"
-                            : "px-5 py-4 text-left font-semibold hover:bg-slate-50 hover:no-underline"
+                            ? "px-5 py-4 text-left font-semibold text-cyan-950 dark:text-cyan-200 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 hover:no-underline"
+                            : "px-5 py-4 text-left font-semibold hover:bg-muted/50 hover:no-underline"
                         }
                       >
                         <div className="mr-4 flex flex-1 items-center justify-between gap-3">
-                          <span className="flex items-center gap-2 text-slate-900">
+                          <span className="flex items-center gap-2 text-foreground">
                             {moduleItem.title}
                             {isFocusedModule ? (
-                              <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                              <Badge className="rounded-full bg-white dark:bg-cyan-900 text-cyan-700 dark:text-cyan-200 ring-1 ring-cyan-200">
                                 AI pick
                               </Badge>
                             ) : null}
                           </span>
-                          <span className="text-xs font-medium text-slate-500">
+                          <span className="text-xs font-medium text-muted-foreground">
                             {moduleItem.lessons.length} bài học
                           </span>
                         </div>
@@ -565,7 +547,7 @@ export default async function CourseDetailPage({
                         aria-labelledby={`module-trigger-${moduleItem.id}`}
                         className="p-0"
                       >
-                        <ul className="divide-y border-t border-slate-200">
+                        <ul className="divide-y border-t border-border">
                           {moduleItem.lessons.map((lesson) => {
                             const lessonData = lesson as Lesson;
                             const isFocusedLesson =
@@ -577,26 +559,26 @@ export default async function CourseDetailPage({
                                 id={`lesson-${lessonData.id}`}
                                 className={
                                   isFocusedLesson
-                                    ? "flex items-center justify-between gap-4 bg-cyan-50/90 px-5 py-3 ring-1 ring-inset ring-cyan-200"
+                                    ? "flex items-center justify-between gap-4 bg-cyan-50/90 dark:bg-cyan-950/30 px-5 py-3 ring-1 ring-inset ring-cyan-200"
                                     : "flex items-center justify-between gap-4 px-5 py-3"
                                 }
                               >
                                 <div className="flex min-w-0 items-center gap-3">
                                   {lessonData.type === "video" ? (
-                                    <PlayCircle className="size-4 shrink-0 text-slate-400" />
+                                    <PlayCircle className="size-4 shrink-0 text-muted-foreground" />
                                   ) : (
-                                    <FileText className="size-4 shrink-0 text-slate-400" />
+                                    <FileText className="size-4 shrink-0 text-muted-foreground" />
                                   )}
-                                  <span className="truncate text-sm text-slate-700">
+                                  <span className="truncate text-sm text-foreground">
                                     {lessonData.title}
                                   </span>
                                   {isFocusedLesson ? (
-                                    <Badge className="rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+                                    <Badge className="rounded-full bg-white dark:bg-cyan-900 text-cyan-700 dark:text-cyan-200 ring-1 ring-cyan-200">
                                       AI pick
                                     </Badge>
                                   ) : null}
                                 </div>
-                                <div className="flex shrink-0 items-center gap-3 text-xs text-slate-500">
+                                <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                                   {lessonData.is_free ? (
                                     <LessonPreviewDialog
                                       lesson={lessonData}
@@ -622,20 +604,20 @@ export default async function CourseDetailPage({
                   })}
                 </Accordion>
               ) : (
-                <p className="mt-4 text-sm text-slate-500">Chưa có nội dung bài học để hiển thị.</p>
+                <p className="mt-4 text-sm text-muted-foreground">Chưa có nội dung bài học để hiển thị.</p>
               )}
             </SectionCard>
 
             <SectionCard id="details" title="Chi tiết">
               <div className="grid gap-6 md:grid-cols-2">
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">Yêu cầu</h3>
+                  <h3 className="text-base font-semibold text-foreground">Yêu cầu</h3>
                   {requirements.length > 0 ? (
                     <ul className="mt-3 space-y-2">
                       {requirements.map((requirement, index) => (
                         <li
                           key={`${requirement}-${index}`}
-                          className="flex items-start gap-2.5 text-sm text-slate-600"
+                          className="flex items-start gap-2.5 text-sm text-muted-foreground"
                         >
                           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#2f57ef]" />
                           <span>{requirement}</span>
@@ -643,18 +625,18 @@ export default async function CourseDetailPage({
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-slate-500">Không có yêu cầu đầu vào đặc biệt.</p>
+                    <p className="mt-3 text-sm text-muted-foreground">Không có yêu cầu đầu vào đặc biệt.</p>
                   )}
                 </div>
 
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">Mục tiêu</h3>
+                  <h3 className="text-base font-semibold text-foreground">Mục tiêu</h3>
                   {targetAudience.length > 0 ? (
                     <ul className="mt-3 space-y-2">
                       {targetAudience.map((goal, index) => (
                         <li
                           key={`${goal}-${index}`}
-                          className="flex items-start gap-2.5 text-sm text-slate-600"
+                          className="flex items-start gap-2.5 text-sm text-muted-foreground"
                         >
                           <Star className="mt-0.5 size-4 shrink-0 text-amber-500" />
                           <span>{goal}</span>
@@ -666,7 +648,7 @@ export default async function CourseDetailPage({
                       {learningPoints.slice(0, 5).map((goal, index) => (
                         <li
                           key={`${goal}-${index}`}
-                          className="flex items-start gap-2.5 text-sm text-slate-600"
+                          className="flex items-start gap-2.5 text-sm text-muted-foreground"
                         >
                           <Star className="mt-0.5 size-4 shrink-0 text-amber-500" />
                           <span>{goal}</span>
@@ -674,7 +656,7 @@ export default async function CourseDetailPage({
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-slate-500">
+                    <p className="mt-3 text-sm text-muted-foreground">
                       Mục tiêu khoá học đang được cập nhật.
                     </p>
                   )}
@@ -693,11 +675,11 @@ export default async function CourseDetailPage({
                     return (
                       <div
                         key={instructor.id}
-                        className="rounded-xl border border-slate-200 bg-slate-50/70 p-5"
+                        className="rounded-xl border border-border bg-muted/30 p-5"
                       >
                         <div className="flex flex-col gap-5 sm:flex-row">
                           <Link href={`/instructors/${instructor.id}`}>
-                            <Avatar className="size-24 border-2 border-white shadow-md">
+                            <Avatar className="size-24 border-2 border-border shadow-md">
                               <AvatarImage
                                 src={getAssetUrl(instructor.avatar)}
                                 alt={name}
@@ -713,31 +695,31 @@ export default async function CourseDetailPage({
                           <div className="flex-1">
                             <Link
                               href={`/instructors/${instructor.id}`}
-                              className="text-lg font-bold text-slate-900 hover:text-[#2f57ef]"
+                              className="text-lg font-bold text-foreground hover:text-[#2f57ef]"
                             >
                               {name}
                             </Link>
                             {instructor.headline ? (
-                              <p className="mt-1 text-sm text-slate-500">{instructor.headline}</p>
+                              <p className="mt-1 text-sm text-muted-foreground">{instructor.headline}</p>
                             ) : null}
 
-                            <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium text-slate-600">
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                            <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium text-muted-foreground">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1 ring-1 ring-border">
                                 <Star className="size-3.5 fill-amber-500 text-amber-500" />
                                 {Number(averageRating).toFixed(1)} xếp hạng
                               </span>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1 ring-1 ring-border">
                                 <Users className="size-3.5" />
                                 {enrollmentCount.toLocaleString("vi-VN")} học viên
                               </span>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1 ring-1 ring-border">
                                 <PlayCircle className="size-3.5" />
                                 {totalLessons} bài học
                               </span>
                             </div>
 
                             {instructor.bio ? (
-                              <p className="mt-4 text-sm leading-relaxed text-slate-600">
+                              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                                 {instructor.bio}
                               </p>
                             ) : null}
@@ -748,33 +730,33 @@ export default async function CourseDetailPage({
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">Thông tin giảng viên đang được cập nhật.</p>
+                <p className="text-sm text-muted-foreground">Thông tin giảng viên đang được cập nhật.</p>
               )}
             </SectionCard>
 
             <SectionCard id="review" title="Đánh giá">
               <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-[#f4f7ff] p-5 text-center">
+                <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-[#f4f7ff] dark:bg-[#2f57ef]/10 p-5 text-center">
                   <span className="text-5xl font-bold text-[#2f57ef]">
                     {Number(averageRating).toFixed(1)}
                   </span>
                   <RatingStars rating={averageRating} size="md" showValue={false} />
-                  <span className="mt-2 text-xs font-medium text-slate-500">
-                    {approvedReviews.length} đánh giá
+                  <span className="mt-2 text-xs font-medium text-muted-foreground">
+                    {(course as { review_count?: number }).review_count ?? approvedReviews.length} đánh giá
                   </span>
                 </div>
 
                 <div className="space-y-3 self-center">
                   {ratingDistribution.map(({ star, percentage }) => (
                     <div key={star} className="flex items-center gap-3 text-sm">
-                      <div className="w-14 text-xs font-medium text-slate-500">{star} sao</div>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+                      <div className="w-14 text-xs font-medium text-muted-foreground">{star} sao</div>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full bg-[#2f57ef]"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <span className="w-10 text-right text-xs text-slate-500">
+                      <span className="w-10 text-right text-xs text-muted-foreground">
                         {percentage}%
                       </span>
                     </div>
@@ -788,7 +770,7 @@ export default async function CourseDetailPage({
 
           <aside className="order-1 lg:order-2">
             <div className="sticky top-24 space-y-5">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
                 {course.promo_video_url ? (
                   <a
                     href={course.promo_video_url}
@@ -803,17 +785,17 @@ export default async function CourseDetailPage({
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
                 <div className="flex flex-wrap items-end gap-3">
                   {finalPrice === 0 ? (
                     <span className="text-3xl font-extrabold text-emerald-600">Miễn phí</span>
                   ) : (
                     <>
-                      <span className="text-3xl font-extrabold text-slate-900">
+                      <span className="text-3xl font-extrabold text-foreground">
                         {formatPrice(finalPrice)}
                       </span>
                       {hasDiscount ? (
-                        <span className="text-lg text-slate-400 line-through">
+                        <span className="text-lg text-muted-foreground line-through">
                           {formatPrice(course.price)}
                         </span>
                       ) : null}
@@ -836,82 +818,82 @@ export default async function CourseDetailPage({
                   />
                 </div>
 
-                <p className="mt-4 text-center text-xs text-slate-500">
+                <p className="mt-4 text-center text-xs text-muted-foreground">
                   Cam kết hoàn tiền trong 30 ngày.
                 </p>
 
-                <div className="mt-6 border-t border-slate-200 pt-5">
-                  <h3 className="text-sm font-semibold text-slate-900">Khoá học bao gồm:</h3>
-                  <ul className="mt-3 space-y-3 text-sm text-slate-600">
+                <div className="mt-6 border-t border-border pt-5">
+                  <h3 className="text-sm font-semibold text-foreground">Khoá học bao gồm:</h3>
+                  <ul className="mt-3 space-y-3 text-sm text-muted-foreground">
                     <li className="flex items-center gap-2.5">
-                      <MonitorPlay className="size-4 text-slate-500" />
+                      <MonitorPlay className="size-4 text-muted-foreground" />
                       {formatDuration(course.total_duration)} video theo yêu cầu
                     </li>
                     <li className="flex items-center gap-2.5">
-                      <FileText className="size-4 text-slate-500" />
+                      <FileText className="size-4 text-muted-foreground" />
                       {totalLessons} bài học
                     </li>
                     <li className="flex items-center gap-2.5">
-                      <Clock3 className="size-4 text-slate-500" />
+                      <Clock3 className="size-4 text-muted-foreground" />
                       Học mọi lúc, mọi nơi
                     </li>
                     <li className="flex items-center gap-2.5">
-                      <Award className="size-4 text-slate-500" />
+                      <Award className="size-4 text-muted-foreground" />
                       Chứng chỉ hoàn thành khoá học
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
-                <h3 className="text-sm font-semibold text-slate-900">Thông tin khoá học</h3>
-                <ul className="mt-4 space-y-3 text-sm text-slate-600">
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.6)]">
+                <h3 className="text-sm font-semibold text-foreground">Thông tin khoá học</h3>
+                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
-                      <Users className="size-4 text-slate-500" />
+                      <Users className="size-4 text-muted-foreground" />
                       Học viên
                     </span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-foreground">
                       {enrollmentCount.toLocaleString("vi-VN")}
                     </span>
                   </li>
                   <li className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
-                      <FileText className="size-4 text-slate-500" />
+                      <FileText className="size-4 text-muted-foreground" />
                       Bài giảng
                     </span>
-                    <span className="font-semibold text-slate-800">{totalLessons}</span>
+                    <span className="font-semibold text-foreground">{totalLessons}</span>
                   </li>
                   <li className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
-                      <Clock3 className="size-4 text-slate-500" />
+                      <Clock3 className="size-4 text-muted-foreground" />
                       Tổng thời lượng
                     </span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-foreground">
                       {formatDuration(course.total_duration)}
                     </span>
                   </li>
                   <li className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
-                      <Award className="size-4 text-slate-500" />
+                      <Award className="size-4 text-muted-foreground" />
                       Cấp độ
                     </span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-foreground">
                       {getLevelLabel(course.level)}
                     </span>
                   </li>
                   <li className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2">
-                      <Globe2 className="size-4 text-slate-500" />
+                      <Globe2 className="size-4 text-muted-foreground" />
                       Ngôn ngữ
                     </span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-foreground">
                       {course.language || "Tiếng Việt"}
                     </span>
                   </li>
                 </ul>
 
-                <div className="mt-5 border-t border-slate-200 pt-4">
+                <div className="mt-5 border-t border-border pt-4">
                   <ShareButton title={course.title} slug={course.slug} />
                 </div>
               </div>
@@ -921,13 +903,13 @@ export default async function CourseDetailPage({
       </section>
 
       {instructorCourses.length > 0 && instructors[0] ? (
-        <section className="border-t border-slate-200 bg-[#f6f8fc] py-12">
+        <section className="border-t border-border bg-muted/30 py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6">
               <p className="text-sm font-semibold text-[#2f57ef]">
                 Cùng giảng viên
               </p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+              <h2 className="mt-1 text-2xl font-bold text-foreground">
                 Khoá học khác của{" "}
                 {[instructors[0].first_name, instructors[0].last_name]
                   .filter(Boolean)
@@ -944,12 +926,12 @@ export default async function CourseDetailPage({
       ) : null}
 
       {relatedCourses.length > 0 ? (
-        <section className="border-t border-slate-200 bg-white py-12">
+        <section className="border-t border-border bg-background py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-6 flex items-end justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-[#2f57ef]">Khoá học liên quan</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                <h2 className="mt-1 text-2xl font-bold text-foreground">
                   Học viên thường đăng ký thêm
                 </h2>
               </div>

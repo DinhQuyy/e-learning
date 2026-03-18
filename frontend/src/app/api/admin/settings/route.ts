@@ -16,7 +16,7 @@ export async function GET() {
       // Collection might not exist yet, return defaults
       return NextResponse.json({
         data: {
-          platform_name: "E-Learning Platform",
+          platform_name: "Kognify",
           platform_description: "Nền tảng học trực tuyến hàng đầu Việt Nam",
           maintenance_mode: false,
           maintenance_message: "Hệ thống đang bảo trì. Vui lòng quay lại sau.",
@@ -27,7 +27,7 @@ export async function GET() {
     const data = await res.json();
     // Singleton pattern: return first item or defaults
     const settings = data.data?.[0] ?? data.data ?? {
-      platform_name: "E-Learning Platform",
+      platform_name: "Kognify",
       platform_description: "Nền tảng học trực tuyến hàng đầu Việt Nam",
       maintenance_mode: false,
       maintenance_message: "Hệ thống đang bảo trì. Vui lòng quay lại sau.",
@@ -36,7 +36,7 @@ export async function GET() {
   } catch {
     return NextResponse.json({
       data: {
-        platform_name: "E-Learning Platform",
+        platform_name: "Kognify",
         platform_description: "Nền tảng học trực tuyến hàng đầu Việt Nam",
         maintenance_mode: false,
         maintenance_message: "Hệ thống đang bảo trì. Vui lòng quay lại sau.",

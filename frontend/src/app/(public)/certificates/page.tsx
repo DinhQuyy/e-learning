@@ -245,7 +245,7 @@ export default function CertificatesPage() {
             <CardContent>
               <div className="rounded-xl border bg-background p-5 shadow-sm">
                 <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                  E-Learning Platform
+                  Kognify
                 </p>
                 <p className="mt-4 text-2xl font-semibold">Nguyễn Văn A</p>
                 <p className="mt-2 text-sm text-muted-foreground">

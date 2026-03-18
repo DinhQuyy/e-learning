@@ -5,13 +5,20 @@ import { apiFetch } from "@/lib/api-fetch";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Receipt, Package, ChevronRight } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  Package,
+  Receipt,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import type { Order, OrderItem, Course } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("vi-VN", {
@@ -21,23 +28,54 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-const statusLabels: Record<string, string> = {
-  pending: "Chờ thanh toán",
-  success: "Thành công",
-  failed: "Thất bại",
-  cancelled: "Đã huỷ",
+const statusConfig: Record<
+  string,
+  {
+    label: string;
+    badgeClass: string;
+    icon: React.ElementType;
+    iconClass: string;
+  }
+> = {
+  pending: {
+    label: "Chờ thanh toán",
+    badgeClass: "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:ring-amber-800",
+    icon: Clock,
+    iconClass: "text-amber-500",
+  },
+  success: {
+    label: "Thành công",
+    badgeClass: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800",
+    icon: CheckCircle2,
+    iconClass: "text-emerald-500",
+  },
+  failed: {
+    label: "Thất bại",
+    badgeClass: "bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-900/20 dark:text-red-400 dark:ring-red-800",
+    icon: XCircle,
+    iconClass: "text-red-500",
+  },
+  cancelled: {
+    label: "Đã huỷ",
+    badgeClass: "bg-muted text-muted-foreground ring-1 ring-border",
+    icon: XCircle,
+    iconClass: "text-muted-foreground",
+  },
 };
 
-const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  success: "default",
-  failed: "destructive",
-  cancelled: "secondary",
-};
+const tabs = [
+  { key: "all", label: "Tất cả" },
+  { key: "pending", label: "Chờ thanh toán" },
+  { key: "success", label: "Thành công" },
+  { key: "failed", label: "Thất bại" },
+] as const;
+
+type TabKey = (typeof tabs)[number]["key"];
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
 
   useEffect(() => {
     apiFetch("/api/orders")
@@ -47,111 +85,213 @@ export default function OrdersPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const filtered =
+    activeTab === "all"
+      ? orders
+      : orders.filter((o) => o.status === activeTab);
+
+  const countByTab = (key: TabKey) =>
+    key === "all" ? orders.length : orders.filter((o) => o.status === key).length;
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
+      <div className="space-y-5">
+        <Skeleton className="h-8 w-52" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
           <Receipt className="size-6" />
           Lịch sử đơn hàng
         </h1>
-        <p className="text-muted-foreground">{orders.length} đơn hàng</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {orders.length} đơn hàng
+        </p>
       </div>
 
-      {orders.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Package className="size-12 text-muted-foreground/30" />
-            <h3 className="mt-4 text-lg font-semibold">Chưa có đơn hàng</h3>
+      {/* Filter tabs */}
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/50 p-1">
+        {tabs.map((tab) => {
+          const count = countByTab(tab.key);
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                activeTab === tab.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                    activeTab === tab.key
+                      ? "bg-[#2f57ef]/10 text-[#2f57ef]"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16">
+          <Package className="size-12 text-muted-foreground/30" />
+          <p className="mt-3 font-medium text-muted-foreground">
+            {activeTab === "all" ? "Chưa có đơn hàng nào" : "Không có đơn nào"}
+          </p>
+          {activeTab === "all" && (
             <Link href="/courses" className="mt-4">
-              <Button>Khám phá khoá học</Button>
+              <Button size="sm">Khám phá khoá học</Button>
             </Link>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <Card key={order.id}>
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-medium">
-                        {order.order_number}
-                      </span>
-                      <Badge variant={statusVariants[order.status] || "outline"}>
-                        {statusLabels[order.status] || order.status}
-                      </Badge>
+        <div className="space-y-3">
+          {filtered.map((order) => {
+            const cfg = statusConfig[order.status] ?? statusConfig.pending;
+            const StatusIcon = cfg.icon;
+            const items = (order.items as OrderItem[]) ?? [];
+            const courses = items
+              .map((item) =>
+                typeof item.course_id === "object"
+                  ? (item.course_id as Course)
+                  : null
+              )
+              .filter(Boolean) as Course[];
+
+            return (
+              <div
+                key={order.id}
+                className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+              >
+                {/* Top row */}
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-full",
+                        order.status === "success"
+                          ? "bg-emerald-50 dark:bg-emerald-900/20"
+                          : order.status === "failed"
+                            ? "bg-red-50 dark:bg-red-900/20"
+                            : order.status === "pending"
+                              ? "bg-amber-50 dark:bg-amber-900/20"
+                              : "bg-muted"
+                      )}
+                    >
+                      <StatusIcon className={cn("size-4", cfg.iconClass)} />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(order.date_created), {
-                        addSuffix: true,
-                        locale: vi,
-                      })}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-sm font-semibold text-foreground">
+                        {order.order_number}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(order.date_created), {
+                          addSuffix: true,
+                          locale: vi,
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">
-                      {formatPrice(order.total_amount)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {(order.items as OrderItem[])?.length ?? 0} khoá học
-                    </p>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span
+                      className={cn(
+                        "hidden rounded-full px-2.5 py-1 text-xs font-semibold sm:inline-block",
+                        cfg.badgeClass
+                      )}
+                    >
+                      {cfg.label}
+                    </span>
+                    <div className="text-right">
+                      <p className="font-bold text-foreground">
+                        {order.total_amount === 0
+                          ? "Miễn phí"
+                          : formatPrice(order.total_amount)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {items.length} khoá học
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {order.items && (order.items as OrderItem[]).length > 0 && (
-                  <div className="mt-3 pt-3 border-t space-y-1">
-                    {(order.items as OrderItem[]).map((item) => {
-                      const course =
-                        typeof item.course_id === "object"
-                          ? (item.course_id as Course)
-                          : null;
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between text-sm"
+                {/* Course list */}
+                {courses.length > 0 && (
+                  <div className="border-t border-border px-5 py-3">
+                    <div className="space-y-1">
+                      {courses.slice(0, 2).map((course) => (
+                        <p
+                          key={course.id}
+                          className="truncate text-xs text-muted-foreground"
                         >
-                          <span className="text-muted-foreground truncate">
-                            {course?.title || "Khoá học"}
-                          </span>
-                          <span>{formatPrice(item.price)}</span>
-                        </div>
-                      );
-                    })}
+                          · {course.title}
+                        </p>
+                      ))}
+                      {courses.length > 2 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{courses.length - 2} khoá học khác
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                  <div className="flex gap-2">
+                {/* Actions */}
+                <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
+                  <div>
                     {order.status === "pending" && (
                       <Link href={`/mock-payment/${order.id}`}>
-                        <Button size="sm">Thanh toán ngay</Button>
+                        <Button size="sm" className="h-8 text-xs">
+                          Thanh toán ngay
+                        </Button>
+                      </Link>
+                    )}
+                    {order.status === "failed" && (
+                      <Link href={`/mock-payment/${order.id}`}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                        >
+                          Thử lại
+                        </Button>
                       </Link>
                     )}
                   </div>
                   <Link href={`/orders/${order.id}`}>
-                    <Button variant="ghost" size="sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs text-muted-foreground"
+                    >
                       Chi tiết
-                      <ChevronRight className="ml-1 size-4" />
+                      <ChevronRight className="size-3.5" />
                     </Button>
                   </Link>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

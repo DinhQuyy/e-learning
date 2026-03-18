@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { KognifyLogo } from "@/components/layout/logo";
 import {
   BookOpen,
   CircleHelp,
+  GraduationCap,
   Home,
   LayoutGrid,
   LogIn,
   Menu,
-  Tag,
   UserPlus,
 } from "lucide-react";
 
@@ -29,7 +30,7 @@ const navLinks = [
   { href: "/", label: "Trang chủ", icon: Home },
   { href: "/courses", label: "Khóa học", icon: BookOpen },
   { href: "/categories", label: "Danh mục", icon: LayoutGrid },
-  { href: "/pricing", label: "Bảng giá", icon: Tag },
+  { href: "/become-instructor", label: "Trở thành giảng viên", icon: GraduationCap },
   { href: "/help", label: "Hỗ trợ", icon: CircleHelp },
 ];
 
@@ -71,20 +72,8 @@ export function MobileNav({ isLoggedIn, dashboardPath }: MobileNavProps) {
       <SheetContent side="left" className="w-80 p-0">
         <SheetHeader className="border-b px-6 py-5 text-left">
           <SheetTitle>
-            <Link
-              href="/"
-              onClick={() => setOpen(false)}
-              className="inline-flex items-center gap-2"
-            >
-              <span
-                className="inline-flex size-9 items-center justify-center rounded-lg text-sm font-extrabold text-white"
-                style={{
-                  backgroundImage: "linear-gradient(90deg, #2f57ef, #b966e7)",
-                }}
-              >
-                E
-              </span>
-              <span className="text-base font-bold">E-Learning</span>
+            <Link href="/" onClick={() => setOpen(false)}>
+              <KognifyLogo size="sm" />
             </Link>
           </SheetTitle>
         </SheetHeader>

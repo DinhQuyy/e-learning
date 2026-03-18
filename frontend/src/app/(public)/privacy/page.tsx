@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const metadata: Metadata = {
   title: "Chính sách bảo mật",
   description:
-    "Mô tả cách E-Learning thu thập, sử dụng, lưu trữ và bảo vệ dữ liệu cá nhân của người dùng.",
+    "Mô tả cách Kognify thu thập, sử dụng, lưu trữ và bảo vệ dữ liệu cá nhân của người dùng.",
 };
 
 type PrivacySection = {
@@ -69,7 +69,7 @@ const privacySections: PrivacySection[] = [
       "Chúng tôi chỉ chia sẻ dữ liệu với đối tác thanh toán, hạ tầng lưu trữ hoặc gửi email để vận hành dịch vụ.",
       "Các đối tác xử lý dữ liệu thay mặt chúng tôi phải tuân thủ thỏa thuận bảo mật và không được dùng sai mục đích.",
       "Dữ liệu có thể được cung cấp khi có yêu cầu hợp pháp từ cơ quan nhà nước theo quy định pháp luật.",
-      "E-Learning không bán, cho thuê hoặc trao đổi dữ liệu cá nhân cho mục đích quảng cáo bên ngoài.",
+      "Kognify không bán, cho thuê hoặc trao đổi dữ liệu cá nhân cho mục đích quảng cáo bên ngoài.",
     ],
   },
   {
@@ -138,7 +138,7 @@ export default function PrivacyPage() {
               Dữ liệu của bạn được bảo vệ bằng quy trình rõ ràng và minh bạch
             </h1>
             <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Chính sách này mô tả cách E-Learning thu thập, sử dụng và bảo vệ thông tin cá nhân khi bạn đăng ký,
+              Chính sách này mô tả cách Kognify thu thập, sử dụng và bảo vệ thông tin cá nhân khi bạn đăng ký,
               học tập và thanh toán trên nền tảng.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
                 Phiên bản: 1.0
               </span>
               <span className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground">
-                Phạm vi: Toàn bộ dịch vụ E-Learning
+                Phạm vi: Toàn bộ dịch vụ Kognify
               </span>
             </div>
           </div>

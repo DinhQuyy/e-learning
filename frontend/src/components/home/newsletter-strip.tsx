@@ -57,15 +57,13 @@ export function NewsletterStrip({ reviewCount = 0 }: NewsletterStripProps) {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-[var(--learnify-heading)]">
                 <Mail className="size-3.5" />
-                Bản tin học tập mỗi tuần
+                Miễn phí — huỷ bất cứ lúc nào
               </p>
               <h2 className="mt-4 text-2xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-3xl">
-                Nhận cập nhật khóa học và tài liệu mới nhất
+                Nhận ngay bí quyết học nhanh — miễn phí mỗi tuần
               </h2>
-              <p className="mt-2 text-sm text-[var(--learnify-body)]">
-                {reviewCount > 0
-                  ? `Đã có ${reviewCount}+ đánh giá tích cực từ học viên trên nền tảng.`
-                  : "Nhận thông tin ưu đãi và gợi ý lộ trình học phù hợp với bạn."}
+              <p className="mt-2 text-sm text-(--learnify-body)">
+                Mỗi tuần một email — khóa học mới, mẹo nâng cao kỹ năng và ưu đãi chỉ dành riêng cho người đăng ký.
               </p>
             </div>
 
@@ -80,7 +78,7 @@ export function NewsletterStrip({ reviewCount = 0 }: NewsletterStripProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="h-11 w-full rounded-xl border border-white/70 bg-white/95 px-4 text-sm text-[var(--learnify-heading)] shadow-sm outline-none placeholder:text-[var(--learnify-body)] focus:border-[var(--learnify-primary)] focus:ring-2 focus:ring-[var(--learnify-primary)]/20 disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-(--learnify-heading) shadow-sm outline-none placeholder:text-(--learnify-body) focus:border-(--learnify-primary) focus:ring-2 focus:ring-(--learnify-primary)/20 disabled:opacity-60"
               />
               <Button
                 type="submit"

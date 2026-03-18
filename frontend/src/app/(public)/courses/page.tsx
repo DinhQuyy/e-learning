@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Poppins } from "next/font/google";
 import { BookOpen, ChevronRight } from "lucide-react";
 import { getCourses } from "@/lib/queries/courses";
 import { getCategories } from "@/lib/queries/categories";
@@ -10,11 +9,6 @@ import { CoursePagination } from "./course-pagination";
 import { CourseGridCard } from "./course-grid-card";
 
 export const dynamic = "force-dynamic";
-
-const poppins = Poppins({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Khóa học",
@@ -101,12 +95,12 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   }
 
   return (
-    <div className={`${poppins.className} min-h-screen bg-[#f6f9ff] text-slate-900`}>
-      <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-[#eef3ff] via-[#f7f9ff] to-white">
+    <div className="min-h-screen bg-background">
+      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-[#eef3ff] via-[#f7f9ff] to-background dark:from-slate-900/40 dark:via-slate-900/20 dark:to-background">
         <div className="absolute -left-28 top-8 size-64 rounded-full bg-[#2f57ef]/10 blur-3xl" />
         <div className="absolute -right-24 top-10 size-64 rounded-full bg-[#7c8cff]/10 blur-3xl" />
         <div className="mx-auto max-w-7xl px-4 pb-10 pt-10 sm:px-6 lg:px-8 lg:pb-12 lg:pt-12">
-          <ul className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+          <ul className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <li>
               <Link href="/" className="transition-colors hover:text-[#2f57ef]">
                 Trang chủ
@@ -115,19 +109,19 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
             <li aria-hidden="true">
               <ChevronRight className="size-4" />
             </li>
-            <li className="font-medium text-slate-700">Danh sách khóa học</li>
+            <li className="font-medium text-muted-foreground">Danh sách khóa học</li>
           </ul>
 
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 Danh sách khóa học
               </h1>
-              <p className="mt-2 text-base text-slate-600">
+              <p className="mt-2 text-base text-muted-foreground">
                 Khám phá lộ trình học thực chiến, cập nhật thường xuyên theo nhu cầu.
               </p>
             </div>
-            <span className="inline-flex w-fit items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#2f57ef] shadow-sm ring-1 ring-[#2f57ef]/15">
+            <span className="inline-flex w-fit items-center rounded-full bg-card px-4 py-2 text-sm font-semibold text-[#2f57ef] shadow-sm ring-1 ring-[#2f57ef]/15">
               {coursesResult.total} khóa học
             </span>
           </div>
@@ -174,12 +168,12 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_20px_45px_-35px_rgba(15,23,42,0.55)]">
-                <BookOpen className="mx-auto size-10 text-slate-300" />
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">
+              <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center shadow-[0_20px_45px_-35px_rgba(15,23,42,0.55)]">
+                <BookOpen className="mx-auto size-10 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold text-foreground">
                   Không tìm thấy khóa học
                 </h3>
-                <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                   Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem thêm kết quả
                   phù hợp.
                 </p>

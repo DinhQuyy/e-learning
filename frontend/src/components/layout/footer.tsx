@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpen, Mail, Phone, MapPin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { KognifyLogo } from "@/components/layout/logo";
 
 const aboutLinks = [
   { href: "/help", label: "Về chúng tôi" },
@@ -12,7 +13,7 @@ const aboutLinks = [
 const quickLinks = [
   { href: "/courses", label: "Tất cả khóa học" },
   { href: "/categories", label: "Danh mục" },
-  { href: "/pricing", label: "Bảng giá" },
+  { href: "/become-instructor", label: "Trở thành giảng viên" },
   { href: "/certificates", label: "Chứng chỉ" },
 ];
 
@@ -29,11 +30,8 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-              <span className="bg-primary text-primary-foreground rounded-md px-2 py-0.5 text-sm font-bold">
-                E
-              </span>
-              E-Learning
+            <Link href="/">
+              <KognifyLogo size="md" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Nền tảng học trực tuyến hàng đầu Việt Nam. Học mọi thứ, mọi lúc,
@@ -90,7 +88,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="size-4 shrink-0" />
-                <span>support@elearning.vn</span>
+                <span>support@kognify.vn</span>
               </li>
             </ul>
           </div>
@@ -100,7 +98,7 @@ export function Footer() {
 
         <div className="flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} E-Learning. Tất cả quyền được bảo lưu.
+            &copy; {new Date().getFullYear()} Kognify. Tất cả quyền được bảo lưu.
           </p>
           <div className="flex items-center gap-4">
             {aboutLinks.map((link) => (

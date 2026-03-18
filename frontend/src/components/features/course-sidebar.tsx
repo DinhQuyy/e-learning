@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CheckCircle, ChevronDown, FileText, PlayCircle } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { Course, Lesson, Module } from "@/types";
 
@@ -68,17 +67,8 @@ export function CourseSidebar({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-    
-
-      <ScrollArea
-        type="always"
-        scrollHideDelay={0}
-        className="min-h-0 flex-1"
-        viewportClassName="pr-1"
-        scrollbarClassName="w-3 border-l border-slate-200/80 bg-slate-50/80"
-        scrollbarThumbClassName="bg-slate-300/90"
-      >
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="space-y-2 p-3">
           {modules.map((mod, modIdx) => {
             const lessons = (mod.lessons || []) as Lesson[];
@@ -94,7 +84,7 @@ export function CourseSidebar({
                 <button
                   onClick={() => toggleModule(mod.id)}
                   className={cn(
-                    "flex w-full items-start gap-2 px-3 py-3 text-left transition-colors",
+                    "flex w-full items-center gap-2 px-3 py-3 text-left transition-colors",
                     isExpanded ? "bg-[#f8faff]" : "hover:bg-slate-50"
                   )}
                 >
@@ -105,7 +95,7 @@ export function CourseSidebar({
                     )}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 break-words text-sm font-semibold leading-5 text-slate-900">
+                    <p className="truncate text-sm font-semibold text-slate-900">
                       {modIdx + 1}. {mod.title || `Chương ${modIdx + 1}`}
                     </p>
                     <p className="text-xs text-slate-500">
@@ -129,7 +119,7 @@ export function CourseSidebar({
                           key={lesson.id}
                           href={`/learn/${course.slug}/${lesson.slug}`}
                           className={cn(
-                            "flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                            "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors",
                             isActive
                               ? "bg-[#eef3ff] text-[#2f57ef]"
                               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -140,9 +130,7 @@ export function CourseSidebar({
                           ) : (
                             <LessonIcon className="size-4 shrink-0" />
                           )}
-                          <span className="min-w-0 flex-1 break-words font-medium leading-5">
-                            {lesson.title}
-                          </span>
+                          <span className="flex-1 wrap-break-word font-medium leading-snug">{lesson.title}</span>
                           {lesson.duration > 0 ? (
                             <span className="shrink-0 text-[11px] text-slate-500">
                               {formatDuration(lesson.duration)}
@@ -157,7 +145,7 @@ export function CourseSidebar({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

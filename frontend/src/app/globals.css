@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -138,9 +139,10 @@ html {
 
 .learnify-home .learnify-hero {
   background:
-    radial-gradient(circle at 10% 20%, rgb(47 87 239 / 14%) 0%, transparent 45%),
-    radial-gradient(circle at 85% 20%, rgb(185 102 231 / 15%) 0%, transparent 48%),
-    linear-gradient(180deg, #f7f9ff 0%, #fff 70%);
+    radial-gradient(ellipse at 12% 25%, rgb(47 87 239 / 28%) 0%, transparent 52%),
+    radial-gradient(ellipse at 88% 18%, rgb(185 102 231 / 28%) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 95%, rgb(47 87 239 / 12%) 0%, transparent 45%),
+    linear-gradient(180deg, #dce8ff 0%, #eaf0ff 30%, #f4f7ff 60%, #ffffff 100%);
 }
 
 .learnify-home .learnify-btn-gradient {
@@ -221,9 +223,10 @@ html {
 
 .dark .learnify-home .learnify-hero {
   background:
-    radial-gradient(circle at 12% 20%, rgb(47 87 239 / 22%) 0%, transparent 45%),
-    radial-gradient(circle at 88% 24%, rgb(185 102 231 / 18%) 0%, transparent 50%),
-    linear-gradient(180deg, rgb(15 23 42 / 65%) 0%, transparent 68%);
+    radial-gradient(ellipse at 12% 25%, rgb(47 87 239 / 30%) 0%, transparent 52%),
+    radial-gradient(ellipse at 88% 18%, rgb(185 102 231 / 25%) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 95%, rgb(47 87 239 / 15%) 0%, transparent 45%),
+    linear-gradient(180deg, rgb(10 16 40) 0%, rgb(13 20 50) 30%, rgb(15 23 42 / 80%) 65%, transparent 100%);
 }
 
 .dark .learnify-home .learnify-newsletter {
@@ -235,4 +238,169 @@ html {
 
 .dark .learnify-portal .learnify-portal-card {
   box-shadow: 0 14px 34px rgb(2 6 23 / 36%);
+}
+
+/* Lesson content prose overrides */
+.lesson-content {
+  line-height: 1.75;
+  color: rgb(51 65 85);
+}
+
+.lesson-content p {
+  margin-bottom: 1rem;
+}
+
+.lesson-content ul,
+.lesson-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.lesson-content ul {
+  list-style-type: disc;
+}
+
+.lesson-content ol {
+  list-style-type: decimal;
+}
+
+.lesson-content li {
+  margin-bottom: 0.375rem;
+}
+
+.lesson-content h1,
+.lesson-content h2,
+.lesson-content h3,
+.lesson-content h4 {
+  font-weight: 700;
+  color: rgb(15 23 42);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.lesson-content h2 { font-size: 1.25rem; }
+.lesson-content h3 { font-size: 1.125rem; }
+
+.lesson-content strong, .lesson-content b {
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+
+.lesson-content code {
+  background: rgb(241 245 249);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, monospace;
+}
+
+.lesson-content pre {
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.lesson-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.lesson-content blockquote {
+  border-left: 3px solid rgb(47 87 239 / 40%);
+  padding-left: 1rem;
+  color: rgb(100 116 139);
+  margin-bottom: 1rem;
+}
+
+.lesson-content a {
+  color: #2f57ef;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lesson-content img {
+  border-radius: 0.75rem;
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+
+/* ── Lesson content dark mode overrides ── */
+.dark .lesson-content {
+  color: rgb(203 213 225);
+}
+
+.dark .lesson-content h1,
+.dark .lesson-content h2,
+.dark .lesson-content h3,
+.dark .lesson-content h4 {
+  color: rgb(248 250 252);
+}
+
+.dark .lesson-content strong,
+.dark .lesson-content b {
+  color: rgb(248 250 252);
+}
+
+.dark .lesson-content code {
+  background: rgb(30 41 59);
+  color: rgb(203 213 225);
+}
+
+.dark .lesson-content blockquote {
+  color: rgb(148 163 184);
+  border-left-color: rgb(47 87 239 / 50%);
+}
+
+.dark .lesson-content a {
+  color: #6b8fff;
+}
+
+/* ── Print styles for invoice / order detail ── */
+@media print {
+  /* Hide everything except order detail content */
+  header,
+  nav,
+  aside,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 13px;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Remove shadows and borders for cleaner print */
+  .shadow-sm,
+  .shadow,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+
+  /* Keep card borders visible */
+  [class*="rounded"] {
+    border-radius: 4px !important;
+  }
+
+  /* Force page break control */
+  .lg\:grid-cols-3 {
+    display: block !important;
+  }
+
+  /* Print header */
+  @page {
+    margin: 16mm 12mm;
+    size: A4;
+  }
 }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Vietnamese (vi locale) e-learning platform (Udemy-like) with e-commerce (cart, wishlist, orders, mock payment). Monorepo:
+Vietnamese (vi locale) e-learning platform branded **Kognify** (Udemy-like) with e-commerce (cart, wishlist, orders, mock payment). Monorepo:
 - `frontend/` — Next.js 16 (App Router) + React 19 + Tailwind CSS 4 + shadcn/ui
 - `backend/` — Directus 11 (headless CMS) via Docker Compose with PostgreSQL 16 + Redis 7
 
@@ -24,9 +24,47 @@ cd frontend && npm run lint                 # ESLint 9 (flat config)
 
 # Add shadcn/ui component
 cd frontend && npx shadcn@latest add <component>
+
+# Seed scripts (requires backend running)
+cd backend && node scripts/seed-demo-data.mjs  # Seed users, courses, enrollments, quizzes
+cd backend && node scripts/seed-reviews.mjs    # Seed reviews for all enrollments + update course stats
 ```
 
 Directus admin panel runs at `http://localhost:8055`.
+
+## Branding
+
+- Platform name: **Kognify**
+- Logo: `KognifyLogo` wordmark component in `components/layout/logo.tsx` — renders "Kogni" + "fy" in two colors using `text-[#2f57ef]` accent
+- Favicon: `app/icon.svg` — SVG with Kognify "K" lettermark
+- Navbar links: "Khám phá khoá học", "Trở thành giảng viên" (removed "Trang chủ" and "Bảng giá")
+
+## Seed Scripts (`backend/scripts/`)
+
+### `seed-demo-data.mjs`
+- Creates demo users (student accounts, instructor accounts), categories, courses, modules, lessons, enrollments, quizzes
+- Uses `DIRECTUS_STATIC_TOKEN` from `frontend/.env.local`
+
+### `seed-reviews.mjs`
+- Reads all enrollments with `progress_percentage` field (NOT `progress` — that's a M2O relation, not a number)
+- Skips enrollments that already have reviews (deduplication via Set of `user_id:course_id`)
+- Creates reviews for all remaining enrollments; rating weighted by progress (80%+ → mostly 4-5 stars)
+- After seeding: patches every published course's `average_rating` and `total_enrollments` via aggregate queries
+- **CRLF note**: `.env.local` has Windows CRLF line endings — uses `line.trim().replace(/\r$/, "")` + `startsWith()` instead of regex to parse the token
+
+### `seed-historical-orders.mjs`
+- Creates historical orders + enrollments spread across past 5 months for dashboard chart data
+- Targets: 3/5/8/11/14 enrollments per month with revenue caps (2M→9.8M VND, max 10M/month)
+- Only uses paid courses (price > 0); picks random course per order (1 course per order)
+- Stops when revenue target OR enrollment count reached for each month
+- Cleanup step first: deletes existing historical orders (paid_at in past 5-month window) + their order_items + enrollments
+- After creating: calls PATCH on each enrollment to set `enrolled_at` (see pattern below)
+- Re-runnable safely
+
+### `fix-enrolled-at.mjs`
+- One-time fix script: patches `enrolled_at` on all enrollments to match their order's `paid_at`
+- Deletes orphaned enrollments (no corresponding successful order) created by deleted historical runs
+- Run after any seed that creates enrollments if `enrolled_at` shows today's date for all records
 
 ## Database Collections (18 + 1 singleton)
 
@@ -155,6 +193,14 @@ Query modules in `lib/queries/`: `courses.ts`, `categories.ts`, `instructor.ts`,
 | `wishlist-button.tsx` | Wishlist toggle button (heart icon) |
 | `course-recommendations.tsx` | Horizontal scrollable course recommendation section |
 | `share-certificate-button.tsx` | Certificate sharing (Facebook, LinkedIn, copy link) + PDF download |
+| `../layout/logo.tsx` | `KognifyLogo` wordmark component used in navbar and footer |
+
+## Course Detail Tab Navigation (`courses/[slug]/course-tabs.tsx`)
+
+- `CourseTabs` — `"use client"` component with sticky tab bar: Tổng quan, Nội dung khoá học, Chi tiết, Giảng viên, Đánh giá
+- Active tab tracked via `IntersectionObserver` (most-visible section wins using `intersectionRatio`)
+- Click handler: calls `window.scrollTo({ behavior: "smooth" })` with 96px offset for sticky header, sets `isClickScrolling` ref to prevent observer from overriding the active tab during the 800ms scroll animation
+- Active style: `bg-[#eef3ff] text-[#2f57ef]`; inactive hover: `hover:bg-[#eef3ff] hover:text-[#2f57ef]`
 
 ## Course Recommendations
 
@@ -226,7 +272,8 @@ Used in: `/dashboard` and `/my-courses` pages via `CourseRecommendationSection` 
 
 ### Category & Course Detail
 - Category page: sort (newest, popular, rating, price) + level/price filters + breadcrumbs
-- Course detail: smooth scroll for tabs + "Khoá học khác của giảng viên" section
+- Course detail: `CourseTabs` client component with IntersectionObserver active tab highlighting + "Khoá học khác của giảng viên" section
+- Course detail dark mode: all `bg-white` → `bg-card`, `bg-[#f6f8fc]` → `bg-muted/30`, `text-slate-*` → `text-foreground`/`text-muted-foreground`, `border-slate-*` → `border-border`
 
 ## Loading States
 
@@ -258,6 +305,43 @@ React Hook Form + Zod v4 + `@hookform/resolvers`. Note: Zod v4 uses `message` in
 ### Toast Notifications
 Use `sonner` (not the deprecated shadcn `toast` component).
 
+### Directus Public Role & Review Status Field
+- The public role does NOT return the `status` field on `reviews` — it is excluded by Directus permissions
+- Never filter client-visible reviews with `review.status === "approved"` — `status` will be `undefined`, silently excluding all reviews
+- Correct pattern: `!r.status || r.status === "approved"` (treat missing status as approved)
+
+### `fetchRatingsByCourse` Env Var Pattern
+- **Always read `process.env.DIRECTUS_STATIC_TOKEN` inside the function body**, never at module scope
+- Module-level `const serverToken = process.env.DIRECTUS_STATIC_TOKEN` can be `undefined` in some Next.js evaluation contexts (e.g., during build-time static analysis)
+- Same rule applies to any query function that builds its own `fetch()` call outside the Directus SDK
+
+### `enrolled_at` Field — PATCH After Create
+- Directus ignores `enrolled_at` on `POST /items/enrollments` (auto-sets to current timestamp)
+- Pattern: create enrollment first, then immediately `PATCH /items/enrollments/{id}` with `{ enrolled_at: targetDate }`
+- Same issue applies to `seed-demo-data.mjs` — all original enrollments land on today's date unless patched
+- `fix-enrolled-at.mjs` can repair existing data by matching enrollments to their order's `paid_at`
+
+### Admin Orders — Pending First (Server-Side)
+- `GET /api/admin/orders` uses two parallel Directus queries when `status=all`:
+  1. Fetch ALL pending orders (`limit=-1`) → always displayed at top
+  2. Fetch non-pending with normal pagination + adjusted offset
+- Pagination math: `pendingInPage = max(0, min(limit, pendingCount - offset))`, `npOffset = max(0, offset - pendingCount)`
+- When a specific status tab is selected, falls back to a single normal query
+
+### Admin Reports — Popular Courses ID Type
+- Course IDs in Directus are UUID strings, NOT numbers
+- Never do `Number(course.id)` — returns `NaN` for UUIDs, causing `filter(course.id > 0)` to drop all courses
+- `popularCourses` in `ReportDataResult` uses `id: string`; filter is `Boolean(course.id) && total_enrollments > 0`
+
+### Admin Reports — AI Service Detection
+- `getReportData()` returns `aiServiceOnline: boolean` (true if `GET /v1/admin/metrics` succeeds)
+- Reports page shows 3 AI metric cards + upload/indexing tools only when `aiServiceOnline === true`
+- When offline: single card with `WifiOff` icon + address of AI service (`AI_API_URL`)
+
+### Admin Sidebar — "Trang chủ học viên"
+- Links to `/` (public homepage), NOT `/dashboard`
+- `/dashboard` is student-only; middleware redirects admin back to `/admin` causing a loop
+
 ### Vietnamese Text
 - All API error messages and notifications use correct Vietnamese diacritics (audited across 15+ files)
 - Currency formatting: `Intl.NumberFormat("vi-VN")` for consistent VND display
@@ -269,10 +353,10 @@ Use `sonner` (not the deprecated shadcn `toast` component).
 - **Dashboard**: 6 stat cards, revenue/enrollment/course-status charts (Recharts), quick actions, activity feeds
 - **Users**: Table with bulk actions (activate/suspend), CSV export, case-insensitive search, role/status filters
 - **Courses**: Table with bulk actions (publish/archive), CSV export, search, status tabs, pending badge
-- **Orders**: Table with status tabs, date range filter, CSV export, order detail page (`/admin/orders/[id]`) with timeline + actions
+- **Orders**: Table with status tabs, date range filter, CSV export, order detail page (`/admin/orders/[id]`) with timeline + actions; pending orders always float to top of page 1
 - **Categories**: CRUD with slug uniqueness check, circular parent_id detection
 - **Reviews**: Status moderation (approve/reject/hide)
-- **Reports**: Revenue summary cards with date range filter, enrollment trend + rating distribution charts, popular courses + top instructors tables
+- **Reports**: Revenue summary cards with date range filter, enrollment trend + rating distribution charts, popular courses + top instructors tables; AI metrics shown only when AI service is online
 
 ### Admin UI Conventions
 - Use explicit gray color classes (`text-gray-900`, `text-gray-500`, `text-gray-700`) instead of CSS variables (`text-muted-foreground`, `text-foreground`) for reliable contrast on all displays
@@ -310,6 +394,8 @@ Frontend (`frontend/.env.local`):
 - `NEXT_PUBLIC_DIRECTUS_URL` — Directus API URL (default: `http://localhost:8055`)
 - `DIRECTUS_STATIC_TOKEN` — Static token for server-side requests
 - `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`
+- `AI_API_URL` — AI backend service URL (default: `http://localhost:8090`)
+- `AI_INTERNAL_KEY` — Auth key for AI service internal calls
 
 Backend (`backend/.env`):
 - `DB_PASSWORD`, `DIRECTUS_KEY`, `DIRECTUS_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`

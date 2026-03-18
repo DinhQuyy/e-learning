@@ -51,9 +51,11 @@ export async function POST(request: NextRequest) {
     for (const item of cartItems) {
       const course = typeof item.course_id === "object" ? item.course_id : null;
       if (!course) continue;
-      const price = course.discount_price !== null && course.discount_price < course.price
-        ? course.discount_price
-        : course.price;
+      const basePrice = Number(course.price ?? 0);
+      const dp = course.discount_price !== null && course.discount_price !== undefined
+        ? Number(course.discount_price)
+        : null;
+      const price = dp !== null && dp >= 0 && dp < basePrice ? dp : basePrice;
       totalAmount += price;
       orderItemsData.push({ course_id: course.id, price });
     }

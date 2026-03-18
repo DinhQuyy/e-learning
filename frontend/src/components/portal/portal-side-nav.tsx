@@ -50,7 +50,7 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
   return (
     <>
       <div className="learnify-portal-mobile-nav lg:hidden">
-        <div className="no-scrollbar overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div className="no-scrollbar overflow-x-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
           <ul className="flex min-w-max items-center gap-2">
             {items.map((item) => {
               const Icon = iconMap[item.icon];
@@ -63,8 +63,8 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
                     className={cn(
                       "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                       active
-                        ? "bg-[#eef3ff] text-[#2f57ef]"
-                        : "text-slate-600 hover:bg-slate-100",
+                        ? "bg-[#eef3ff] text-[#2f57ef] dark:bg-[#2f57ef]/15 dark:text-[#6b8fff]"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
                     )}
                   >
                     <Icon className="size-4" />
@@ -78,9 +78,9 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
       </div>
 
       <aside className="hidden lg:block">
-        <div className="learnify-portal-card overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+        <div className="learnify-portal-card overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="border-b border-border bg-linear-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4 dark:from-[#2f57ef]/10 dark:to-[#b966e7]/10">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
               {greeting}
             </p>
           </div>
@@ -98,8 +98,8 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                         active
-                          ? "bg-[#eef3ff] text-[#2f57ef]"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                          ? "bg-[#eef3ff] text-[#2f57ef] dark:bg-[#2f57ef]/15 dark:text-[#6b8fff]"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
                       )}
                     >
                       <Icon className="size-4 shrink-0" />

@@ -21,7 +21,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AiCustomQaUploadCard } from "@/components/features/ai-custom-qa-upload-card";
 import { AiIndexingAdminCard } from "@/components/features/ai-indexing-admin-card";
-import { Star, Trophy, Bot, DollarSign } from "lucide-react";
+import { Star, Trophy, Bot, DollarSign, WifiOff } from "lucide-react";
 import type { Metadata } from "next";
 import {
   EnrollmentTrendChart,
@@ -111,166 +111,176 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            Chỉ số dịch vụ AI (24h)
-          </CardTitle>
-          <CardDescription>
-            Theo dõi hiệu năng các nhánh của Trợ lý AI như hỗ trợ, tài liệu, mentor và bài tập.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Tổng yêu cầu</p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.aiMetrics.total_requests_24h)}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Độ trễ P95</p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.aiMetrics.p95_latency_ms)} ms
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Yêu cầu bị chặn chính sách</p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.aiMetrics.blocked_requests_24h)}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Tỷ lệ trúng bộ nhớ đệm</p>
-              <p className="text-xl font-semibold">
-                {(reportData.aiMetrics.cache_hit_ratio * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Tỷ lệ fallback</p>
-              <p className="text-xl font-semibold">
-                {(reportData.aiMetrics.fallback_rate_24h * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Phản hồi (+ / -)</p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.aiMetrics.positive_feedback_24h)} /{" "}
-                {numberFormatter.format(reportData.aiMetrics.negative_feedback_24h)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {reportData.aiServiceOnline ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                Chỉ số dịch vụ AI (24h)
+              </CardTitle>
+              <CardDescription>
+                Theo dõi hiệu năng các nhánh của Trợ lý AI như hỗ trợ, tài liệu, mentor và bài tập.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Tổng yêu cầu</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.aiMetrics.total_requests_24h)}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Độ trễ P95</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.aiMetrics.p95_latency_ms)} ms
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Yêu cầu bị chặn chính sách</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.aiMetrics.blocked_requests_24h)}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Tỷ lệ trúng bộ nhớ đệm</p>
+                  <p className="text-xl font-semibold">
+                    {(reportData.aiMetrics.cache_hit_ratio * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Tỷ lệ fallback</p>
+                  <p className="text-xl font-semibold">
+                    {(reportData.aiMetrics.fallback_rate_24h * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Phản hồi (+ / -)</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.aiMetrics.positive_feedback_24h)} /{" "}
+                    {numberFormatter.format(reportData.aiMetrics.negative_feedback_24h)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tổng hợp cải thiện AI</CardTitle>
-          <CardDescription>
-            So sánh trung bình {reportData.aiDailyMetrics.summary.window_days} ngày gần nhất với giai đoạn trước.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Biến động yêu cầu</p>
-              <p className="text-xl font-semibold">
-                {reportData.aiDailyMetrics.summary.req_change_pct >= 0 ? "+" : ""}
-                {reportData.aiDailyMetrics.summary.req_change_pct.toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Cải thiện P95</p>
-              <p className="text-xl font-semibold">
-                {reportData.aiDailyMetrics.summary.p95_improvement_pct >= 0 ? "+" : ""}
-                {reportData.aiDailyMetrics.summary.p95_improvement_pct.toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Cải thiện fallback</p>
-              <p className="text-xl font-semibold">
-                {reportData.aiDailyMetrics.summary.fallback_improvement_pct >= 0 ? "+" : ""}
-                {reportData.aiDailyMetrics.summary.fallback_improvement_pct.toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Biến động phản hồi tích cực</p>
-              <p className="text-xl font-semibold">
-                {reportData.aiDailyMetrics.summary.positive_feedback_change_pct >= 0 ? "+" : ""}
-                {reportData.aiDailyMetrics.summary.positive_feedback_change_pct.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Tổng hợp cải thiện AI</CardTitle>
+              <CardDescription>
+                So sánh trung bình {reportData.aiDailyMetrics.summary.window_days} ngày gần nhất với giai đoạn trước.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Biến động yêu cầu</p>
+                  <p className="text-xl font-semibold">
+                    {reportData.aiDailyMetrics.summary.req_change_pct >= 0 ? "+" : ""}
+                    {reportData.aiDailyMetrics.summary.req_change_pct.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Cải thiện P95</p>
+                  <p className="text-xl font-semibold">
+                    {reportData.aiDailyMetrics.summary.p95_improvement_pct >= 0 ? "+" : ""}
+                    {reportData.aiDailyMetrics.summary.p95_improvement_pct.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Cải thiện fallback</p>
+                  <p className="text-xl font-semibold">
+                    {reportData.aiDailyMetrics.summary.fallback_improvement_pct >= 0 ? "+" : ""}
+                    {reportData.aiDailyMetrics.summary.fallback_improvement_pct.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Biến động phản hồi tích cực</p>
+                  <p className="text-xl font-semibold">
+                    {reportData.aiDailyMetrics.summary.positive_feedback_change_pct >= 0 ? "+" : ""}
+                    {reportData.aiDailyMetrics.summary.positive_feedback_change_pct.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Phễu tương tác mentor</CardTitle>
-          <CardDescription>
-            Theo dõi CTR, mức tăng tỷ lệ hoàn thành và số lần can thiệp của
-            mentor trong {reportData.mentorAnalytics.lookback_days} ngày gần
-            nhất.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                Lượt hiển thị đề xuất
-              </p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.mentorAnalytics.shown)}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">CTR</p>
-              <p className="text-xl font-semibold">
-                {(reportData.mentorAnalytics.ctr * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                Tỷ lệ hoàn thành
-              </p>
-              <p className="text-xl font-semibold">
-                {(reportData.mentorAnalytics.completion_rate * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                Mức tăng hoàn thành
-              </p>
-              <p className="text-xl font-semibold">
-                {reportData.mentorAnalytics.completion_lift_pp >= 0 ? "+" : ""}
-                {(reportData.mentorAnalytics.completion_lift_pp * 100).toFixed(
-                  1
-                )}{" "}
-                điểm %
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {reportData.mentorAnalytics.completion_lift_ratio >= 0 ? "+" : ""}
-                {reportData.mentorAnalytics.completion_lift_ratio.toFixed(1)}%
-                {" "}so với nhóm không nhấp
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">Lượt can thiệp</p>
-              <p className="text-xl font-semibold">
-                {numberFormatter.format(reportData.mentorAnalytics.interventions_sent)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                thông báo {reportData.mentorAnalytics.notification_interventions} / email{" "}
-                {reportData.mentorAnalytics.email_interventions}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Phễu tương tác mentor</CardTitle>
+              <CardDescription>
+                Theo dõi CTR, mức tăng tỷ lệ hoàn thành và số lần can thiệp của
+                mentor trong {reportData.mentorAnalytics.lookback_days} ngày gần nhất.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Lượt hiển thị đề xuất</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.mentorAnalytics.shown)}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">CTR</p>
+                  <p className="text-xl font-semibold">
+                    {(reportData.mentorAnalytics.ctr * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Tỷ lệ hoàn thành</p>
+                  <p className="text-xl font-semibold">
+                    {(reportData.mentorAnalytics.completion_rate * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Mức tăng hoàn thành</p>
+                  <p className="text-xl font-semibold">
+                    {reportData.mentorAnalytics.completion_lift_pp >= 0 ? "+" : ""}
+                    {(reportData.mentorAnalytics.completion_lift_pp * 100).toFixed(1)} điểm %
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {reportData.mentorAnalytics.completion_lift_ratio >= 0 ? "+" : ""}
+                    {reportData.mentorAnalytics.completion_lift_ratio.toFixed(1)}% so với nhóm không nhấp
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs text-muted-foreground">Lượt can thiệp</p>
+                  <p className="text-xl font-semibold">
+                    {numberFormatter.format(reportData.mentorAnalytics.interventions_sent)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    thông báo {reportData.mentorAnalytics.notification_interventions} / email{" "}
+                    {reportData.mentorAnalytics.email_interventions}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      <AiCustomQaUploadCard />
-      <AiIndexingAdminCard />
+          <AiCustomQaUploadCard />
+          <AiIndexingAdminCard />
+        </>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <div className="rounded-full bg-muted p-3">
+              <WifiOff className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Dịch vụ AI chưa kết nối</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Các chỉ số AI (metrics, mentor analytics, indexing) sẽ hiển thị khi dịch vụ AI khởi động tại{" "}
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                  {process.env.AI_API_URL ?? "http://localhost:8090"}
+                </code>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <ReportFilters from={from} to={to} />
 
@@ -379,7 +389,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
                   {reportData.popularCourses.map(
                     (
                       course: {
-                        id: number;
+                        id: string;
                         title: string;
                         total_enrollments: number;
                         average_rating: number;

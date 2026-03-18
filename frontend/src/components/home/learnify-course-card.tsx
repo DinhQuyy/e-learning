@@ -22,6 +22,18 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
+function stripHtml(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function getInstructorNames(course: Course): string {
   if (!course.instructors || course.instructors.length === 0) {
     return "Giảng viên";
@@ -45,27 +57,35 @@ function getCategoryName(course: Course): string | null {
 }
 
 function getPriceNode(course: Course) {
-  if (course.price === 0) {
-    return <span className="text-sm font-bold text-emerald-600">Miễn phí</span>;
+  const price = Number(course.price ?? 0);
+  const discountPrice = course.discount_price !== null && course.discount_price !== undefined
+    ? Number(course.discount_price)
+    : null;
+  const hasDiscount = discountPrice !== null && discountPrice >= 0 && discountPrice < price;
+  const effectivePrice = hasDiscount ? discountPrice : price;
+
+  if (effectivePrice === 0) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+        Miễn phí
+      </span>
+    );
   }
 
-  const hasDiscount =
-    course.discount_price !== null && course.discount_price < course.price;
-
-  if (hasDiscount && course.discount_price !== null) {
+  if (hasDiscount && discountPrice !== null) {
     return (
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-bold text-[var(--learnify-primary)]">
-          {formatPrice(course.discount_price)}
+          {formatPrice(discountPrice)}
         </span>
         <span className="text-xs text-muted-foreground line-through">
-          {formatPrice(course.price)}
+          {formatPrice(price)}
         </span>
       </div>
     );
   }
 
-  return <span className="text-sm font-bold">{formatPrice(course.price)}</span>;
+  return <span className="text-sm font-bold">{formatPrice(price)}</span>;
 }
 
 export function LearnifyCourseCard({
@@ -143,7 +163,9 @@ export function LearnifyCourseCard({
           </h3>
 
           <p className="mt-2 line-clamp-2 text-sm text-[var(--learnify-body)]">
-            {course.short_description || course.description || "Khóa học thực hành với nội dung cập nhật."}
+            {stripHtml(course.short_description) ||
+              stripHtml(course.description) ||
+              "Khóa học thực hành với nội dung cập nhật."}
           </p>
 
           <div className="mt-3 flex items-center gap-1 text-xs text-[var(--learnify-body)]">

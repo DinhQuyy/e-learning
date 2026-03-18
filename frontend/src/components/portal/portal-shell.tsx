@@ -1,14 +1,8 @@
-import { Poppins } from "next/font/google";
 import { Header } from "@/components/layout/header";
 import { PortalHero, type PortalHeroStat } from "@/components/portal/portal-hero";
 import { PortalSideNav } from "@/components/portal/portal-side-nav";
 import type { PortalNavItem } from "@/components/portal/portal-nav-config";
 import type { DirectusUser } from "@/types";
-
-const poppins = Poppins({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 interface PortalShellProps {
   roleLabel: string;
@@ -34,7 +28,7 @@ export function PortalShell({
   children,
 }: PortalShellProps) {
   return (
-    <div className={`${poppins.className} learnify-home learnify-portal min-h-screen bg-[#f6f8fc]`}>
+    <div className="learnify-home learnify-portal min-h-screen bg-background">
       <Header initialUser={initialUser} />
       <main className="mx-auto w-full max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <PortalHero

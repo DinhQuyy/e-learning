@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const metadata: Metadata = {
   title: "Điều khoản sử dụng",
   description:
-    "Quy định về quyền, nghĩa vụ và phạm vi trách nhiệm khi sử dụng nền tảng E-Learning.",
+    "Quy định về quyền, nghĩa vụ và phạm vi trách nhiệm khi sử dụng nền tảng Kognify.",
 };
 
 type TermSection = {
@@ -128,7 +128,7 @@ export default function TermsPage() {
               Điều khoản sử dụng
             </Badge>
             <h1 className="mt-5 text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Minh bạch quyền lợi và trách nhiệm khi học trên E-Learning
+              Minh bạch quyền lợi và trách nhiệm khi học trên Kognify
             </h1>
             <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
               Vui lòng đọc kỹ điều khoản trước khi đăng ký tài khoản, mua khóa học hoặc sử dụng bất kỳ tính năng

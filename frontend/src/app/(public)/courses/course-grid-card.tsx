@@ -111,9 +111,19 @@ function getDiscountInfo(course: Course) {
 }
 
 function getPriceNode(course: Course, variant: "grid" | "list") {
-  if (course.price === 0) {
+  const price = Number(course.price ?? 0);
+  const discountPrice =
+    course.discount_price !== null && course.discount_price !== undefined
+      ? Number(course.discount_price)
+      : null;
+  const effectivePrice =
+    discountPrice !== null && discountPrice >= 0 && discountPrice < price
+      ? discountPrice
+      : price;
+
+  if (effectivePrice === 0) {
     return (
-      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100">
+      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800">
         Miễn phí
       </span>
     );
@@ -132,10 +142,10 @@ function getPriceNode(course: Course, variant: "grid" | "list") {
           >
             {formatPrice(discountInfo.currentPrice)}
           </span>
-          <span className="text-sm text-slate-400 line-through">
+          <span className="text-sm text-muted-foreground line-through">
             {formatPrice(discountInfo.originalPrice)}
           </span>
-          <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-600 ring-1 ring-rose-100">
+          <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-600 ring-1 ring-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:ring-rose-800">
             -{discountInfo.percent}%
           </span>
         </div>
@@ -147,7 +157,7 @@ function getPriceNode(course: Course, variant: "grid" | "list") {
   }
 
   return (
-    <span className={cn("font-bold text-slate-900", variant === "list" ? "text-lg" : "text-base")}>
+    <span className={cn("font-bold text-foreground", variant === "list" ? "text-lg" : "text-base")}>
       {formatPrice(course.price)}
     </span>
   );
@@ -185,7 +195,7 @@ export function CourseGridCard({
   return (
     <article
       className={cn(
-        "group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300",
+        "group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300",
         variant === "grid"
           ? "h-full shadow-[0_20px_45px_-35px_rgba(15,23,42,0.45)] hover:-translate-y-1 hover:shadow-[0_30px_65px_-35px_rgba(47,87,239,0.45)]"
           : "shadow-[0_20px_45px_-40px_rgba(15,23,42,0.4)] hover:shadow-[0_28px_55px_-42px_rgba(47,87,239,0.4)]"
@@ -205,13 +215,13 @@ export function CourseGridCard({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <RatingStars rating={rating} size="sm" showValue={false} />
-              <span className="text-xs font-medium text-slate-500">
+              <span className="text-xs font-medium text-muted-foreground">
                 ({reviewCount} đánh giá)
               </span>
             </div>
             <WishlistButton
               courseId={course.id}
-              className="!static !bottom-auto !right-auto !size-8 !border !border-slate-200 !bg-white hover:!bg-[#eef3ff]"
+              className="!static !bottom-auto !right-auto !size-8 !border !border-border !bg-card hover:!bg-[#eef3ff] dark:hover:!bg-[#2f57ef]/15"
             />
           </div>
 
@@ -223,14 +233,14 @@ export function CourseGridCard({
 
           <h3
             className={cn(
-              "mt-3 font-semibold leading-snug text-slate-900 transition-colors group-hover:text-[#2f57ef]",
+              "mt-3 font-semibold leading-snug text-foreground transition-colors group-hover:text-[#2f57ef]",
               variant === "grid" ? "line-clamp-2 text-lg" : "line-clamp-2 text-xl"
             )}
           >
             {course.title}
           </h3>
 
-          <ul className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+          <ul className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             <li className="inline-flex items-center gap-1.5">
               <BookOpen className="size-3.5" />
               {course.total_lessons || 0} bài học
@@ -243,7 +253,7 @@ export function CourseGridCard({
 
           <p
             className={cn(
-              "mt-3 text-sm leading-relaxed text-slate-600",
+              "mt-3 text-sm leading-relaxed text-muted-foreground",
               variant === "grid" ? "line-clamp-3" : "line-clamp-2 md:line-clamp-3"
             )}
           >
@@ -251,7 +261,7 @@ export function CourseGridCard({
           </p>
 
           <div className="mt-4 flex items-center gap-3">
-            <div className="relative size-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+            <div className="relative size-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
               {instructor.avatar ? (
                 <Image
                   src={getAssetUrl(instructor.avatar)}
@@ -261,17 +271,17 @@ export function CourseGridCard({
                   sizes="40px"
                 />
               ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-slate-600">
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
                   {initials || "GV"}
                 </span>
               )}
             </div>
-            <p className="line-clamp-2 text-xs text-slate-500">
-              <span className="font-medium text-slate-700">{instructor.name}</span>
+            <p className="line-clamp-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{instructor.name}</span>
               {categoryName ? (
                 <>
                   {" "}
-                  tại <span className="font-medium text-slate-700">{categoryName}</span>
+                  tại <span className="font-medium text-foreground">{categoryName}</span>
                 </>
               ) : null}
             </p>
@@ -279,7 +289,7 @@ export function CourseGridCard({
 
           <div
             className={cn(
-              "mt-5 border-t border-slate-200 pt-4",
+              "mt-5 border-t border-border pt-4",
               variant === "grid"
                 ? "flex items-center justify-between"
                 : "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"

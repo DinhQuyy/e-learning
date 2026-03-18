@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 export const metadata: Metadata = {
   title: "Trung tâm hỗ trợ",
   description:
-    "Nhận hỗ trợ nhanh cho tài khoản, thanh toán và quá trình học tập trên nền tảng E-Learning.",
+    "Nhận hỗ trợ nhanh cho tài khoản, thanh toán và quá trình học tập trên nền tảng Kognify.",
 };
 
 type SupportTopic = {

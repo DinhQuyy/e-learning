@@ -57,7 +57,7 @@ export default async function AdminLayout({
         badgeCounts={badgeCounts}
       />
       <div className="lg:pl-64">
-        <main className="p-4 lg:p-8">{children}</main>
+        <main className="p-4 pb-28 lg:p-8 lg:pb-32">{children}</main>
       </div>
     </div>
   );

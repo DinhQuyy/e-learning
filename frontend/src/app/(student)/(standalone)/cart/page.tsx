@@ -263,7 +263,7 @@ export default function CartPage() {
                           ) : (
                             <>
                               <span className="text-base font-bold text-[#2f57ef]">
-                                {finalPrice === 0 ? "Miễn phí" : formatPrice(finalPrice)}
+                                {formatPrice(finalPrice)}
                               </span>
                               {hasDiscount && (
                                 <>
@@ -330,7 +330,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-foreground">Thành tiền</span>
                     <span className="text-xl text-[#2f57ef]">
-                      {totalPrice === 0 ? "Miễn phí" : formatPrice(totalPrice)}
+                      {formatPrice(totalPrice)}
                     </span>
                   </div>
                 </div>

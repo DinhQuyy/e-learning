@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Course } from "@/types";
-import { LearnifyCourseCard } from "./learnify-course-card";
+import { KiwiCourseCard } from "./kiwi-course-card";
 
 interface HeroCourseSliderProps {
   courses: Course[];
@@ -42,7 +42,7 @@ export function HeroCourseSlider({ courses, className }: HeroCourseSliderProps) 
   if (slides.length === 1) {
     return (
       <div className={className}>
-        <LearnifyCourseCard course={slides[0]} variant="hero" priority />
+        <KiwiCourseCard course={slides[0]} variant="hero" priority />
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function HeroCourseSlider({ courses, className }: HeroCourseSliderProps) 
         >
           {slides.map((course, index) => (
             <div key={course.id} className="w-full shrink-0">
-              <LearnifyCourseCard course={course} variant="hero" priority={index === 0} />
+              <KiwiCourseCard course={course} variant="hero" priority={index === 0} />
             </div>
           ))}
         </div>
@@ -85,7 +85,7 @@ export function HeroCourseSlider({ courses, className }: HeroCourseSliderProps) 
             className={cn(
               "h-2.5 rounded-full transition-all",
               activeIndex === index
-                ? "w-8 bg-[var(--learnify-primary)]"
+                ? "w-8 bg-[var(--kiwi-primary)]"
                 : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
             )}
           />

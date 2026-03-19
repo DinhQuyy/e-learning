@@ -2,7 +2,7 @@
 import { ArrowRight, BookOpen, FolderOpen, Quote, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroCourseSlider } from "@/components/home/hero-course-slider";
-import { LearnifyCourseCard } from "@/components/home/learnify-course-card";
+import { KiwiCourseCard } from "@/components/home/kiwi-course-card";
 import { NewsletterStrip } from "@/components/home/newsletter-strip";
 import { BlogTeaserGrid } from "@/components/home/blog-teaser-grid";
 import { Suspense } from "react";
@@ -98,28 +98,28 @@ export default async function HomePage() {
   ];
 
   return (
-    <div className="learnify-home">
-      <section className="learnify-hero relative overflow-hidden">
+    <div className="kiwi-home">
+      <section className="kiwi-hero relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(340px,460px)] lg:gap-10">
             <div className="lg:pr-2">
-              <p className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1 text-xs font-semibold text-(--learnify-heading) shadow-sm backdrop-blur">
-                <Sparkles className="size-3.5 text-(--learnify-primary)" />
+              <p className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1 text-xs font-semibold text-(--kiwi-heading) shadow-sm backdrop-blur">
+                <Sparkles className="size-3.5 text-(--kiwi-primary)" />
                 Nền tảng học trực tuyến dành cho người Việt
               </p>
-              <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-(--learnify-heading) sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-(--kiwi-heading) sm:text-5xl lg:text-6xl">
                 <span className="block">Học đúng kỹ năng.</span>
-                <span className="block text-(--learnify-primary)">Làm đúng việc.</span>
-                <span className="block text-(--learnify-secondary)">Sống đúng đam mê.</span>
+                <span className="block text-(--kiwi-primary)">Làm đúng việc.</span>
+                <span className="block text-(--kiwi-secondary)">Sống đúng đam mê.</span>
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-(--learnify-body) sm:text-lg">
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-(--kiwi-body) sm:text-lg">
                 Không học lý thuyết suông. Mỗi khóa học là lộ trình thực hành — từ bài toán thực tế, dự án có phản hồi, đến kỹ năng được nhà tuyển dụng tìm kiếm nhiều nhất hiện nay.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button
                   asChild
-                  className="learnify-btn-gradient h-11 rounded-xl px-6 text-sm font-semibold"
+                  className="kiwi-btn-gradient h-11 rounded-xl px-6 text-sm font-semibold"
                 >
                   <Link href="/courses">
                     Bắt đầu học ngay
@@ -129,7 +129,7 @@ export default async function HomePage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-11 rounded-xl border-(--learnify-primary)/20 bg-card/85 px-6 text-sm font-semibold text-(--learnify-heading) hover:bg-card"
+                  className="h-11 rounded-xl border-(--kiwi-primary)/20 bg-card/85 px-6 text-sm font-semibold text-(--kiwi-heading) hover:bg-card"
                 >
                   <Link href="/register?role=instructor">Trở thành giảng viên</Link>
                 </Button>
@@ -137,29 +137,29 @@ export default async function HomePage() {
 
               <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
                 <div className="rounded-xl border bg-card/80 p-3 text-center shadow-sm backdrop-blur">
-                  <p className="text-lg font-bold text-(--learnify-heading)">
+                  <p className="text-lg font-bold text-(--kiwi-heading)">
                     {platformStats?.totalCourses ? `${platformStats.totalCourses}+` : popularCourses.length > 0 ? `${popularCourses.length}+` : "--"}
                   </p>
-                  <p className="text-xs text-(--learnify-body)">Khóa học</p>
+                  <p className="text-xs text-(--kiwi-body)">Khóa học</p>
                 </div>
                 <div className="rounded-xl border bg-card/80 p-3 text-center shadow-sm backdrop-blur">
-                  <p className="text-lg font-bold text-(--learnify-heading)">
+                  <p className="text-lg font-bold text-(--kiwi-heading)">
                     {platformStats?.totalStudents ? platformStats.totalStudents.toLocaleString("vi-VN") : "--"}
                   </p>
-                  <p className="text-xs text-(--learnify-body)">Học viên</p>
+                  <p className="text-xs text-(--kiwi-body)">Học viên</p>
                 </div>
                 <div className="rounded-xl border bg-card/80 p-3 text-center shadow-sm backdrop-blur">
-                  <p className="text-lg font-bold text-(--learnify-heading)">
+                  <p className="text-lg font-bold text-(--kiwi-heading)">
                     {platformStats?.totalInstructors ? platformStats.totalInstructors : "--"}
                   </p>
-                  <p className="text-xs text-(--learnify-body)">Giảng viên</p>
+                  <p className="text-xs text-(--kiwi-body)">Giảng viên</p>
                 </div>
               </div>
             </div>
 
             <HeroCourseSlider
               courses={heroCourses}
-              className="learnify-float lg:justify-self-end"
+              className="kiwi-float lg:justify-self-end"
             />
           </div>
         </div>
@@ -173,19 +173,19 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-(--learnify-primary)">
+              <p className="text-sm font-semibold text-(--kiwi-primary)">
                 Chọn con đường của bạn
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--kiwi-heading) sm:text-3xl">
                 Đa dạng lĩnh vực — một nơi học tập
               </h2>
-              <p className="mt-2 text-sm text-(--learnify-body)">
+              <p className="mt-2 text-sm text-(--kiwi-body)">
                 Dù bạn muốn đổi nghề, thăng tiến hay theo đuổi đam mê mới — chúng tôi có khóa học phù hợp đang chờ bạn.
               </p>
             </div>
             <Link
               href="/categories"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--learnify-primary) hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--kiwi-primary) hover:underline"
             >
               Xem tất cả
               <ArrowRight className="size-4" />
@@ -198,15 +198,15 @@ export default async function HomePage() {
                 <Link
                   key={category.id}
                   href={`/categories/${category.slug}`}
-                  className="learnify-soft-card group rounded-2xl border bg-card/95 p-5 transition-transform duration-200 hover:-translate-y-1"
+                  className="kiwi-soft-card group rounded-2xl border bg-card/95 p-5 transition-transform duration-200 hover:-translate-y-1"
                 >
-                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-(--learnify-primary)/12 text-(--learnify-primary)">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-(--kiwi-primary)/12 text-(--kiwi-primary)">
                     <FolderOpen className="size-5" />
                   </span>
-                  <h3 className="mt-4 line-clamp-2 text-sm font-semibold text-(--learnify-heading) transition-colors group-hover:text-(--learnify-primary)">
+                  <h3 className="mt-4 line-clamp-2 text-sm font-semibold text-(--kiwi-heading) transition-colors group-hover:text-(--kiwi-primary)">
                     {category.name}
                   </h3>
-                  <p className="mt-1 text-xs text-(--learnify-body)">
+                  <p className="mt-1 text-xs text-(--kiwi-body)">
                     {category.course_count} khóa học
                   </p>
                 </Link>
@@ -229,16 +229,16 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-(--learnify-primary)">
+              <p className="text-sm font-semibold text-(--kiwi-primary)">
                 Đang hot nhất tuần này
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--kiwi-heading) sm:text-3xl">
                 Top khóa học không thể bỏ lỡ
               </h2>
             </div>
             <Link
               href="/courses?sort=popular"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--learnify-primary) hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--kiwi-primary) hover:underline"
             >
               Xem tất cả khóa học
               <ArrowRight className="size-4" />
@@ -248,7 +248,7 @@ export default async function HomePage() {
           {popularGridCourses.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               {popularGridCourses.map((course, index) => (
-                <LearnifyCourseCard
+                <KiwiCourseCard
                   key={course.id}
                   course={course}
                   variant="grid"
@@ -270,10 +270,10 @@ export default async function HomePage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 text-center">
-              <p className="text-sm font-semibold text-(--learnify-primary)">
+              <p className="text-sm font-semibold text-(--kiwi-primary)">
                 Họ đã thay đổi từ đây
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--learnify-heading) sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--kiwi-heading) sm:text-3xl">
                 Mỗi đánh giá là một hành trình có thật
               </h2>
             </div>
@@ -285,10 +285,10 @@ export default async function HomePage() {
                 return (
                   <div
                     key={review.id}
-                    className="learnify-soft-card rounded-2xl border bg-card/95 p-6"
+                    className="kiwi-soft-card rounded-2xl border bg-card/95 p-6"
                   >
-                    <Quote className="size-6 text-(--learnify-primary)/40" />
-                    <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-(--learnify-body)">
+                    <Quote className="size-6 text-(--kiwi-primary)/40" />
+                    <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-(--kiwi-body)">
                       {review.comment}
                     </p>
                     <div className="mt-4 flex items-center gap-1">
@@ -300,13 +300,13 @@ export default async function HomePage() {
                       ))}
                     </div>
                     <div className="mt-3 border-t pt-3">
-                      <p className="text-sm font-semibold text-(--learnify-heading)">
+                      <p className="text-sm font-semibold text-(--kiwi-heading)">
                         {userName}
                       </p>
                       {review.course_id && (
                         <Link
                           href={`/courses/${review.course_id.slug}`}
-                          className="text-xs text-(--learnify-body) hover:text-(--learnify-primary)"
+                          className="text-xs text-(--kiwi-body) hover:text-(--kiwi-primary)"
                         >
                           {review.course_id.title}
                         </Link>

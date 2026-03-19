@@ -251,7 +251,7 @@ export default function CheckoutPage() {
                           price === 0 ? "text-emerald-600" : "text-foreground"
                         )}
                       >
-                        {price === 0 ? "Miễn phí" : formatPrice(price)}
+                        {formatPrice(price)}
                       </span>
                     </div>
                   );
@@ -337,7 +337,7 @@ export default function CheckoutPage() {
                       totalPrice === 0 ? "text-emerald-600" : "text-[#2f57ef]"
                     )}
                   >
-                    {totalPrice === 0 ? "Miễn phí" : formatPrice(totalPrice)}
+                    {formatPrice(totalPrice)}
                   </span>
                 </div>
 

@@ -28,7 +28,7 @@ export function PortalShell({
   children,
 }: PortalShellProps) {
   return (
-    <div className="learnify-home learnify-portal min-h-screen bg-background">
+    <div className="kiwi-home kiwi-portal min-h-screen bg-background">
       <Header initialUser={initialUser} />
       <main className="mx-auto w-full max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <PortalHero

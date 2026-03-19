@@ -49,7 +49,7 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
 
   return (
     <>
-      <div className="learnify-portal-mobile-nav lg:hidden">
+      <div className="kiwi-portal-mobile-nav lg:hidden">
         <div className="no-scrollbar overflow-x-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
           <ul className="flex min-w-max items-center gap-2">
             {items.map((item) => {
@@ -78,7 +78,7 @@ export function PortalSideNav({ greeting, items }: PortalSideNavProps) {
       </div>
 
       <aside className="hidden lg:block">
-        <div className="learnify-portal-card overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="kiwi-portal-card overflow-hidden rounded-2xl border border-border bg-card">
           <div className="border-b border-border bg-linear-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4 dark:from-[#2f57ef]/10 dark:to-[#b966e7]/10">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
               {greeting}

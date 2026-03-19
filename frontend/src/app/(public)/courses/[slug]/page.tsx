@@ -160,7 +160,7 @@ export async function generateMetadata({
     description:
       stripHtml(course.short_description) ||
       stripHtml(course.description) ||
-      `Khoá học ${course.title} trên Kognify.`,
+      `Khoá học ${course.title} trên Kiwi.`,
     openGraph: {
       title: course.title,
       description: stripHtml(course.description) || undefined,

@@ -42,23 +42,23 @@ export async function ContinueLearningSection() {
   const courses = sorted.slice(0, 4);
 
   return (
-    <section className="bg-gradient-to-b from-[var(--learnify-primary)]/5 to-transparent py-10 sm:py-12">
+    <section className="bg-gradient-to-b from-[var(--kiwi-primary)]/5 to-transparent py-10 sm:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <PlayCircle className="size-5 text-[var(--learnify-primary)]" />
-              <p className="text-sm font-semibold text-[var(--learnify-primary)]">
+              <PlayCircle className="size-5 text-[var(--kiwi-primary)]" />
+              <p className="text-sm font-semibold text-[var(--kiwi-primary)]">
                 Tiếp tục học
               </p>
             </div>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-2xl">
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--kiwi-heading)] sm:text-2xl">
               Tiếp tục nơi bạn đã dừng lại
             </h2>
           </div>
           <Link
             href="/my-courses"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--learnify-primary)] hover:underline"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--kiwi-primary)] hover:underline"
           >
             Tất cả khoá học
             <ArrowRight className="size-4" />
@@ -96,23 +96,23 @@ export async function ContinueLearningSection() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h3 className="line-clamp-2 text-sm font-semibold text-[var(--learnify-heading)] transition-colors group-hover:text-[var(--learnify-primary)]">
+                  <h3 className="line-clamp-2 text-sm font-semibold text-[var(--kiwi-heading)] transition-colors group-hover:text-[var(--kiwi-primary)]">
                     {course.title}
                   </h3>
-                  <p className="mt-1 line-clamp-1 text-xs text-[var(--learnify-body)]">
+                  <p className="mt-1 line-clamp-1 text-xs text-[var(--kiwi-body)]">
                     {lastLesson?.title
                       ? `Bài: ${lastLesson.title}`
                       : "Chưa bắt đầu"}
                   </p>
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[var(--learnify-primary)]">
+                      <span className="font-medium text-[var(--kiwi-primary)]">
                         {progress}%
                       </span>
                     </div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--learnify-primary)]/10">
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--kiwi-primary)]/10">
                       <div
-                        className="h-full rounded-full bg-[var(--learnify-primary)] transition-all"
+                        className="h-full rounded-full bg-[var(--kiwi-primary)] transition-all"
                         style={{ width: `${Math.min(100, progress)}%` }}
                       />
                     </div>
@@ -128,7 +128,7 @@ export async function ContinueLearningSection() {
             <Button
               asChild
               variant="outline"
-              className="rounded-full border-[var(--learnify-primary)]/20 text-sm font-semibold text-[var(--learnify-primary)] hover:bg-[var(--learnify-primary)]/5"
+              className="rounded-full border-[var(--kiwi-primary)]/20 text-sm font-semibold text-[var(--kiwi-primary)] hover:bg-[var(--kiwi-primary)]/5"
             >
               <Link href="/my-courses">
                 Xem {active.length - 4} khoá học khác

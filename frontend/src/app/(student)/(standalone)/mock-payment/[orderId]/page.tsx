@@ -206,7 +206,7 @@ export default function MockPaymentPage() {
                 Số tiền thanh toán
               </p>
               <p className="mt-1 text-4xl font-bold tracking-tight text-foreground">
-                {order.total_amount === 0 ? "Miễn phí" : formatPrice(order.total_amount)}
+                {formatPrice(order.total_amount)}
               </p>
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Mã đơn:{" "}

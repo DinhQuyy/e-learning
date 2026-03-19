@@ -24,7 +24,7 @@ export function ShareCertificateButton({
 }: ShareCertificateButtonProps) {
   const [copied, setCopied] = useState(false);
 
-  const shareText = `${learnerName} đã hoàn thành khóa học "${courseTitle}" trên Learnify! Mã chứng chỉ: ${certificateCode}`;
+  const shareText = `${learnerName} đã hoàn thành khóa học "${courseTitle}" trên Kiwi! Mã chứng chỉ: ${certificateCode}`;
   const currentUrl =
     typeof window !== "undefined" ? window.location.href : "";
 

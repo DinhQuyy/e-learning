@@ -181,14 +181,14 @@ export default async function CertificateDetailPage({
           <CardContent className="relative overflow-hidden p-0">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(47,87,239,0.12),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(185,102,231,0.12),transparent_42%)]" />
             <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 rounded-full border border-slate-200/80 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Learnify
+              Kiwi
             </div>
 
             <div className="relative px-6 pb-8 pt-14 sm:px-10 sm:pb-10 sm:pt-16 lg:px-14">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.42em] text-slate-500">
-                    Kognify
+                    Kiwi
                   </p>
                   <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
                     Certificate of Completion
@@ -246,7 +246,7 @@ export default async function CertificateDetailPage({
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                     Đại diện đào tạo
                   </p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">Learnify Academy</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">Kiwi Academy</p>
                   <p className="text-slate-600">Authorized Certification Provider</p>
                 </div>
 
@@ -255,7 +255,7 @@ export default async function CertificateDetailPage({
                     Xác thực trực tuyến
                   </p>
                   <p className="mt-2 text-lg font-semibold text-slate-900">
-                    learnify.vn/verify
+                    kiwi.vn/verify
                   </p>
                   <p className="flex items-center justify-start gap-1.5 text-slate-600 sm:justify-end">
                     <BadgeCheck className="size-4 text-emerald-600" />

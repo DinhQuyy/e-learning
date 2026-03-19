@@ -306,7 +306,7 @@ function buildVerificationEmailMessage(email: string, verificationUrl: string): 
     "- Trước khi xác minh xong, hệ thống vẫn gửi nhắc học về email đăng nhập hiện tại của bạn.",
     "- Nếu bạn không yêu cầu thay đổi này, hãy bỏ qua email này.",
     "",
-    "Kognify",
+    "Kiwi",
   ].join("\n");
 }
 

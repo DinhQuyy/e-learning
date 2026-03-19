@@ -37,7 +37,7 @@ export default function AdminSettingsPage() {
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      platform_name: "Kognify",
+      platform_name: "Kiwi",
       platform_description:
         "Nền tảng học trực tuyến hàng đầu Việt Nam",
       maintenance_mode: false,
@@ -52,7 +52,7 @@ export default function AdminSettingsPage() {
       .then((json) => {
         if (json?.data) {
           form.reset({
-            platform_name: json.data.platform_name || "Kognify",
+            platform_name: json.data.platform_name || "Kiwi",
             platform_description: json.data.platform_description || "",
             maintenance_mode: json.data.maintenance_mode || false,
             maintenance_message: json.data.maintenance_message || "",
@@ -106,7 +106,7 @@ export default function AdminSettingsPage() {
               <Input
                 id="platform_name"
                 {...form.register("platform_name")}
-                placeholder="Ví dụ: Kognify"
+                placeholder="Ví dụ: Kiwi"
               />
               {form.formState.errors.platform_name && (
                 <p className="text-sm text-red-500">

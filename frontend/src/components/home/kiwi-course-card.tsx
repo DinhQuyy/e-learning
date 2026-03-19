@@ -7,7 +7,7 @@ import { getCourseImageSrc } from "@/lib/course-image";
 import { cn } from "@/lib/utils";
 import type { Category, Course, DirectusUser } from "@/types";
 
-interface LearnifyCourseCardProps {
+interface KiwiCourseCardProps {
   course: Course;
   variant?: "hero" | "grid";
   className?: string;
@@ -75,7 +75,7 @@ function getPriceNode(course: Course) {
   if (hasDiscount && discountPrice !== null) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="text-sm font-bold text-[var(--learnify-primary)]">
+        <span className="text-sm font-bold text-[var(--kiwi-primary)]">
           {formatPrice(discountPrice)}
         </span>
         <span className="text-xs text-muted-foreground line-through">
@@ -88,12 +88,12 @@ function getPriceNode(course: Course) {
   return <span className="text-sm font-bold">{formatPrice(price)}</span>;
 }
 
-export function LearnifyCourseCard({
+export function KiwiCourseCard({
   course,
   variant = "grid",
   className,
   priority = false,
-}: LearnifyCourseCardProps) {
+}: KiwiCourseCardProps) {
   const categoryName = getCategoryName(course);
   const ratingValue = Number(course.average_rating ?? 0);
   const roundedRating = Math.round(ratingValue);
@@ -111,7 +111,7 @@ export function LearnifyCourseCard({
   return (
     <article
       className={cn(
-        "learnify-soft-card overflow-hidden rounded-2xl border bg-card",
+        "kiwi-soft-card overflow-hidden rounded-2xl border bg-card",
         variant === "hero" ? "w-full max-w-none" : "h-full",
         className
       )}
@@ -135,14 +135,14 @@ export function LearnifyCourseCard({
             }
           />
           {categoryName && (
-            <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-[var(--learnify-heading)]">
+            <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-[var(--kiwi-heading)]">
               {categoryName}
             </span>
           )}
         </div>
 
         <div className="flex flex-1 flex-col p-5">
-          <div className="mb-3 flex items-center gap-3 text-xs text-[var(--learnify-body)]">
+          <div className="mb-3 flex items-center gap-3 text-xs text-[var(--kiwi-body)]">
             <span className="inline-flex items-center gap-1">
               <BookOpen className="size-3.5" />
               {course.total_lessons || 0} bài học
@@ -155,20 +155,20 @@ export function LearnifyCourseCard({
 
           <h3
             className={cn(
-              "line-clamp-2 font-semibold text-[var(--learnify-heading)] transition-colors group-hover:text-[var(--learnify-primary)]",
+              "line-clamp-2 font-semibold text-[var(--kiwi-heading)] transition-colors group-hover:text-[var(--kiwi-primary)]",
               variant === "hero" ? "text-xl" : "text-lg"
             )}
           >
             {course.title}
           </h3>
 
-          <p className="mt-2 line-clamp-2 text-sm text-[var(--learnify-body)]">
+          <p className="mt-2 line-clamp-2 text-sm text-[var(--kiwi-body)]">
             {stripHtml(course.short_description) ||
               stripHtml(course.description) ||
               "Khóa học thực hành với nội dung cập nhật."}
           </p>
 
-          <div className="mt-3 flex items-center gap-1 text-xs text-[var(--learnify-body)]">
+          <div className="mt-3 flex items-center gap-1 text-xs text-[var(--kiwi-body)]">
             {Array.from({ length: 5 }).map((_, index) => (
               <Star
                 key={index}
@@ -180,19 +180,19 @@ export function LearnifyCourseCard({
                 )}
               />
             ))}
-            <span className="ml-1 font-semibold text-[var(--learnify-heading)]">
+            <span className="ml-1 font-semibold text-[var(--kiwi-heading)]">
               {ratingValue.toFixed(1)}
             </span>
             <span>({reviewCount})</span>
           </div>
 
-          <p className="mt-2 truncate text-xs text-[var(--learnify-body)]">
+          <p className="mt-2 truncate text-xs text-[var(--kiwi-body)]">
             Bởi {getInstructorNames(course)}
           </p>
 
           <div className="mt-5 flex items-center justify-between border-t pt-4">
             {getPriceNode(course)}
-            <span className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--learnify-primary)]">
+            <span className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--kiwi-primary)]">
               Chi tiết
               <ArrowRight className="size-4" />
             </span>

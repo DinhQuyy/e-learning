@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Vietnamese (vi locale) e-learning platform branded **Kognify** (Udemy-like) with e-commerce (cart, wishlist, orders, mock payment). Monorepo:
+Vietnamese (vi locale) e-learning platform branded **Kiwi** (Udemy-like) with e-commerce (cart, wishlist, orders, mock payment). Monorepo:
 - `frontend/` — Next.js 16 (App Router) + React 19 + Tailwind CSS 4 + shadcn/ui
 - `backend/` — Directus 11 (headless CMS) via Docker Compose with PostgreSQL 16 + Redis 7
 
@@ -34,10 +34,14 @@ Directus admin panel runs at `http://localhost:8055`.
 
 ## Branding
 
-- Platform name: **Kognify**
-- Logo: `KognifyLogo` wordmark component in `components/layout/logo.tsx` — renders "Kogni" + "fy" in two colors using `text-[#2f57ef]` accent
-- Favicon: `app/icon.svg` — SVG with Kognify "K" lettermark
+- Platform name: **Kiwi** (rebranded from Kognify; derived from founders' names Kiên + Quý)
+- Logo: `KiwiLogo` wordmark component in `components/layout/logo.tsx` — renders "Kiwi" in gradient using `bg-clip-text text-transparent` + inline `backgroundImage` style
+- Favicon: `app/icon.svg` — SVG kiwi fruit cross-section (brown skin, green flesh, 8 seeds, cream center)
+- Contact email in footer: `support@kiwi.vn`
 - Navbar links: "Khám phá khoá học", "Trở thành giảng viên" (removed "Trang chủ" and "Bảng giá")
+- CSS variables (`--kiwi-primary`, `--kiwi-secondary`, `--kiwi-heading`, `--kiwi-body`) defined at `:root` level in `globals.css` — NOT scoped to `.kiwi-home` (global scope ensures variables work in all components)
+- CSS classes `.kiwi-hero`, `.kiwi-btn-gradient`, `.kiwi-soft-card`, `.kiwi-newsletter`, `.kiwi-float` are standalone (no `.kiwi-home` parent required)
+- Dark mode overrides under `.dark` selector in `globals.css`
 
 ## Seed Scripts (`backend/scripts/`)
 
@@ -193,7 +197,7 @@ Query modules in `lib/queries/`: `courses.ts`, `categories.ts`, `instructor.ts`,
 | `wishlist-button.tsx` | Wishlist toggle button (heart icon) |
 | `course-recommendations.tsx` | Horizontal scrollable course recommendation section |
 | `share-certificate-button.tsx` | Certificate sharing (Facebook, LinkedIn, copy link) + PDF download |
-| `../layout/logo.tsx` | `KognifyLogo` wordmark component used in navbar and footer |
+| `../layout/logo.tsx` | `KiwiLogo` wordmark component used in navbar and footer |
 
 ## Course Detail Tab Navigation (`courses/[slug]/course-tabs.tsx`)
 

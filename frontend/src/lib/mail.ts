@@ -81,24 +81,6 @@ function getTransporter(config: SmtpConfig): nodemailer.Transporter {
   return transporterCache;
 }
 
-export function getMentorInterventionEmailOverride(): string | null {
-  return (
-    getServerEnv("MENTOR_INTERVENTION_EMAIL_OVERRIDE") ??
-    getServerEnv("MENTOR_INTERVENTION_EMAIL_TEST_RECIPIENT") ??
-    null
-  );
-}
-
-export function getMentorDevFallbackRecipient(): string | null {
-  return (
-    getServerEnv("EMAIL_SMTP_USER") ??
-    getServerEnv("SMTP_USER") ??
-    getServerEnv("EMAIL_FROM") ??
-    getServerEnv("SMTP_FROM") ??
-    null
-  );
-}
-
 export async function sendTextEmail({
   to,
   subject,

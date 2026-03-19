@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MentorEmailPreferencesCard } from "@/components/features/mentor-email-preferences-card";
 import {
   Card,
   CardContent,
@@ -35,11 +34,6 @@ interface ProfileUser {
   social_links: Record<string, string> | null;
   date_created: string | null;
   status: string;
-  mentor_notification_email_enabled?: boolean | null;
-  mentor_notification_email?: string | null;
-  mentor_notification_email_verified?: boolean | null;
-  mentor_notification_email_pending?: string | null;
-  mentor_notification_email_verification_expires_at?: string | null;
 }
 
 interface InstructorProfileFormProps {
@@ -336,17 +330,6 @@ export function InstructorProfileForm({
           </div>
         </CardContent>
       </Card>
-
-      <MentorEmailPreferencesCard
-        accountEmail={user.email}
-        initialEnabled={user.mentor_notification_email_enabled}
-        initialActiveNotificationEmail={user.mentor_notification_email}
-        initialActiveNotificationEmailVerified={user.mentor_notification_email_verified}
-        initialPendingNotificationEmail={user.mentor_notification_email_pending}
-        initialPendingVerificationExpiresAt={
-          user.mentor_notification_email_verification_expires_at
-        }
-      />
     </div>
   );
 }

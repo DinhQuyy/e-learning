@@ -38,6 +38,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       KEY: ${DIRECTUS_KEY}
       SECRET: ${DIRECTUS_SECRET}
@@ -49,21 +51,24 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CACHE_ENABLED: "true"
+      CACHE_STORE: redis
+      REDIS: redis://redis:6379/0
       CORS_ENABLED: "true"
-      CORS_ORIGIN: "http://localhost:3000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://150.95.115.157}
       CORS_CREDENTIALS: "true"
       WEBSOCKETS_ENABLED: "true"
-      PUBLIC_URL: "http://localhost:8055"
+      PUBLIC_URL: ${PUBLIC_URL:-http://150.95.115.157:8055}
       REFRESH_TOKEN_COOKIE_SECURE: "false"
       REFRESH_TOKEN_COOKIE_SAME_SITE: "lax"
       EMAIL_TRANSPORT: "smtp"
-      EMAIL_FROM: ${EMAIL_FROM}
-      EMAIL_SMTP_HOST: "smtp.gmail.com"
-      EMAIL_SMTP_PORT: "587"
-      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER}
-      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@kognify.com}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-smtp.gmail.com}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
       EMAIL_SMTP_SECURE: "false"
-      PASSWORD_RESET_URL_ALLOW_LIST: "http://localhost:3000/reset-password"
+      PASSWORD_RESET_URL_ALLOW_LIST: ${PASSWORD_RESET_URL:-http://150.95.115.157/reset-password}
     volumes:
       - ./uploads:/directus/uploads
       - ./extensions:/directus/extensions
@@ -82,7 +87,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      APP_ENV: development
+      APP_ENV: production
       PG_HOST: database
       PG_PORT: "5432"
       PG_DB: elearning

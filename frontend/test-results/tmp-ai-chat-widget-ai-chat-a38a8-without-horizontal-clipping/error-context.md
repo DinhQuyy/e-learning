@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic [active]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - navigation [ref=e6]:
+            - button "previous" [disabled] [ref=e7]:
+              - img "previous" [ref=e8]
+            - generic [ref=e10]:
+              - generic [ref=e11]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e12]:
+              - img "next" [ref=e13]
+          - img
+        - generic [ref=e15]:
+          - link "Next.js 16.1.6 (stale) Turbopack" [ref=e16] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e17]
+            - generic "There is a newer version (16.1.7) available, upgrade recommended!" [ref=e19]: Next.js 16.1.6 (stale)
+            - generic [ref=e20]: Turbopack
+          - img
+      - dialog "Build Error" [ref=e22]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - generic [ref=e29]: Build Error
+              - generic [ref=e30]:
+                - button "Copy Error Info" [ref=e31] [cursor=pointer]:
+                  - img [ref=e32]
+                - button "No related documentation found" [disabled] [ref=e34]:
+                  - img [ref=e35]
+                - button "Attach Node.js inspector" [ref=e37] [cursor=pointer]:
+                  - img [ref=e38]
+            - generic [ref=e47]: Error evaluating Node.js code
+          - generic [ref=e49]:
+            - generic [ref=e51]:
+              - img [ref=e53]
+              - generic [ref=e55]: ./src/app/globals.css
+              - button "Open in editor" [ref=e56] [cursor=pointer]:
+                - img [ref=e58]
+            - generic [ref=e62]: "Error evaluating Node.js code Error: Cannot find module 'enhanced-resolve' Require stack: - D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\node_modules\\@tailwindcss\\node\\dist\\index.js - D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\node_modules\\@tailwindcss\\postcss\\dist\\index.js - D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\.next\\dev\\build\\chunks\\[root-of-the-server]__51225daf._.js - D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\.next\\dev\\build\\chunks\\[turbopack]_runtime.js - D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\.next\\dev\\build\\postcss.js [at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)] [at Module._load (node:internal/modules/cjs/loader:1038:27)] [at Module.require (node:internal/modules/cjs/loader:1289:19)] [at require (node:internal/modules/helpers:182:18)] [at Object.<anonymous> (D:\\CodeKhoaLuan\\ELearning\\elearning\\frontend\\node_modules\\@tailwindcss\\node\\dist\\index.js:1:1237)] [at Module._compile (node:internal/modules/cjs/loader:1521:14)] [at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)] [at Module.load (node:internal/modules/cjs/loader:1266:32)] [at Module._load (node:internal/modules/cjs/loader:1091:12)] [at Module.require (node:internal/modules/cjs/loader:1289:19)] Import trace: Client Component Browser: ./src/app/globals.css [Client Component Browser] ./src/app/layout.tsx [Server Component]"
+        - generic [ref=e63]: "1"
+        - generic [ref=e64]: "2"
+    - generic [ref=e69] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e70]:
+        - img [ref=e71]
+      - button "Open issues overlay" [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]: "0"
+          - generic [ref=e78]: "1"
+        - generic [ref=e79]: Issue
+  - alert [ref=e80]
+```

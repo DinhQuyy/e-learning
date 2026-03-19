@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Directus Bootstrap Script — E-Learning Platform
@@ -195,64 +195,6 @@ async function addUserFields() {
         note: "Liên kết mạng xã hội (JSON)",
       },
       schema: {},
-    },
-    {
-      field: "mentor_notification_email_enabled",
-      type: "boolean",
-      meta: {
-        interface: "boolean",
-        note: "Bat/tat email nhac hoc tu AI Mentor",
-      },
-      schema: { default_value: true },
-    },
-    {
-      field: "mentor_notification_email",
-      type: "string",
-      meta: {
-        interface: "input",
-        note: "Email nhan nhac hoc da xac minh",
-      },
-      schema: { max_length: 255, is_nullable: true },
-    },
-    {
-      field: "mentor_notification_email_verified",
-      type: "boolean",
-      meta: {
-        interface: "boolean",
-        note: "Trang thai xac minh email nhac hoc",
-        hidden: true,
-      },
-      schema: { default_value: false },
-    },
-    {
-      field: "mentor_notification_email_pending",
-      type: "string",
-      meta: {
-        interface: "input",
-        note: "Email nhac hoc dang cho xac minh",
-        hidden: true,
-      },
-      schema: { max_length: 255, is_nullable: true },
-    },
-    {
-      field: "mentor_notification_email_verification_token",
-      type: "string",
-      meta: {
-        interface: "input",
-        note: "Token xac minh email nhac hoc",
-        hidden: true,
-      },
-      schema: { max_length: 255, is_nullable: true },
-    },
-    {
-      field: "mentor_notification_email_verification_expires_at",
-      type: "timestamp",
-      meta: {
-        interface: "datetime",
-        note: "Thoi gian het han xac minh email nhac hoc",
-        hidden: true,
-      },
-      schema: { is_nullable: true },
     },
     {
       field: "date_created",
@@ -1511,7 +1453,7 @@ async function createCollections() {
     related_collection: "directus_users",
     schema: { on_delete: "SET NULL" },
   });
-  log("âœ“", "Fields & relations: instructor_applications");
+  log("✓", "Fields & relations: instructor_applications");
 
   // -- 4.15 application_history --
   await createCollection("application_history", {
@@ -1570,7 +1512,7 @@ async function createCollections() {
     related_collection: "directus_users",
     schema: { on_delete: "SET NULL" },
   });
-  log("âœ“", "Fields & relations: application_history");
+  log("✓", "Fields & relations: application_history");
 
   // -- 4.16 instructor_reactivation_requests --
   await createCollection("instructor_reactivation_requests", {
@@ -2626,5 +2568,6 @@ main().catch((err) => {
   console.error("\n  ✗ Bootstrap failed:", err.message);
   process.exit(1);
 });
+
 
 

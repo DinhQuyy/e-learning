@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Share2, Check, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,11 +22,27 @@ export function ShareCertificateButton({
   courseTitle,
   learnerName,
 }: ShareCertificateButtonProps) {
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
 
   const shareText = `${learnerName} đã hoàn thành khóa học "${courseTitle}" trên Kiwi! Mã chứng chỉ: ${certificateCode}`;
-  const currentUrl =
-    typeof window !== "undefined" ? window.location.href : "";
+
+  useEffect(() => {
+    setMounted(true);
+    setCurrentUrl(window.location.href);
+    setCanNativeShare(typeof navigator.share === "function");
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        <Share2 className="mr-2 size-4" />
+        Chia sẻ
+      </Button>
+    );
+  }
 
   const handleCopyLink = async () => {
     try {
@@ -40,7 +56,7 @@ export function ShareCertificateButton({
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    if (canNativeShare) {
       try {
         await navigator.share({
           title: `Chứng chỉ - ${courseTitle}`,
@@ -108,7 +124,7 @@ export function ShareCertificateButton({
           </svg>
           LinkedIn
         </DropdownMenuItem>
-        {typeof navigator !== "undefined" && "share" in navigator && (
+        {canNativeShare && (
           <DropdownMenuItem onClick={handleNativeShare}>
             <Share2 className="mr-2 size-4" />
             Thêm tuỳ chọn...

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   BookOpenText,
-  Bookmark,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -70,25 +69,13 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function readSearchParam(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) {
-    const first = value[0];
-    return typeof first === "string" && first.trim() ? first.trim() : null;
-  }
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
 export default async function LessonPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ courseSlug: string; lessonSlug: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { token, user } = await requireAuth();
   const { courseSlug, lessonSlug } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const fromAiReferences = readSearchParam(resolvedSearchParams.from) === "ai-references";
 
   const course = await getCourseBySlug(token, courseSlug);
   if (!course) redirect("/my-courses");
@@ -112,13 +99,10 @@ export default async function LessonPage({
   const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
 
   if (!enrollment) {
-    if (fromAiReferences) {
-      const p = new URLSearchParams({ from: "ai-references" });
-      if (currentModule?.id) p.set("module", String(currentModule.id));
-      p.set("lesson", String(lesson.id));
-      redirect(`/courses/${courseSlug}?${p.toString()}#lesson-${lesson.id}`);
-    }
-    redirect(`/courses/${courseSlug}`);
+    const p = new URLSearchParams();
+    if (currentModule?.id) p.set("module", String(currentModule.id));
+    p.set("lesson", String(lesson.id));
+    redirect(`/courses/${courseSlug}?${p.toString()}#lesson-${lesson.id}`);
   }
 
   const progressRecords = await getCourseProgress(token, enrollment.id);
@@ -150,28 +134,8 @@ export default async function LessonPage({
     <div className="mx-auto w-full max-w-4xl space-y-5 px-4 py-6 lg:px-8 lg:py-8">
 
       {/* ── Lesson header ── */}
-      <div
-        className={
-          fromAiReferences
-            ? "overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-sm"
-            : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        }
-      >
-        <div
-          className={
-            fromAiReferences
-              ? "border-b border-cyan-100 bg-linear-to-r from-cyan-50 to-sky-50 px-5 py-4 sm:px-6"
-              : "border-b border-slate-100 bg-linear-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4 sm:px-6"
-          }
-        >
-          {/* AI badge */}
-          {fromAiReferences && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-cyan-200 bg-white/80 px-3 py-2 text-sm text-cyan-800">
-              <Bookmark className="size-4 shrink-0 text-cyan-600" />
-              Bài học được Trợ lý AI gợi ý cho chủ đề bạn vừa tìm.
-            </div>
-          )}
-
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-linear-to-r from-[#eef3ff] to-[#f6efff] px-5 py-4 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <Badge
               className={
@@ -374,3 +338,4 @@ export default async function LessonPage({
     </div>
   );
 }
+

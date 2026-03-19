@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { directusUrl } from "@/lib/directus";
-import { sendLearningEventSafe } from "@/lib/ai-events";
 
 function normalizePositiveNumber(value: unknown): number {
   const parsed = Number(value ?? 0);
@@ -292,40 +291,6 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      if (courseId) {
-        if (!existingProgress) {
-          await sendLearningEventSafe({
-            user_id: userId,
-            course_id: courseId,
-            lesson_id,
-            event_type: "lesson_start",
-            duration_sec: 0,
-            metadata: {},
-          });
-        }
-
-        if (typeof completed === "boolean" && completed) {
-          await sendLearningEventSafe({
-            user_id: userId,
-            course_id: courseId,
-            lesson_id,
-            event_type: "lesson_complete",
-            duration_sec: 0,
-            metadata: {},
-          });
-        }
-
-        if (typeof video_position === "number" && video_position > 0) {
-          await sendLearningEventSafe({
-            user_id: userId,
-            course_id: courseId,
-            lesson_id,
-            event_type: "video_watch",
-            duration_sec: Math.floor(video_position),
-            metadata: {},
-          });
-        }
-      }
     }
 
     return NextResponse.json({ data: progressRecord });

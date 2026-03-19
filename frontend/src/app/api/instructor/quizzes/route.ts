@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { enqueueQuizIndex } from "@/lib/ai-indexing";
 import { directusFetch } from "@/lib/directus-fetch";
-
-async function resolveCourseIdByLesson(lessonId: string): Promise<string | null> {
-  const res = await directusFetch(
-    `/items/lessons/${lessonId}?fields=module_id.course_id.id,module_id.course_id`
-  );
-  if (!res.ok) return null;
-  const payload = await res.json().catch(() => null);
-  return (
-    payload?.data?.module_id?.course_id?.id ??
-    payload?.data?.module_id?.course_id ??
-    null
-  );
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,8 +34,6 @@ export async function POST(request: NextRequest) {
     const quiz = quizData.data;
 
     const questions = body.questions ?? [];
-    const textParts: string[] = [quizPayload.title, quizPayload.description ?? ""];
-
     for (let qi = 0; qi < questions.length; qi++) {
       const q = questions[qi];
 
@@ -66,9 +50,6 @@ export async function POST(request: NextRequest) {
       });
 
       if (!questionRes.ok) continue;
-
-      textParts.push(String(q.question_text ?? ""));
-      textParts.push(String(q.explanation ?? ""));
 
       const questionData = await questionRes.json();
       const question = questionData.data;
@@ -87,14 +68,6 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-
-    const courseId = await resolveCourseIdByLesson(String(quizPayload.lesson_id));
-    await enqueueQuizIndex({
-      quizId: String(quiz.id),
-      title: String(quiz.title ?? quizPayload.title ?? "Quiz"),
-      content: textParts.join("\n"),
-      courseId,
-    });
 
     return NextResponse.json({ data: quiz }, { status: 201 });
   } catch (error) {

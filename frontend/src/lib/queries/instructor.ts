@@ -1,10 +1,4 @@
-import { directusUrl } from "@/lib/directus";
-import { postAiApiRaw } from "@/lib/ai-client";
-import {
-  instructorRiskResponseSchema,
-  mentorAnalyticsResponseSchema,
-} from "@/lib/ai-schemas";
-import { z } from "zod";
+﻿import { directusUrl } from "@/lib/directus";
 import type { Course, Enrollment, Review, DirectusUser } from "@/types";
 
 interface InstructorStats {
@@ -26,37 +20,6 @@ export interface CourseStudent {
   progress_percentage: number;
   status: string;
   last_accessed: string | null;
-}
-
-export interface InstructorAtRiskStudent {
-  enrollment_id: string;
-  user: DirectusUser;
-  course: Course;
-  progress_percentage: number;
-  risk_score: number;
-  risk_band: "low" | "medium" | "high";
-  inactive_days: number;
-  failed_quiz_attempts_7d: number;
-  streak_days: number;
-  last_activity_at: string | null;
-  recommended_action: string;
-}
-
-export interface InstructorMentorAnalytics {
-  lookback_days: number;
-  shown: number;
-  clicked: number;
-  dismissed: number;
-  completed: number;
-  ctr: number;
-  completion_rate: number;
-  clicked_completion_rate: number;
-  non_clicked_completion_rate: number;
-  completion_lift_pp: number;
-  completion_lift_ratio: number;
-  interventions_sent: number;
-  notification_interventions: number;
-  email_interventions: number;
 }
 
 type CountResult = { map: Map<string, number>; success: boolean };
@@ -112,14 +75,6 @@ function createEmptyRatingDistribution(): Record<number, number> {
   return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 }
 
-function daysBetween(value: string | null | undefined): number {
-  if (!value) return 0;
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return 0;
-  const diffMs = Date.now() - parsed;
-  return Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
-}
-
 function normalizeRating(rawRating: unknown): number | null {
   const parsed = Number(rawRating);
   if (!Number.isFinite(parsed)) return null;
@@ -127,12 +82,66 @@ function normalizeRating(rawRating: unknown): number | null {
   return rating >= 1 && rating <= 5 ? rating : null;
 }
 
+type DirectusFetchOptions = RequestInit & {
+  next?: {
+    revalidate?: number;
+  };
+};
+
 function getAuthHeaders(token: string) {
-  const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
   return {
-    Authorization: `Bearer ${serverToken ?? token}`,
+    Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
+}
+
+function getAuthTokenCandidates(token: string): string[] {
+  const serverToken = process.env.DIRECTUS_STATIC_TOKEN?.trim();
+  const userToken = token.trim();
+
+  return Array.from(
+    new Set([serverToken, userToken].filter((value): value is string => Boolean(value)))
+  );
+}
+
+async function fetchDirectusWithAuth(
+  url: string,
+  token: string,
+  init: DirectusFetchOptions = {}
+): Promise<Response> {
+  const authTokens = getAuthTokenCandidates(token);
+  let lastAuthFailure: Response | null = null;
+  let lastError: unknown = null;
+
+  for (const authToken of authTokens) {
+    try {
+      const res = await fetch(url, {
+        ...init,
+        headers: getAuthHeaders(authToken),
+      });
+
+      if (res.ok || (res.status !== 401 && res.status !== 403)) {
+        return res;
+      }
+
+      lastAuthFailure = res;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastAuthFailure) {
+    return lastAuthFailure;
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  return fetch(url, {
+    ...init,
+    headers: getAuthHeaders(token),
+  });
 }
 
 async function getCompletedLessonsByEnrollment(
@@ -144,9 +153,10 @@ async function getCompletedLessonsByEnrollment(
   }
 
   try {
-    const res = await fetch(
+    const res = await fetchDirectusWithAuth(
       `${directusUrl}/items/progress?filter[enrollment_id][_in]=${enrollmentIds.join(",")}&filter[completed][_eq]=true&groupBy[]=enrollment_id&aggregate[count]=id`,
-      { headers: getAuthHeaders(token), next: { revalidate: 0 } }
+      token,
+      { next: { revalidate: 0 } }
     );
 
     if (!res.ok) return { map: new Map(), success: false };
@@ -175,16 +185,16 @@ async function getLessonCountsByCourse(
     return { map: new Map(), success: true };
   }
 
-  const headers = getAuthHeaders(token);
   const result: CountResult = { map: new Map(), success: false };
   const uniqueCourseIds = Array.from(
     new Set(courseIds.map((id) => String(id)).filter(Boolean))
   );
 
   try {
-    const res = await fetch(
+    const res = await fetchDirectusWithAuth(
       `${directusUrl}/items/modules?filter[course_id][_in]=${uniqueCourseIds.join(",")}&fields=course_id,lessons.id&deep[lessons][_filter][status][_eq]=published&limit=-1`,
-      { headers, next: { revalidate: 0 } }
+      token,
+      { next: { revalidate: 0 } }
     );
 
     if (!res.ok) return result;
@@ -214,14 +224,12 @@ async function fetchUsersByIds(
   const map = new Map<string, DirectusUser>();
   if (userIds.length === 0) return map;
 
-  const res = await fetch(
+  const res = await fetchDirectusWithAuth(
     `${directusUrl}/users?filter[id][_in]=${userIds.join(
       ","
     )}&fields=id,first_name,last_name,email,avatar,status,phone,headline,bio,social_links,date_created,role.id,role.name`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
+    token,
+    { next: { revalidate: 0 } }
   );
 
   if (!res.ok) return map;
@@ -252,10 +260,11 @@ async function getInstructorRevenueByCourseIds(
     params.append("aggregate[sum]", "price");
 
     try {
-      const res = await fetch(`${directusUrl}/items/order_items?${params.toString()}`, {
-        headers: getAuthHeaders(token),
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/order_items?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) continue;
 
@@ -280,7 +289,6 @@ async function getDistinctStudentsByCourseIds(
   const chunks = chunkIds(courseIds);
   if (chunks.length === 0) return 0;
 
-  const headers = getAuthHeaders(token);
   const uniqueUserIds = new Set<string>();
 
   await Promise.all(
@@ -293,10 +301,11 @@ async function getDistinctStudentsByCourseIds(
       params.set("limit", "-1");
 
       try {
-        const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
-          headers,
-          next: { revalidate: 0 },
-        });
+        const res = await fetchDirectusWithAuth(
+          `${directusUrl}/items/enrollments?${params.toString()}`,
+          token,
+          { next: { revalidate: 0 } }
+        );
 
         if (!res.ok) return;
 
@@ -414,90 +423,6 @@ async function enrichEnrollments(
   });
 }
 
-async function fetchInstructorRiskRows(
-  courseIds: string[],
-  limit: number
-): Promise<Map<string, z.infer<typeof instructorRiskResponseSchema>["items"][number]>> {
-  const map = new Map<
-    string,
-    z.infer<typeof instructorRiskResponseSchema>["items"][number]
-  >();
-
-  if (courseIds.length === 0) return map;
-
-  try {
-    const raw = await postAiApiRaw("/v1/instructor/risk", {
-      course_ids: courseIds,
-      limit,
-    });
-    const parsed = instructorRiskResponseSchema.safeParse(raw);
-    if (!parsed.success) {
-      return map;
-    }
-
-    for (const item of parsed.data.items) {
-      map.set(`${item.user_id}:${item.course_id}`, item);
-    }
-  } catch {
-    // keep dashboard best-effort
-  }
-
-  return map;
-}
-
-async function fetchMentorAnalyticsRows(
-  courseIds: string[],
-  lookbackDays: number
-): Promise<InstructorMentorAnalytics | null> {
-  try {
-    const raw = await postAiApiRaw("/v1/mentor/analytics", {
-      course_ids: courseIds,
-      lookback_days: lookbackDays,
-    });
-    const parsed = mentorAnalyticsResponseSchema.safeParse(raw);
-    if (!parsed.success) {
-      return null;
-    }
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
-function fallbackRiskForEnrollment(
-  enrollment: Enrollment
-): Omit<InstructorAtRiskStudent, "enrollment_id" | "user" | "course" | "progress_percentage"> {
-  const progress = Number(enrollment.progress_percentage ?? 0);
-  const inactiveDays = daysBetween(enrollment.enrolled_at ?? enrollment.date_created ?? null);
-
-  let riskScore = 8;
-  let riskBand: InstructorAtRiskStudent["risk_band"] = "low";
-  let recommendedAction = "Theo dõi thêm trước khi can thiệp mạnh.";
-
-  if (progress <= 0 && inactiveDays >= 14) {
-    riskScore = 72;
-    riskBand = "high";
-    recommendedAction = "Can thiệp khởi động lại khóa học ngay trong tuần này.";
-  } else if (progress <= 10 && inactiveDays >= 7) {
-    riskScore = 58;
-    riskBand = "medium";
-    recommendedAction = "Đẩy micro-plan 15-20 phút để kéo học viên quay lại.";
-  } else if (progress < 30 && inactiveDays >= 3) {
-    riskScore = 42;
-    riskBand = "medium";
-    recommendedAction = "Nhắc học viên hoàn thành bài tiếp theo để giữ nhịp.";
-  }
-
-  return {
-    risk_score: riskScore,
-    risk_band: riskBand,
-    inactive_days: inactiveDays,
-    failed_quiz_attempts_7d: 0,
-    streak_days: 0,
-    last_activity_at: null,
-    recommended_action: recommendedAction,
-  };
-}
 
 export async function getInstructorCourses(
   token: string
@@ -539,7 +464,6 @@ export async function getInstructorCourses(
 
   if (courseIds.length === 0) return [];
 
-  const headers = getAuthHeaders(token);
   const courseIdChunks = chunkIds(courseIds);
 
   // Fetch courses with related data (chunked to avoid long query strings)
@@ -551,10 +475,11 @@ export async function getInstructorCourses(
       params.set("sort", "-date_created");
       params.set("limit", "-1");
 
-      const res = await fetch(`${directusUrl}/items/courses?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/courses?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) return [] as Course[];
       const payload = await res.json();
@@ -582,10 +507,11 @@ export async function getInstructorCourses(
       params.append("groupBy[]", "course_id");
       params.append("aggregate[countDistinct]", "user_id");
 
-      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/enrollments?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) return;
 
@@ -618,10 +544,11 @@ export async function getInstructorCourses(
       params.append("aggregate[count]", "id");
       params.append("aggregate[avg]", "rating");
 
-      const res = await fetch(`${directusUrl}/items/reviews?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/reviews?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) return;
 
@@ -690,8 +617,6 @@ export async function getRecentEnrollments(
   const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
   const queryLimit = Math.min(Math.max(requestedLimit * 5, requestedLimit), 200);
   const chunks = chunkIds(courseIds);
-  const headers = getAuthHeaders(token);
-
   const chunkResults = await Promise.all(
     chunks.map(async (chunk) => {
       const params = new URLSearchParams();
@@ -704,10 +629,11 @@ export async function getRecentEnrollments(
       params.set("sort", "-enrolled_at,-date_created,-id");
       params.set("limit", String(queryLimit));
 
-      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/enrollments?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) return [] as Enrollment[];
 
@@ -733,12 +659,10 @@ export async function getCourseStudents(
   token: string,
   courseId: string
 ): Promise<CourseStudent[]> {
-  const res = await fetch(
+  const res = await fetchDirectusWithAuth(
     `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,user_id.headline,user_id.bio,user_id.social_links,user_id.status,user_id.date_created,user_id.role.id,user_id.role.name&sort=-enrolled_at`,
-    {
-      headers: getAuthHeaders(token),
-      next: { revalidate: 0 },
-    }
+    token,
+    { next: { revalidate: 0 } }
   );
 
   if (!res.ok) return [];
@@ -790,115 +714,6 @@ export async function getCourseStudents(
     if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
     return bTime - aTime;
   });
-}
-
-export async function getInstructorAtRiskStudents(
-  token: string,
-  courseIds: string[],
-  limit: number = 12
-): Promise<InstructorAtRiskStudent[]> {
-  if (courseIds.length === 0) return [];
-
-  const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 12;
-  const queryLimit = Math.min(Math.max(requestedLimit * 8, 50), 240);
-  const chunks = chunkIds(courseIds);
-  const headers = getAuthHeaders(token);
-
-  const chunkResults = await Promise.all(
-    chunks.map(async (chunk) => {
-      const params = new URLSearchParams();
-      params.set("filter[course_id][_in]", chunk.join(","));
-      params.set("filter[status][_neq]", "cancelled");
-      params.set(
-        "fields",
-        "id,enrolled_at,progress_percentage,status,last_lesson_id,completed_at,date_created,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,course_id,course_id.id,course_id.title,course_id.slug,course_id.total_lessons"
-      );
-      params.set("sort", "-date_created,-enrolled_at");
-      params.set("limit", String(queryLimit));
-
-      const res = await fetch(`${directusUrl}/items/enrollments?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
-
-      if (!res.ok) return [] as Enrollment[];
-
-      const payload = await res.json();
-      return (payload?.data ?? []) as Enrollment[];
-    })
-  );
-
-  const enrollments = await enrichEnrollments(
-    dedupeEnrollmentsByUserCourse(chunkResults.flat()),
-    token
-  );
-  const riskRows = await fetchInstructorRiskRows(courseIds, Math.min(queryLimit, 100));
-
-  const merged = enrollments
-    .map((enrollment) => {
-      const user = enrollment.user_id as DirectusUser | null;
-      const course = enrollment.course_id as Course | null;
-      if (!user || typeof user !== "object" || !course || typeof course !== "object") {
-        return null;
-      }
-
-      const key = `${user.id}:${course.id}`;
-      const risk = riskRows.get(key);
-      const fallback = fallbackRiskForEnrollment(enrollment);
-
-      return {
-        enrollment_id: enrollment.id,
-        user,
-        course,
-        progress_percentage: Number(enrollment.progress_percentage ?? 0),
-        risk_score: Number(risk?.risk_score ?? fallback.risk_score),
-        risk_band: (risk?.risk_band ?? fallback.risk_band) as InstructorAtRiskStudent["risk_band"],
-        inactive_days: Number(risk?.inactive_days ?? fallback.inactive_days),
-        failed_quiz_attempts_7d: Number(
-          risk?.failed_quiz_attempts_7d ?? fallback.failed_quiz_attempts_7d
-        ),
-        streak_days: Number(risk?.streak_days ?? fallback.streak_days),
-        last_activity_at: risk?.last_activity_at ?? fallback.last_activity_at,
-        recommended_action: risk?.recommended_action ?? fallback.recommended_action,
-      } satisfies InstructorAtRiskStudent;
-    })
-    .filter((item): item is InstructorAtRiskStudent => item !== null)
-    .sort((a, b) => {
-      if (b.risk_score !== a.risk_score) return b.risk_score - a.risk_score;
-      if (b.inactive_days !== a.inactive_days) return b.inactive_days - a.inactive_days;
-      return a.progress_percentage - b.progress_percentage;
-    });
-
-  return merged.slice(0, requestedLimit);
-}
-
-export async function getInstructorMentorAnalytics(
-  _token: string,
-  courseIds: string[],
-  lookbackDays: number = 30
-): Promise<InstructorMentorAnalytics> {
-  const fallback: InstructorMentorAnalytics = {
-    lookback_days: lookbackDays,
-    shown: 0,
-    clicked: 0,
-    dismissed: 0,
-    completed: 0,
-    ctr: 0,
-    completion_rate: 0,
-    clicked_completion_rate: 0,
-    non_clicked_completion_rate: 0,
-    completion_lift_pp: 0,
-    completion_lift_ratio: 0,
-    interventions_sent: 0,
-    notification_interventions: 0,
-    email_interventions: 0,
-  };
-
-  if (courseIds.length === 0) {
-    return fallback;
-  }
-
-  return (await fetchMentorAnalyticsRows(courseIds, lookbackDays)) ?? fallback;
 }
 
 export async function getCourseReviews(
@@ -957,7 +772,6 @@ export async function getRatingDistributionForCourses(
 ): Promise<Record<number, number>> {
   if (courseIds.length === 0) return createEmptyRatingDistribution();
 
-  const headers = getAuthHeaders(token);
   const chunks = chunkIds(courseIds);
   const chunkDistributions = await Promise.all(
     chunks.map(async (chunk) => {
@@ -970,10 +784,11 @@ export async function getRatingDistributionForCourses(
       params.append("aggregate[count]", "id");
       params.set("limit", "-1");
 
-      const res = await fetch(`${directusUrl}/items/reviews?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/reviews?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
 
       if (!res.ok) return createEmptyRatingDistribution();
 
@@ -1027,7 +842,6 @@ export async function getInstructorRevenueDetails(
     };
   }
 
-  const headers = getAuthHeaders(token);
   const chunks = chunkIds(courseIds);
 
   // Fetch all order_items for instructor's courses with successful orders
@@ -1042,10 +856,11 @@ export async function getInstructorRevenueDetails(
     params.set("limit", "-1");
 
     try {
-      const res = await fetch(`${directusUrl}/items/order_items?${params.toString()}`, {
-        headers,
-        next: { revalidate: 0 },
-      });
+      const res = await fetchDirectusWithAuth(
+        `${directusUrl}/items/order_items?${params.toString()}`,
+        token,
+        { next: { revalidate: 0 } }
+      );
       if (!res.ok) continue;
       const data = await res.json();
       for (const item of data?.data ?? []) {

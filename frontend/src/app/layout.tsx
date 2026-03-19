@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
-import { AiHelpdeskWidget } from "@/components/features/ai-helpdesk-widget";
+import { AiChatWidget } from "@/components/features/ai-chat-widget";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   description:
     "Kiwi — Nền tảng học trực tuyến hàng đầu Việt Nam. Nâng tầm nhận thức, học mọi lúc mọi nơi với các khóa học chất lượng cao.",
-  keywords: ["Kiwi", "học trực tuyến", "e-learning", "khóa học online", "giáo dục"],
+  keywords: ["Kiwi", "học trực tuyến", "e-learning", "khóa học online", "giáo dục", "học mọi lúc mọi nơi", "nền tảng học tập", "giáo dục trực tuyến"],
 };
 
 export default function RootLayout({
@@ -37,7 +37,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
-            <AiHelpdeskWidget />
+            <AiChatWidget />
             <Toaster richColors position="top-right" />
           </AuthProvider>
         </ThemeProvider>

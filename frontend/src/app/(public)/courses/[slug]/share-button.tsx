@@ -13,18 +13,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function ShareButton({ title, slug }: { title: string; slug: string }) {
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
-  const [url, setUrl] = useState(() => {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
-    return appUrl ? `${appUrl}/courses/${slug}` : `/courses/${slug}`;
-  });
+  const [url, setUrl] = useState("");
 
   useEffect(() => {
+    setMounted(true);
     const origin = window.location.origin.replace(/\/$/, "");
     setUrl(`${origin}/courses/${slug}`);
     setCanNativeShare(typeof navigator.share === "function");
   }, [slug]);
+
+  if (!mounted) {
+    return (
+      <Button variant="outline" className="w-full" disabled>
+        <Share2 className="mr-2 size-4" />
+        Chia sẻ khóa học
+      </Button>
+    );
+  }
 
   const handleCopyLink = async () => {
     try {

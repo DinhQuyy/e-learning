@@ -114,7 +114,7 @@ export function HeaderSearchDialog({
         <DialogHeader className="border-b px-6 py-5">
           <DialogTitle className="text-lg font-semibold">Tìm kiếm khóa học</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Nhập từ khóa để xem gợi ý nhanh, tương tự popup tìm kiếm của Learnify.
+            Nhập từ khóa để xem gợi ý nhanh, tương tự popup tìm kiếm của Kiwi.
           </DialogDescription>
         </DialogHeader>
 

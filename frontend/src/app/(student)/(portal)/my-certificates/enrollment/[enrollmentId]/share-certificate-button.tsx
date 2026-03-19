@@ -27,7 +27,7 @@ export function ShareCertificateButton({
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
 
-  const shareText = `${learnerName} đã hoàn thành khóa học "${courseTitle}" trên Learnify! Mã chứng chỉ: ${certificateCode}`;
+  const shareText = `${learnerName} đã hoàn thành khóa học "${courseTitle}" trên Kiwi! Mã chứng chỉ: ${certificateCode}`;
 
   useEffect(() => {
     setMounted(true);

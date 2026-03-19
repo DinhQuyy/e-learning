@@ -349,14 +349,14 @@ html {
   filter: brightness(1.05);
 }
 
-.learnify-home {
-  --learnify-primary: #2f57ef;
-  --learnify-secondary: #b966e7;
-  --learnify-heading: #192335;
-  --learnify-body: #6b7385;
+:root {
+  --kiwi-primary: #2f57ef;
+  --kiwi-secondary: #b966e7;
+  --kiwi-heading: #192335;
+  --kiwi-body: #6b7385;
 }
 
-.learnify-home .learnify-hero {
+.kiwi-hero {
   background:
     radial-gradient(ellipse at 12% 25%, rgb(47 87 239 / 28%) 0%, transparent 52%),
     radial-gradient(ellipse at 88% 18%, rgb(185 102 231 / 28%) 0%, transparent 52%),
@@ -364,45 +364,45 @@ html {
     linear-gradient(180deg, #dce8ff 0%, #eaf0ff 30%, #f4f7ff 60%, #ffffff 100%);
 }
 
-.learnify-home .learnify-btn-gradient {
+.kiwi-btn-gradient {
   color: #fff;
   border: 0;
   background-image: linear-gradient(
     to right,
-    var(--learnify-primary),
-    var(--learnify-secondary),
-    var(--learnify-secondary),
-    var(--learnify-primary)
+    var(--kiwi-primary),
+    var(--kiwi-secondary),
+    var(--kiwi-secondary),
+    var(--kiwi-primary)
   );
   background-size: 220% auto;
   box-shadow: 0 12px 24px rgb(47 87 239 / 28%);
   transition: background-position 0.35s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.learnify-home .learnify-btn-gradient:hover {
+.kiwi-btn-gradient:hover {
   background-position: right center;
   transform: translateY(-1px);
   box-shadow: 0 16px 30px rgb(47 87 239 / 33%);
 }
 
-.learnify-home .learnify-soft-card {
+.kiwi-soft-card {
   box-shadow: 0 10px 28px rgb(15 23 42 / 7%);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.learnify-home .learnify-soft-card:hover {
+.kiwi-soft-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 16px 32px rgb(15 23 42 / 12%);
 }
 
-.learnify-home .learnify-newsletter {
+.kiwi-newsletter {
   background:
     radial-gradient(circle at 80% 15%, rgb(47 87 239 / 14%) 0%, transparent 36%),
     linear-gradient(90deg, rgb(47 87 239 / 10%), rgb(185 102 231 / 12%));
   border: 1px solid rgb(47 87 239 / 12%);
 }
 
-@keyframes learnify-float {
+@keyframes kiwi-float {
   0% {
     transform: translateY(0);
   }
@@ -414,15 +414,15 @@ html {
   }
 }
 
-.learnify-home .learnify-float {
-  animation: learnify-float 7s ease-in-out infinite;
+.kiwi-float {
+  animation: kiwi-float 7s ease-in-out infinite;
 }
 
-.learnify-portal .learnify-portal-card {
+.kiwi-portal-card {
   box-shadow: 0 14px 34px rgb(15 23 42 / 9%);
 }
 
-.learnify-portal .learnify-portal-mobile-nav {
+.kiwi-portal-mobile-nav {
   margin-bottom: 0.25rem;
 }
 
@@ -435,12 +435,12 @@ html {
   scrollbar-width: none;
 }
 
-.dark .learnify-home {
-  --learnify-heading: #f8fafc;
-  --learnify-body: #cbd5e1;
+.dark {
+  --kiwi-heading: #f8fafc;
+  --kiwi-body: #cbd5e1;
 }
 
-.dark .learnify-home .learnify-hero {
+.dark .kiwi-hero {
   background:
     radial-gradient(ellipse at 12% 25%, rgb(47 87 239 / 30%) 0%, transparent 52%),
     radial-gradient(ellipse at 88% 18%, rgb(185 102 231 / 25%) 0%, transparent 52%),
@@ -448,14 +448,14 @@ html {
     linear-gradient(180deg, rgb(10 16 40) 0%, rgb(13 20 50) 30%, rgb(15 23 42 / 80%) 65%, transparent 100%);
 }
 
-.dark .learnify-home .learnify-newsletter {
+.dark .kiwi-newsletter {
   border-color: rgb(148 163 184 / 35%);
   background:
     radial-gradient(circle at 80% 12%, rgb(47 87 239 / 22%) 0%, transparent 34%),
     linear-gradient(90deg, rgb(15 23 42 / 82%), rgb(30 41 59 / 82%));
 }
 
-.dark .learnify-portal .learnify-portal-card {
+.dark .kiwi-portal-card {
   box-shadow: 0 14px 34px rgb(2 6 23 / 36%);
 }
 

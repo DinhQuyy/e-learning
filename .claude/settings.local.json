@@ -101,7 +101,17 @@
       "Bash(node backend/scripts/seed-historical-orders.mjs)",
       "Bash(node backend/scripts/fix-enrolled-at.mjs)",
       "Bash(curl -s --max-time 3 http://localhost:8090/v1/admin/metrics)",
-      "Bash(grep -n \"callAiApi\\\\|sendLearningEvent\\\\|enqueueIndex\" /c/Users/Admin/Downloads/e-learning/frontend/src/app/api/progress/route.ts /c/Users/Admin/Downloads/e-learning/frontend/src/app/api/quizzes/[id]/submit/route.ts)"
+      "Bash(grep -n \"callAiApi\\\\|sendLearningEvent\\\\|enqueueIndex\" /c/Users/Admin/Downloads/e-learning/frontend/src/app/api/progress/route.ts /c/Users/Admin/Downloads/e-learning/frontend/src/app/api/quizzes/[id]/submit/route.ts)",
+      "Bash(docker ps:*)",
+      "Bash(docker -H npipe:////./pipe/docker_engine ps --format \"table {{.Names}}\\\\t{{.Image}}\\\\t{{.Status}}\")",
+      "Bash(docker exec:*)",
+      "Bash(unzip -l uploads.zip)",
+      "Bash(find /c/Users/Admin/Downloads/e-learning/frontend -name *certificate* -o -name *certif*)",
+      "Bash(for f:*)",
+      "Bash(sed -i 's/Kognify/Kiwi/g' \"$f\")",
+      "Bash(sed -i 's/Learnify/Kiwi/g; s/learnify/kiwi/g' \"$f\")",
+      "Bash(sed -i 's/branded \\\\*\\\\*Kognify\\\\*\\\\*/branded **Kiwi**/g' CLAUDE.md)",
+      "Bash(sed -i 's/Platform name: \\\\*\\\\*Kognify\\\\*\\\\*/Platform name: **Kiwi**/g; s/`KognifyLogo` wordmark component in `components\\\\/layout\\\\/logo.tsx` — renders \"\"Kogni\"\" + \"\"fy\"\"/`KiwiLogo` wordmark component in `components\\\\/layout\\\\/logo.tsx` — renders \"\"Kiwi\"\"/g; s/SVG with Kognify \"\"K\"\" lettermark/SVG with Kiwi \"\"K\"\" lettermark/g; s/`KognifyLogo` wordmark component used in navbar and footer/`KiwiLogo` wordmark component used in navbar and footer/g' CLAUDE.md)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Downloads\\e-learning\\frontend\\src\\app\\(admin)\\admin\\orders",

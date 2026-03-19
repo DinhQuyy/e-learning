@@ -27,7 +27,7 @@ import { useTheme } from "next-themes";
 
 import { HeaderCartSheet } from "@/components/layout/header-cart-sheet";
 import { HeaderSearchDialog } from "@/components/layout/header-search-dialog";
-import { KognifyLogo } from "@/components/layout/logo";
+import { KiwiLogo } from "@/components/layout/logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -216,8 +216,8 @@ export function Header({ initialUser = null }: HeaderProps) {
         <div className="flex items-center gap-2 lg:gap-6">
           <MobileNav isLoggedIn={isLoggedIn} dashboardPath={dashboardPath} />
 
-          <Link href="/" className="rounded-xl pr-2" aria-label="Kognify - Trang chủ">
-            <KognifyLogo />
+          <Link href="/" className="rounded-xl pr-2" aria-label="Kiwi - Trang chủ">
+            <KiwiLogo />
           </Link>
 
           {interactionReady ? (

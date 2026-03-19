@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { KognifyLogo } from "@/components/layout/logo";
+import { KiwiLogo } from "@/components/layout/logo";
 import {
   BookOpen,
   CircleHelp,
@@ -73,7 +73,7 @@ export function MobileNav({ isLoggedIn, dashboardPath }: MobileNavProps) {
         <SheetHeader className="border-b px-6 py-5 text-left">
           <SheetTitle>
             <Link href="/" onClick={() => setOpen(false)}>
-              <KognifyLogo size="sm" />
+              <KiwiLogo size="sm" />
             </Link>
           </SheetTitle>
         </SheetHeader>

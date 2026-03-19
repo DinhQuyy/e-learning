@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { ArrowRight, BookOpen, Sparkles, TrendingUp } from "lucide-react";
-import { KognifyLogo } from "@/components/layout/logo";
+import { KiwiLogo } from "@/components/layout/logo";
 
 export default function AuthLayout({
   children,
@@ -15,7 +15,7 @@ export default function AuthLayout({
       <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1fr_460px]">
         <section className="hidden rounded-3xl border border-[#2f57ef]/15 bg-card/90 p-8 shadow-lg backdrop-blur lg:block">
           <Link href="/">
-            <KognifyLogo size="sm" />
+            <KiwiLogo size="sm" />
           </Link>
 
           <h1 className="mt-6 text-3xl font-bold leading-tight text-foreground">

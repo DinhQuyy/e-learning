@@ -16,12 +16,12 @@ const beVietnamPro = Be_Vietnam_Pro({
 
 export const metadata: Metadata = {
   title: {
-    default: "Kognify",
-    template: "%s | Kognify",
+    default: "Kiwi",
+    template: "%s | Kiwi",
   },
   description:
-    "Kognify — Nền tảng học trực tuyến hàng đầu Việt Nam. Nâng tầm nhận thức, học mọi lúc mọi nơi với các khóa học chất lượng cao.",
-  keywords: ["Kognify", "học trực tuyến", "e-learning", "khóa học online", "giáo dục", "học mọi lúc mọi nơi", "nền tảng học tập", "giáo dục trực tuyến"],
+    "Kiwi — Nền tảng học trực tuyến hàng đầu Việt Nam. Nâng tầm nhận thức, học mọi lúc mọi nơi với các khóa học chất lượng cao.",
+  keywords: ["Kiwi", "học trực tuyến", "e-learning", "khóa học online", "giáo dục", "học mọi lúc mọi nơi", "nền tảng học tập", "giáo dục trực tuyến"],
 };
 
 export default function RootLayout({

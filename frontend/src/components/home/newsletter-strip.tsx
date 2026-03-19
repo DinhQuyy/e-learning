@@ -52,17 +52,17 @@ export function NewsletterStrip({ reviewCount = 0 }: NewsletterStripProps) {
   return (
     <section className="py-14 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="learnify-newsletter rounded-3xl p-6 sm:p-8 lg:p-10">
+        <div className="kiwi-newsletter rounded-3xl p-6 sm:p-8 lg:p-10">
           <div className="grid items-center gap-6 lg:grid-cols-[1fr_auto]">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-[var(--learnify-heading)]">
+              <p className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-[var(--kiwi-heading)]">
                 <Mail className="size-3.5" />
                 Miễn phí — huỷ bất cứ lúc nào
               </p>
-              <h2 className="mt-4 text-2xl font-bold tracking-tight text-[var(--learnify-heading)] sm:text-3xl">
+              <h2 className="mt-4 text-2xl font-bold tracking-tight text-[var(--kiwi-heading)] sm:text-3xl">
                 Nhận ngay bí quyết học nhanh — miễn phí mỗi tuần
               </h2>
-              <p className="mt-2 text-sm text-(--learnify-body)">
+              <p className="mt-2 text-sm text-(--kiwi-body)">
                 Mỗi tuần một email — khóa học mới, mẹo nâng cao kỹ năng và ưu đãi chỉ dành riêng cho người đăng ký.
               </p>
             </div>
@@ -78,12 +78,12 @@ export function NewsletterStrip({ reviewCount = 0 }: NewsletterStripProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-(--learnify-heading) shadow-sm outline-none placeholder:text-(--learnify-body) focus:border-(--learnify-primary) focus:ring-2 focus:ring-(--learnify-primary)/20 disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-(--kiwi-heading) shadow-sm outline-none placeholder:text-(--kiwi-body) focus:border-(--kiwi-primary) focus:ring-2 focus:ring-(--kiwi-primary)/20 disabled:opacity-60"
               />
               <Button
                 type="submit"
                 disabled={loading}
-                className="learnify-btn-gradient h-11 rounded-xl px-5 text-sm font-semibold"
+                className="kiwi-btn-gradient h-11 rounded-xl px-5 text-sm font-semibold"
               >
                 {loading ? (
                   <Loader2 className="size-4 animate-spin" />

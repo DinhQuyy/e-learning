@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BookOpen, Mail, Phone, MapPin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { KognifyLogo } from "@/components/layout/logo";
+import { KiwiLogo } from "@/components/layout/logo";
 
 const aboutLinks = [
   { href: "/help", label: "Về chúng tôi" },
@@ -31,7 +31,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
             <Link href="/">
-              <KognifyLogo size="md" />
+              <KiwiLogo size="md" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Nền tảng học trực tuyến hàng đầu Việt Nam. Học mọi thứ, mọi lúc,
@@ -88,7 +88,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="size-4 shrink-0" />
-                <span>support@kognify.vn</span>
+                <span>support@kiwi.vn</span>
               </li>
             </ul>
           </div>
@@ -98,7 +98,7 @@ export function Footer() {
 
         <div className="flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Kognify. Tất cả quyền được bảo lưu.
+            &copy; {new Date().getFullYear()} Kiwi. Tất cả quyền được bảo lưu.
           </p>
           <div className="flex items-center gap-4">
             {aboutLinks.map((link) => (

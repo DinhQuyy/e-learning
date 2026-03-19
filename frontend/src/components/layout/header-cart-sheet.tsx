@@ -196,7 +196,7 @@ export function HeaderCartSheet() {
                         <div className="mt-2 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-[#2f57ef]">
-                              {coursePrice === 0 ? "Miễn phí" : formatPrice(coursePrice)}
+                              {formatPrice(coursePrice)}
                             </span>
                             {course.discount_price !== null &&
                               Number(course.discount_price) < Number(course.price ?? 0) && (
@@ -235,7 +235,7 @@ export function HeaderCartSheet() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Tổng tạm tính</span>
               <span className="text-lg font-bold">
-                {totalPrice === 0 ? "Miễn phí" : formatPrice(totalPrice)}
+                {formatPrice(totalPrice)}
               </span>
             </div>
             <Separator />

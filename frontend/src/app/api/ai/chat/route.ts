@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
         message,
         conversation_id: body?.conversation_id ? String(body.conversation_id) : undefined,
         course_id: body?.course_id ? String(body.course_id) : undefined,
+        lesson_id: body?.lesson_id ? String(body.lesson_id) : undefined,
         current_path: body?.current_path ? String(body.current_path) : undefined,
+        surface: body?.surface ? String(body.surface) : undefined,
       },
       chatResponseSchema
     );

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import re
 import unicodedata
@@ -13,7 +14,8 @@ from .models import ReferenceItem, RoleType
 def _strip_html(value: str | None) -> str:
     if not value:
         return ""
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value)).strip()
+    plain_text = re.sub(r"<[^>]+>", " ", value)
+    return re.sub(r"\s+", " ", html.unescape(plain_text)).strip()
 
 
 def _format_duration(seconds: int | None) -> str:
@@ -110,6 +112,48 @@ def _fetch_search_rows(role: RoleType, user_id: str) -> list[dict[str, Any]]:
     )
 
 
+def _fetch_lesson_rows(
+    role: RoleType,
+    user_id: str,
+    *,
+    course_id: str | None = None,
+) -> list[dict[str, Any]]:
+    acl_sql, acl_params = _build_acl(role, user_id)
+    course_filter_sql = ""
+    course_filter_params: list[Any] = []
+    if course_id:
+        course_filter_sql = " AND c.id = %s"
+        course_filter_params.append(course_id)
+
+    return fetch_all(
+        f"""
+        SELECT
+            l.id,
+            l.title,
+            l.slug,
+            l.status,
+            l.type,
+            l.duration,
+            l.is_free,
+            COALESCE(l.content, '') AS content,
+            m.id AS module_id,
+            COALESCE(m.title, '') AS module_title,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.slug AS course_slug,
+            c.status AS course_status
+        FROM lessons l
+        JOIN modules m ON m.id = l.module_id
+        JOIN courses c ON c.id = m.course_id
+        WHERE ({acl_sql})
+          AND (%s <> 'student' OR COALESCE(l.status, 'published') = 'published')
+          {course_filter_sql}
+        ORDER BY c.title ASC, m.sort ASC, l.sort ASC
+        """,
+        tuple([*acl_params, role, *course_filter_params]),
+    )
+
+
 def _score_course_match(query: str, row: dict[str, Any]) -> int:
     normalized_query = _normalize_search_text(query)
     if not normalized_query:
@@ -174,6 +218,68 @@ def _score_course_match(query: str, row: dict[str, Any]) -> int:
     return score
 
 
+def _score_lesson_match(query: str, row: dict[str, Any]) -> int:
+    normalized_query = _normalize_search_text(query)
+    if not normalized_query:
+        return 0
+
+    lesson_title_norm = _normalize_search_text(str(row.get("title") or ""))
+    lesson_slug_norm = _normalize_search_text(str(row.get("slug") or ""))
+    module_title_norm = _normalize_search_text(str(row.get("module_title") or ""))
+    course_title_norm = _normalize_search_text(str(row.get("course_title") or ""))
+    content_norm = _normalize_search_text(_strip_html(str(row.get("content") or "")))
+    tokens = _search_tokens(normalized_query)
+
+    if not any([lesson_title_norm, lesson_slug_norm, module_title_norm, course_title_norm, content_norm]):
+        return 0
+
+    score = 0
+    if lesson_title_norm == normalized_query:
+        score += 260
+    if lesson_slug_norm == normalized_query:
+        score += 240
+    if normalized_query in lesson_title_norm:
+        score += 170
+    if normalized_query in lesson_slug_norm:
+        score += 130
+    if normalized_query in module_title_norm:
+        score += 95
+    if normalized_query in course_title_norm:
+        score += 80
+    if normalized_query in content_norm:
+        score += 65
+    if lesson_title_norm.startswith(normalized_query):
+        score += 28
+
+    matched_tokens = 0
+    for token in tokens:
+        if token in lesson_title_norm:
+            score += 22
+            matched_tokens += 1
+        elif token in lesson_slug_norm:
+            score += 18
+            matched_tokens += 1
+        elif token in module_title_norm:
+            score += 14
+            matched_tokens += 1
+        elif token in course_title_norm:
+            score += 12
+            matched_tokens += 1
+        elif token in content_norm:
+            score += 8
+            matched_tokens += 1
+
+    if tokens and matched_tokens == len(tokens):
+        score += 35
+    elif matched_tokens > 0:
+        score += min(matched_tokens * 4, 16)
+
+    if score > 0 and str(row.get("status") or "") == "published":
+        score += 3
+
+    return score
+
+
 def _resolve_course_identifier(identifier: str, role: RoleType, user_id: str) -> dict[str, Any] | None:
     safe_identifier = identifier.strip()
     if not safe_identifier:
@@ -221,6 +327,82 @@ def _resolve_course_identifier(identifier: str, role: RoleType, user_id: str) ->
     }
 
 
+def _resolve_lesson_identifier(
+    identifier: str,
+    role: RoleType,
+    user_id: str,
+    *,
+    course_id: str | None = None,
+) -> dict[str, Any] | None:
+    safe_identifier = identifier.strip()
+    if not safe_identifier:
+        return None
+
+    acl_sql, acl_params = _build_acl(role, user_id)
+    course_filter_sql = ""
+    course_filter_params: list[Any] = []
+    if course_id:
+        course_filter_sql = " AND c.id = %s"
+        course_filter_params.append(course_id)
+
+    exact_match = fetch_one(
+        f"""
+        SELECT
+            l.id,
+            l.title,
+            l.slug,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.slug AS course_slug,
+            m.id AS module_id,
+            m.title AS module_title
+        FROM lessons l
+        JOIN modules m ON m.id = l.module_id
+        JOIN courses c ON c.id = m.course_id
+        WHERE ({acl_sql})
+          AND (%s <> 'student' OR COALESCE(l.status, 'published') = 'published')
+          AND (
+            l.id::text = %s
+            OR LOWER(l.slug) = LOWER(%s)
+          )
+          {course_filter_sql}
+        LIMIT 1
+        """,
+        tuple([*acl_params, role, safe_identifier, safe_identifier, *course_filter_params]),
+    )
+    if exact_match:
+        return exact_match
+
+    ranked_rows = sorted(
+        (
+            (score, row)
+            for row in _fetch_lesson_rows(role, user_id, course_id=course_id)
+            for score in [_score_lesson_match(safe_identifier, row)]
+            if score >= 90
+        ),
+        key=lambda item: (
+            item[0],
+            str(item[1].get("course_title") or ""),
+            str(item[1].get("module_title") or ""),
+        ),
+        reverse=True,
+    )
+    if not ranked_rows:
+        return None
+
+    best_row = ranked_rows[0][1]
+    return {
+        "id": str(best_row["id"]),
+        "title": str(best_row["title"]),
+        "slug": str(best_row["slug"]),
+        "course_id": str(best_row["course_id"]),
+        "course_title": str(best_row["course_title"]),
+        "course_slug": str(best_row["course_slug"]),
+        "module_id": str(best_row["module_id"]),
+        "module_title": str(best_row["module_title"]),
+    }
+
+
 def derive_course_id_from_path(path: str | None, role: RoleType, user_id: str) -> str | None:
     safe_path = str(path or "").strip()
     if not safe_path:
@@ -261,6 +443,101 @@ def lookup_course_context(course_id: str | None, role: RoleType, user_id: str) -
         "course_id": str(row["id"]),
         "course_title": str(row["title"]),
         "course_slug": str(row["slug"]),
+    }
+
+
+def lookup_lesson_context(path: str | None, role: RoleType, user_id: str) -> dict[str, Any] | None:
+    safe_path = str(path or "").strip()
+    match = re.match(r"^/learn/([^/?#]+)/([^/?#]+)", safe_path)
+    if not match:
+        return None
+
+    course_slug = match.group(1).strip()
+    lesson_slug = match.group(2).strip()
+    if not course_slug or not lesson_slug:
+        return None
+
+    acl_sql, acl_params = _build_acl(role, user_id)
+    row = fetch_one(
+        f"""
+        SELECT
+            l.id AS lesson_id,
+            l.title AS lesson_title,
+            l.slug AS lesson_slug,
+            m.id AS module_id,
+            COALESCE(m.title, '') AS module_title,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.slug AS course_slug
+        FROM lessons l
+        JOIN modules m ON m.id = l.module_id
+        JOIN courses c ON c.id = m.course_id
+        WHERE ({acl_sql})
+          AND (%s <> 'student' OR COALESCE(l.status, 'published') = 'published')
+          AND LOWER(c.slug) = LOWER(%s)
+          AND LOWER(l.slug) = LOWER(%s)
+        LIMIT 1
+        """,
+        tuple([*acl_params, role, course_slug, lesson_slug]),
+    )
+    if not row:
+        return None
+
+    return {
+        "lesson_id": str(row["lesson_id"]),
+        "lesson_title": str(row["lesson_title"]),
+        "lesson_slug": str(row["lesson_slug"]),
+        "module_id": str(row["module_id"]),
+        "module_title": str(row["module_title"]),
+        "course_id": str(row["course_id"]),
+        "course_title": str(row["course_title"]),
+        "course_slug": str(row["course_slug"]),
+    }
+
+
+def lookup_lesson_context_by_id(
+    lesson_id: str | None,
+    role: RoleType,
+    user_id: str,
+) -> dict[str, Any] | None:
+    safe_lesson_id = str(lesson_id or "").strip()
+    if not safe_lesson_id:
+        return None
+
+    acl_sql, acl_params = _build_acl(role, user_id)
+    row = fetch_one(
+        f"""
+        SELECT
+            l.id AS lesson_id,
+            l.title AS lesson_title,
+            l.slug AS lesson_slug,
+            m.id AS module_id,
+            COALESCE(m.title, '') AS module_title,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.slug AS course_slug
+        FROM lessons l
+        JOIN modules m ON m.id = l.module_id
+        JOIN courses c ON c.id = m.course_id
+        WHERE ({acl_sql})
+          AND (%s <> 'student' OR COALESCE(l.status, 'published') = 'published')
+          AND l.id = %s
+        LIMIT 1
+        """,
+        tuple([*acl_params, role, safe_lesson_id]),
+    )
+    if not row:
+        return None
+
+    return {
+        "lesson_id": str(row["lesson_id"]),
+        "lesson_title": str(row["lesson_title"]),
+        "lesson_slug": str(row["lesson_slug"]),
+        "module_id": str(row["module_id"]),
+        "module_title": str(row["module_title"]),
+        "course_id": str(row["course_id"]),
+        "course_title": str(row["course_title"]),
+        "course_slug": str(row["course_slug"]),
     }
 
 
@@ -590,6 +867,194 @@ def _get_course_outline(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     return ToolResult(payload=payload, references=references)
 
 
+def _search_lessons(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    query = str(args.get("query") or "").strip()
+    limit = min(max(int(args.get("limit") or 5), 1), 5)
+    course_identifier = str(args.get("course_id_or_slug") or "").strip()
+    if not query:
+        return ToolResult(payload={"query": query, "matches": []}, references=[])
+
+    resolved_course = (
+        _resolve_course_identifier(course_identifier, ctx.role, ctx.user_id)
+        if course_identifier
+        else None
+    )
+    course_id = str(resolved_course["id"]) if resolved_course else None
+
+    ranked_rows = sorted(
+        (
+            (score, row)
+            for row in _fetch_lesson_rows(ctx.role, ctx.user_id, course_id=course_id)
+            for score in [_score_lesson_match(query, row)]
+            if score > 0
+        ),
+        key=lambda item: (
+            item[0],
+            str(item[1].get("course_title") or ""),
+            str(item[1].get("module_title") or ""),
+        ),
+        reverse=True,
+    )[:limit]
+
+    matches: list[dict[str, Any]] = []
+    references: list[ReferenceItem] = []
+    for _, row in ranked_rows:
+        lesson_title = str(row.get("title") or "").strip()
+        lesson_slug = str(row.get("slug") or "").strip()
+        course_slug = str(row.get("course_slug") or "").strip()
+        if not lesson_title or not lesson_slug or not course_slug:
+            continue
+
+        description = _strip_html(str(row.get("content") or ""))[:260] or None
+        subtitle = " | ".join(
+            part
+            for part in [
+                str(row.get("course_title") or "").strip(),
+                str(row.get("module_title") or "").strip(),
+                _format_duration(row.get("duration")),
+            ]
+            if part
+        )
+        lesson_url = _lesson_url(course_slug, lesson_slug)
+
+        matches.append(
+            {
+                "id": str(row["id"]),
+                "title": lesson_title,
+                "slug": lesson_slug,
+                "status": str(row.get("status") or ""),
+                "type": str(row.get("type") or ""),
+                "duration": int(row.get("duration") or 0),
+                "duration_label": _format_duration(row.get("duration")),
+                "is_free": bool(row.get("is_free")),
+                "module_id": str(row.get("module_id") or ""),
+                "module_title": str(row.get("module_title") or ""),
+                "course_id": str(row.get("course_id") or ""),
+                "course_title": str(row.get("course_title") or ""),
+                "course_slug": course_slug,
+                "summary": description or "",
+                "url": lesson_url,
+            }
+        )
+        references.append(
+            ReferenceItem(
+                kind="lesson",
+                id=str(row["id"]),
+                title=lesson_title,
+                url=lesson_url,
+                subtitle=subtitle or None,
+                description=description,
+            )
+        )
+
+    return ToolResult(
+        payload={
+            "query": query,
+            "course_filter": resolved_course,
+            "match_count": len(matches),
+            "matches": matches,
+        },
+        references=references,
+    )
+
+
+def _get_lesson_content(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    identifier = str(args.get("lesson_id_or_slug") or "").strip()
+    course_identifier = str(args.get("course_id_or_slug") or "").strip()
+    if not identifier:
+        return ToolResult(payload={"lesson": None}, references=[])
+
+    resolved_course = (
+        _resolve_course_identifier(course_identifier, ctx.role, ctx.user_id)
+        if course_identifier
+        else None
+    )
+    resolved_lesson = _resolve_lesson_identifier(
+        identifier,
+        ctx.role,
+        ctx.user_id,
+        course_id=str(resolved_course["id"]) if resolved_course else None,
+    )
+    if not resolved_lesson:
+        return ToolResult(payload={"lesson": None}, references=[])
+
+    acl_sql, acl_params = _build_acl(ctx.role, ctx.user_id)
+    row = fetch_one(
+        f"""
+        SELECT
+            l.id,
+            l.title,
+            l.slug,
+            l.status,
+            l.type,
+            l.duration,
+            l.is_free,
+            COALESCE(l.content, '') AS content,
+            m.id AS module_id,
+            COALESCE(m.title, '') AS module_title,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.slug AS course_slug
+        FROM lessons l
+        JOIN modules m ON m.id = l.module_id
+        JOIN courses c ON c.id = m.course_id
+        WHERE ({acl_sql})
+          AND (%s <> 'student' OR COALESCE(l.status, 'published') = 'published')
+          AND l.id = %s
+        LIMIT 1
+        """,
+        tuple([*acl_params, ctx.role, resolved_lesson["id"]]),
+    )
+    if not row:
+        return ToolResult(payload={"lesson": None}, references=[])
+
+    course_slug = str(row.get("course_slug") or "")
+    lesson_slug = str(row.get("slug") or "")
+    module_id = str(row.get("module_id") or "")
+    lesson_text = _strip_html(str(row.get("content") or ""))
+    lesson = {
+        "id": str(row["id"]),
+        "title": str(row["title"]),
+        "slug": lesson_slug,
+        "status": str(row.get("status") or ""),
+        "type": str(row.get("type") or ""),
+        "duration": int(row.get("duration") or 0),
+        "duration_label": _format_duration(row.get("duration")),
+        "is_free": bool(row.get("is_free")),
+        "course": {
+            "id": str(row.get("course_id") or ""),
+            "title": str(row.get("course_title") or ""),
+            "slug": course_slug,
+            "url": _course_url(course_slug) if course_slug else None,
+        },
+        "module": {
+            "id": module_id,
+            "title": str(row.get("module_title") or ""),
+            "url": _module_url(course_slug, module_id) if course_slug and module_id else None,
+        },
+        "url": _lesson_url(course_slug, lesson_slug) if course_slug and lesson_slug else None,
+        "content_text": lesson_text,
+        "content_length": len(lesson_text),
+        "content_word_count": len([token for token in lesson_text.split(" ") if token]),
+    }
+    references = [
+        ReferenceItem(
+            kind="lesson",
+            id=lesson["id"],
+            title=lesson["title"],
+            url=lesson["url"] or _lesson_url(course_slug, lesson_slug),
+            subtitle=" | ".join(
+                part
+                for part in [lesson["course"]["title"], lesson["module"]["title"], lesson["duration_label"]]
+                if part
+            )
+            or None,
+            description=lesson_text[:260] or None,
+        )
+    ]
+    return ToolResult(payload={"lesson": lesson}, references=references)
+
+
 TOOL_DEFINITIONS: tuple[ToolDefinition, ...] = (
     ToolDefinition(
         name="search_courses",
@@ -635,6 +1100,50 @@ TOOL_DEFINITIONS: tuple[ToolDefinition, ...] = (
             "additionalProperties": False,
         },
         executor=_get_course_outline,
+    ),
+    ToolDefinition(
+        name="search_lessons",
+        description="Search accessible lessons by lesson title, module title, course title, or lesson body content.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "course_id_or_slug": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {"type": "null"},
+                    ]
+                },
+                "limit": {
+                    "anyOf": [
+                        {"type": "integer", "minimum": 1, "maximum": 5},
+                        {"type": "null"},
+                    ]
+                },
+            },
+            "required": ["query", "course_id_or_slug", "limit"],
+            "additionalProperties": False,
+        },
+        executor=_search_lessons,
+    ),
+    ToolDefinition(
+        name="get_lesson_content",
+        description="Get full accessible lesson body text and metadata for deep analysis by lesson id or slug.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "lesson_id_or_slug": {"type": "string"},
+                "course_id_or_slug": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {"type": "null"},
+                    ]
+                },
+            },
+            "required": ["lesson_id_or_slug", "course_id_or_slug"],
+            "additionalProperties": False,
+        },
+        executor=_get_lesson_content,
     ),
 )
 

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 /**
  * Directus Bootstrap Script — E-Learning Platform
@@ -44,6 +44,10 @@ const WRITE_STATIC_TOKEN_FILE =
   args.has("--write-static-token-file") ||
   args.has("--write-token-file") ||
   args.has("--write-env");
+const ROTATE_STATIC_TOKEN =
+  WRITE_STATIC_TOKEN_FILE ||
+  args.has("--rotate-static-token") ||
+  args.has("--refresh-static-token");
 
 // ─── HTTP Helpers ────────────────────────────────────────────────────────────
 
@@ -113,7 +117,7 @@ function printSummary({ staticToken, wroteEnvFile }) {
     "  Student:    student@elearning.dev / Student@123",
     "",
     `  Directus Admin: ${BASE_URL}`,
-    `  Static token: ${staticToken}`,
+    `  Static token: ${staticToken || "(unchanged)"}`,
   ];
 
   if (wroteEnvFile) {
@@ -1252,7 +1256,548 @@ async function createCollections() {
   });
   log("✓", "Fields & relations: quiz_attempts");
 
-  // ── 4.13 notifications ──
+  // ── 4.13 assignments ──
+  await createCollection("assignments", { icon: "assignment_add", note: "Bài tập theo bài học" });
+  await addField("assignments", {
+    field: "lesson_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Bài học" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignments", {
+    field: "title",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Tên bài tập" },
+    schema: { max_length: 255, is_nullable: false },
+  });
+  await addField("assignments", {
+    field: "instructions",
+    type: "text",
+    meta: { interface: "input-rich-text-html", required: true, note: "Hướng dẫn làm bài" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignments", {
+    field: "due_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Hạn nộp" },
+    schema: {},
+  });
+  await addField("assignments", {
+    field: "max_score",
+    type: "integer",
+    meta: { interface: "input", note: "Điểm tối đa" },
+    schema: { default_value: 100 },
+  });
+  await addField("assignments", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái",
+      options: {
+        choices: [
+          { text: "Bản nháp", value: "draft" },
+          { text: "Đã xuất bản", value: "published" },
+          { text: "Lưu trữ", value: "archived" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "draft" },
+  });
+  await addRelation({
+    collection: "assignments",
+    field: "lesson_id",
+    related_collection: "lessons",
+    meta: { one_field: "assignments" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: assignments");
+
+  // ── 4.14 assignment_rubrics ──
+  await createCollection("assignment_rubrics", { icon: "rule", note: "Rubric chấm bài tập" });
+  await addField("assignment_rubrics", {
+    field: "assignment_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Bài tập" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_rubrics", {
+    field: "title",
+    type: "string",
+    meta: { interface: "input", note: "Tên rubric" },
+    schema: { max_length: 255, default_value: "Rubric" },
+  });
+  await addRelation({
+    collection: "assignment_rubrics",
+    field: "assignment_id",
+    related_collection: "assignments",
+    meta: { one_field: "rubric" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: assignment_rubrics");
+
+  // ── 4.15 assignment_rubric_criteria ──
+  await createCollection("assignment_rubric_criteria", {
+    icon: "checklist",
+    note: "Tiêu chí rubric bài tập",
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "rubric_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Rubric" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "title",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Tên tiêu chí" },
+    schema: { max_length: 255, is_nullable: false },
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "description",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Mô tả tiêu chí" },
+    schema: {},
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "max_points",
+    type: "integer",
+    meta: { interface: "input", note: "Điểm tối đa" },
+    schema: { default_value: 10 },
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "scoring_guidance",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Gợi ý chấm điểm" },
+    schema: {},
+  });
+  await addField("assignment_rubric_criteria", {
+    field: "sort",
+    type: "integer",
+    meta: { interface: "input", note: "Thứ tự" },
+    schema: { default_value: 0 },
+  });
+  await addRelation({
+    collection: "assignment_rubric_criteria",
+    field: "rubric_id",
+    related_collection: "assignment_rubrics",
+    meta: { one_field: "criteria", sort_field: "sort" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: assignment_rubric_criteria");
+
+  // ── 4.16 assignment_submissions ──
+  await createCollection("assignment_submissions", {
+    icon: "upload_file",
+    note: "Bài nộp của học viên",
+  });
+  await addField("assignment_submissions", {
+    field: "assignment_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Bài tập" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_submissions", {
+    field: "user_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Học viên" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_submissions", {
+    field: "body_text",
+    type: "text",
+    meta: { interface: "input-rich-text-html", required: true, note: "Nội dung bài nộp" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_submissions", {
+    field: "reference_url",
+    type: "string",
+    meta: { interface: "input", note: "Liên kết tham khảo / demo" },
+    schema: { max_length: 500 },
+  });
+  await addField("assignment_submissions", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái bài nộp",
+      options: {
+        choices: [
+          { text: "Đã nộp", value: "submitted" },
+          { text: "Đã chấm", value: "reviewed" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "submitted" },
+  });
+  await addField("assignment_submissions", {
+    field: "submitted_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thời điểm nộp" },
+    schema: {},
+  });
+  await addField("assignment_submissions", {
+    field: "reviewed_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thời điểm được chấm" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "assignment_submissions",
+    field: "assignment_id",
+    related_collection: "assignments",
+    meta: { one_field: "submissions" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "assignment_submissions",
+    field: "user_id",
+    related_collection: "directus_users",
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: assignment_submissions");
+
+  // ── 4.17 assignment_reviews ──
+  await createCollection("assignment_reviews", {
+    icon: "grading",
+    note: "Kết quả chấm bài tập",
+  });
+  await addField("assignment_reviews", {
+    field: "submission_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Bài nộp" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_reviews", {
+    field: "reviewer_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Người chấm" },
+    schema: { is_nullable: false },
+  });
+  await addField("assignment_reviews", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái review",
+      options: {
+        choices: [
+          { text: "Bản nháp", value: "draft" },
+          { text: "Hoàn tất", value: "finalized" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "draft" },
+  });
+  await addField("assignment_reviews", {
+    field: "final_score",
+    type: "decimal",
+    meta: { interface: "input", note: "Tổng điểm cuối" },
+    schema: { numeric_precision: 6, numeric_scale: 2, default_value: 0 },
+  });
+  await addField("assignment_reviews", {
+    field: "criterion_scores",
+    type: "json",
+    meta: { interface: "input-code", options: { language: "json" }, note: "Điểm theo từng tiêu chí" },
+    schema: {},
+  });
+  await addField("assignment_reviews", {
+    field: "final_feedback",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Nhận xét cuối" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "assignment_reviews",
+    field: "submission_id",
+    related_collection: "assignment_submissions",
+    meta: { one_field: "review" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "assignment_reviews",
+    field: "reviewer_id",
+    related_collection: "directus_users",
+    schema: { on_delete: "SET NULL" },
+  });
+  log("✓", "Fields & relations: assignment_reviews");
+
+  // ── 4.18 ai_review_artifacts ──
+  await createCollection("ai_review_artifacts", {
+    icon: "smart_toy",
+    note: "Gợi ý AI cho chấm bài",
+  });
+  await addField("ai_review_artifacts", {
+    field: "submission_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Bài nộp" },
+    schema: { is_nullable: false },
+  });
+  await addField("ai_review_artifacts", {
+    field: "model",
+    type: "string",
+    meta: { interface: "input", note: "Model AI" },
+    schema: { max_length: 120, is_nullable: false },
+  });
+  await addField("ai_review_artifacts", {
+    field: "prompt_version",
+    type: "string",
+    meta: { interface: "input", note: "Phiên bản prompt" },
+    schema: { max_length: 120, is_nullable: false },
+  });
+  await addField("ai_review_artifacts", {
+    field: "payload",
+    type: "json",
+    meta: { interface: "input-code", options: { language: "json" }, note: "Kết quả AI có cấu trúc" },
+    schema: {},
+  });
+  await addField("ai_review_artifacts", {
+    field: "applied_state",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái áp dụng",
+      options: {
+        choices: [
+          { text: "Chưa áp dụng", value: "pending" },
+          { text: "Đã áp dụng", value: "applied" },
+          { text: "Bỏ qua", value: "ignored" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "pending" },
+  });
+  await addRelation({
+    collection: "ai_review_artifacts",
+    field: "submission_id",
+    related_collection: "assignment_submissions",
+    meta: { one_field: "ai_artifacts" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: ai_review_artifacts");
+
+  // ── 4.19 ai_reference_topics ──
+  await createCollection("ai_reference_topics", {
+    icon: "label",
+    note: "Chủ đề tham khảo AI cho nguồn ngoài đã duyệt",
+  });
+  await addField("ai_reference_topics", {
+    field: "name",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Tên chủ đề" },
+    schema: { max_length: 255, is_nullable: false },
+  });
+  await addField("ai_reference_topics", {
+    field: "slug",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Slug chủ đề" },
+    schema: { max_length: 255, is_nullable: false, is_unique: true },
+  });
+  await addField("ai_reference_topics", {
+    field: "keywords",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Từ khóa match cho AI references" },
+    schema: {},
+  });
+  await addField("ai_reference_topics", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái",
+      options: {
+        choices: [
+          { text: "Nháp", value: "draft" },
+          { text: "Xuất bản", value: "published" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "draft", is_nullable: false },
+  });
+  log("✓", "Fields: ai_reference_topics");
+
+  // ── 4.20 ai_reference_resources ──
+  await createCollection("ai_reference_resources", {
+    icon: "link",
+    note: "Nguồn ngoài đã duyệt cho lesson references",
+  });
+  await addField("ai_reference_resources", {
+    field: "title",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Tiêu đề" },
+    schema: { max_length: 255, is_nullable: false },
+  });
+  await addField("ai_reference_resources", {
+    field: "url",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Đường dẫn nguồn ngoài" },
+    schema: { max_length: 500, is_nullable: false },
+  });
+  await addField("ai_reference_resources", {
+    field: "source_name",
+    type: "string",
+    meta: { interface: "input", note: "Tên nguồn" },
+    schema: { max_length: 255 },
+  });
+  await addField("ai_reference_resources", {
+    field: "summary",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Mô tả ngắn" },
+    schema: {},
+  });
+  await addField("ai_reference_resources", {
+    field: "language",
+    type: "string",
+    meta: { interface: "input", note: "Ngôn ngữ" },
+    schema: { max_length: 80 },
+  });
+  await addField("ai_reference_resources", {
+    field: "difficulty",
+    type: "string",
+    meta: { interface: "input", note: "Độ khó" },
+    schema: { max_length: 80 },
+  });
+  await addField("ai_reference_resources", {
+    field: "resource_type",
+    type: "string",
+    meta: { interface: "input", note: "Loại tài liệu" },
+    schema: { max_length: 80 },
+  });
+  await addField("ai_reference_resources", {
+    field: "intent_hint",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Nhóm intent ưu tiên",
+      options: {
+        choices: [
+          { text: "Nền tảng", value: "foundations" },
+          { text: "Đọc thêm", value: "read_more" },
+          { text: "Ví dụ", value: "examples" },
+          { text: "Nâng cao", value: "advanced" },
+        ],
+      },
+    },
+    schema: { max_length: 40 },
+  });
+  await addField("ai_reference_resources", {
+    field: "provenance_note",
+    type: "text",
+    meta: { interface: "input-multiline", note: "Ghi chú nguồn gốc / lý do duyệt" },
+    schema: {},
+  });
+  await addField("ai_reference_resources", {
+    field: "reviewed_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Ngày duyệt" },
+    schema: {},
+  });
+  await addField("ai_reference_resources", {
+    field: "status",
+    type: "string",
+    meta: {
+      interface: "select-dropdown",
+      note: "Trạng thái",
+      options: {
+        choices: [
+          { text: "Nháp", value: "draft" },
+          { text: "Xuất bản", value: "published" },
+        ],
+      },
+    },
+    schema: { max_length: 20, default_value: "draft", is_nullable: false },
+  });
+  log("✓", "Fields: ai_reference_resources");
+
+  // ── 4.21 ai_reference_resource_topics ──
+  await createCollection("ai_reference_resource_topics", {
+    icon: "join_inner",
+    note: "Liên kết nguồn ngoài AI và chủ đề",
+  });
+  await addField("ai_reference_resource_topics", {
+    field: "resource_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Nguồn tài liệu" },
+    schema: { is_nullable: false },
+  });
+  await addField("ai_reference_resource_topics", {
+    field: "topic_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Chủ đề" },
+    schema: { is_nullable: false },
+  });
+  await addRelation({
+    collection: "ai_reference_resource_topics",
+    field: "resource_id",
+    related_collection: "ai_reference_resources",
+    meta: { one_field: "topics" },
+    schema: { on_delete: "CASCADE" },
+  });
+  await addRelation({
+    collection: "ai_reference_resource_topics",
+    field: "topic_id",
+    related_collection: "ai_reference_topics",
+    meta: { one_field: "resources" },
+    schema: { on_delete: "CASCADE" },
+  });
+  log("✓", "Fields & relations: ai_reference_resource_topics");
+
+  // ── 4.22 ai_event_logs ──
+  await createCollection("ai_event_logs", {
+    icon: "analytics",
+    note: "Telemetry AI đã chuẩn hóa cho báo cáo",
+  });
+  await addField("ai_event_logs", {
+    field: "event_name",
+    type: "string",
+    meta: { interface: "input", required: true, note: "Tên sự kiện" },
+    schema: { max_length: 120, is_nullable: false },
+  });
+  await addField("ai_event_logs", {
+    field: "surface",
+    type: "string",
+    meta: { interface: "input", note: "AI surface" },
+    schema: { max_length: 80 },
+  });
+  await addField("ai_event_logs", {
+    field: "role",
+    type: "string",
+    meta: { interface: "input", note: "Vai trò người dùng" },
+    schema: { max_length: 40 },
+  });
+  await addField("ai_event_logs", {
+    field: "current_path",
+    type: "string",
+    meta: { interface: "input", note: "Đường dẫn hiện tại" },
+    schema: { max_length: 500 },
+  });
+  await addField("ai_event_logs", {
+    field: "payload_json",
+    type: "json",
+    meta: { interface: "input-code", options: { language: "json" }, note: "Payload telemetry" },
+    schema: {},
+  });
+  await addField("ai_event_logs", {
+    field: "created_at",
+    type: "timestamp",
+    meta: { interface: "datetime", note: "Thời điểm sự kiện" },
+    schema: {},
+  });
+  await addField("ai_event_logs", {
+    field: "user_id",
+    type: "uuid",
+    meta: { interface: "select-dropdown-m2o", special: ["m2o"], note: "Người dùng" },
+    schema: {},
+  });
+  await addRelation({
+    collection: "ai_event_logs",
+    field: "user_id",
+    related_collection: "directus_users",
+    schema: { on_delete: "SET NULL" },
+  });
+  log("✓", "Fields & relations: ai_event_logs");
+
+  // ── 4.23 notifications ──
   await createCollection("notifications", { icon: "notifications", note: "Thông báo" });
   await addField("notifications", {
     field: "user_id",
@@ -1788,26 +2333,81 @@ async function createCollections() {
 async function setPermissions() {
   section("5. Permissions");
 
-  // Load existing permissions to avoid duplicates
-  const existingPerms = await get("/permissions?fields=id,policy,collection,action&limit=-1");
-  const permSet = new Set();
+  // Load existing permissions so bootstrap can create missing rules
+  // and update stale ones to the desired source-of-truth config.
+  const existingPerms = await get(
+    "/permissions?fields=id,policy,collection,action,permissions,validation,presets,fields&limit=-1"
+  );
+  const permMap = new Map();
   const perms = Array.isArray(existingPerms) ? existingPerms : [];
   for (const p of perms) {
-    if (p.policy) permSet.add(`${p.policy}:${p.collection}:${p.action}`);
+    if (p.policy) permMap.set(`${p.policy}:${p.collection}:${p.action}`, p);
   }
 
-  // Helper: create a permission entry (Directus 11 uses policy, not role)
+  function normalizePermissionValue(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizePermissionValue(item));
+    }
+
+    if (value && typeof value === "object") {
+      return Object.keys(value)
+        .sort()
+        .reduce((acc, key) => {
+          acc[key] = normalizePermissionValue(value[key]);
+          return acc;
+        }, {});
+    }
+
+    return value ?? null;
+  }
+
+  function buildPermissionPayload(opts = {}) {
+    return {
+      permissions: null,
+      validation: null,
+      presets: null,
+      fields: null,
+      ...opts,
+    };
+  }
+
+  function isSamePermissionConfig(existing, desired) {
+    return (
+      JSON.stringify(normalizePermissionValue(existing?.permissions)) ===
+        JSON.stringify(normalizePermissionValue(desired.permissions)) &&
+      JSON.stringify(normalizePermissionValue(existing?.validation)) ===
+        JSON.stringify(normalizePermissionValue(desired.validation)) &&
+      JSON.stringify(normalizePermissionValue(existing?.presets)) ===
+        JSON.stringify(normalizePermissionValue(desired.presets)) &&
+      JSON.stringify(normalizePermissionValue(existing?.fields)) ===
+        JSON.stringify(normalizePermissionValue(desired.fields))
+    );
+  }
+
+  // Helper: create or update a permission entry (Directus 11 uses policy, not role)
   async function perm(policy, collection, action, opts = {}) {
     const key = `${policy}:${collection}:${action}`;
-    if (permSet.has(key)) return;
+    const payload = buildPermissionPayload(opts);
+    const existing = permMap.get(key);
+
+    if (existing) {
+      if (isSamePermissionConfig(existing, payload)) return;
+
+      await api("PATCH", `/permissions/${existing.id}`, payload);
+      permMap.set(key, { ...existing, ...payload });
+      log("~", `Permission synced: ${collection}.${action}`);
+      return;
+    }
+
     try {
       await post("/permissions", {
         policy,
         collection,
         action,
-        ...opts,
+        ...payload,
       });
-      permSet.add(key);
+      permMap.set(key, { policy, collection, action, ...payload });
+      log("✓", `Permission created: ${collection}.${action}`);
     } catch (e) {
       if (e.message.includes("already") || e.message.includes("duplicate")) return;
       throw e;
@@ -1829,7 +2429,7 @@ async function setPermissions() {
   await perm(P, "courses_instructors", "read", { fields: ["*"] });
   // Public: read user profiles (limited fields for instructor display)
   await perm(P, "directus_users", "read", {
-    fields: ["id", "first_name", "last_name", "avatar", "bio", "headline"],
+    fields: ["id", "first_name", "last_name", "avatar", "bio", "headline", "social_links"],
   });
   // Public: read reviews (approved only)
   await perm(P, "reviews", "read", {
@@ -1892,6 +2492,92 @@ async function setPermissions() {
   // Student: quiz_attempts
   await perm(S, "quiz_attempts", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
   await perm(S, "quiz_attempts", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
+
+  // Student: assignments and own submissions/reviews
+  await perm(S, "assignments", "read", {
+    permissions: {
+      status: { _eq: "published" },
+      lesson_id: {
+        module_id: {
+          course_id: {
+            enrollments: {
+              user_id: { _eq: "$CURRENT_USER" },
+            },
+          },
+        },
+      },
+    },
+    fields: ["*", "rubric", "submissions"],
+  });
+  await perm(S, "assignment_rubrics", "read", {
+    permissions: {
+      assignment_id: {
+        status: { _eq: "published" },
+        lesson_id: {
+          module_id: {
+            course_id: {
+              enrollments: {
+                user_id: { _eq: "$CURRENT_USER" },
+              },
+            },
+          },
+        },
+      },
+    },
+    fields: ["*", "criteria"],
+  });
+  await perm(S, "assignment_rubric_criteria", "read", {
+    permissions: {
+      rubric_id: {
+        assignment_id: {
+          status: { _eq: "published" },
+          lesson_id: {
+            module_id: {
+              course_id: {
+                enrollments: {
+                  user_id: { _eq: "$CURRENT_USER" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    fields: "*",
+  });
+  await perm(S, "assignment_submissions", "create", {
+    fields: "*",
+    validation: {
+      user_id: { _eq: "$CURRENT_USER" },
+      assignment_id: {
+        status: { _eq: "published" },
+        lesson_id: {
+          module_id: {
+            course_id: {
+              enrollments: {
+                user_id: { _eq: "$CURRENT_USER" },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  await perm(S, "assignment_submissions", "read", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: ["*", "review", "ai_artifacts"],
+  });
+  await perm(S, "assignment_submissions", "update", {
+    permissions: { user_id: { _eq: "$CURRENT_USER" } },
+    fields: ["body_text", "reference_url", "submitted_at", "status"],
+  });
+  await perm(S, "assignment_reviews", "read", {
+    permissions: {
+      submission_id: { user_id: { _eq: "$CURRENT_USER" } },
+      status: { _eq: "finalized" },
+    },
+    fields: "*",
+  });
 
   // Student: own profile
   await perm(S, "directus_users", "read", {
@@ -2098,6 +2784,69 @@ async function setPermissions() {
     permissions: { quiz_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
   });
 
+  // Instructor: assignments and reviews in owned courses
+  await perm(I, "assignments", "create", { fields: "*" });
+  await perm(I, "assignments", "read", {
+    permissions: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } },
+    fields: ["*", "rubric", "submissions"],
+  });
+  await perm(I, "assignments", "update", {
+    permissions: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } },
+    fields: "*",
+  });
+  await perm(I, "assignments", "delete", {
+    permissions: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } },
+  });
+
+  await perm(I, "assignment_rubrics", "create", { fields: "*" });
+  await perm(I, "assignment_rubrics", "read", {
+    permissions: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
+    fields: ["*", "criteria"],
+  });
+  await perm(I, "assignment_rubrics", "update", {
+    permissions: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "assignment_rubrics", "delete", {
+    permissions: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
+  });
+
+  await perm(I, "assignment_rubric_criteria", "create", { fields: "*" });
+  await perm(I, "assignment_rubric_criteria", "read", {
+    permissions: { rubric_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "assignment_rubric_criteria", "update", {
+    permissions: { rubric_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "assignment_rubric_criteria", "delete", {
+    permissions: { rubric_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+  });
+
+  await perm(I, "assignment_submissions", "read", {
+    permissions: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } },
+    fields: ["*", "review", "ai_artifacts"],
+  });
+  await perm(I, "assignment_reviews", "create", { fields: "*" });
+  await perm(I, "assignment_reviews", "read", {
+    permissions: { submission_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "assignment_reviews", "update", {
+    permissions: { submission_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "ai_review_artifacts", "create", { fields: "*" });
+  await perm(I, "ai_review_artifacts", "read", {
+    permissions: { submission_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: "*",
+  });
+  await perm(I, "ai_review_artifacts", "update", {
+    permissions: { submission_id: { assignment_id: { lesson_id: { module_id: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } } } } },
+    fields: ["applied_state"],
+  });
+
   // Instructor: notifications (own)
   await perm(I, "notifications", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
   await perm(I, "notifications", "update", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: ["is_read"] });
@@ -2132,14 +2881,30 @@ async function setPermissions() {
   await perm(I, "wishlists", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
   await perm(I, "wishlists", "delete", { permissions: { user_id: { _eq: "$CURRENT_USER" } } });
 
-  // Instructor: orders (own)
+  // Instructor: own purchases + orders containing instructor-owned courses
   await perm(I, "orders", "create", { fields: "*", validation: { user_id: { _eq: "$CURRENT_USER" } } });
-  await perm(I, "orders", "read", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: "*" });
+  await perm(I, "orders", "read", {
+    permissions: {
+      _or: [
+        { user_id: { _eq: "$CURRENT_USER" } },
+        { items: { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } } },
+      ],
+    },
+    fields: "*",
+  });
   await perm(I, "orders", "update", { permissions: { user_id: { _eq: "$CURRENT_USER" } }, fields: ["status", "paid_at", "payment_ref"] });
 
-  // Instructor: order_items (own orders)
+  // Instructor: own purchases + revenue rows for instructor-owned courses
   await perm(I, "order_items", "create", { fields: "*" });
-  await perm(I, "order_items", "read", { permissions: { order_id: { user_id: { _eq: "$CURRENT_USER" } } }, fields: "*" });
+  await perm(I, "order_items", "read", {
+    permissions: {
+      _or: [
+        { order_id: { user_id: { _eq: "$CURRENT_USER" } } },
+        { course_id: { instructors: { user_id: { _eq: "$CURRENT_USER" } } } },
+      ],
+    },
+    fields: "*",
+  });
 
   log("✓", "Instructor permissions set");
 }
@@ -2473,8 +3238,13 @@ async function safeCreate(collection, data) {
 
 // ─── 7. Static Token ─────────────────────────────────────────────────────────
 
-async function setupStaticToken({ writeFile } = {}) {
+async function setupStaticToken({ writeFile, rotate } = {}) {
   section("7. Static Token");
+
+  if (!rotate) {
+    log("-", "Skip rotating static token (use --rotate-static-token or --write-static-token-file)");
+    return null;
+  }
 
   // Generate random token
   const { randomBytes } = await import("crypto");
@@ -2559,7 +3329,10 @@ async function main() {
   await createCollections();
   await setPermissions();
   await seedData();
-  const staticToken = await setupStaticToken({ writeFile: WRITE_STATIC_TOKEN_FILE });
+  const staticToken = await setupStaticToken({
+    writeFile: WRITE_STATIC_TOKEN_FILE,
+    rotate: ROTATE_STATIC_TOKEN,
+  });
 
   printSummary({ staticToken, wroteEnvFile: WRITE_STATIC_TOKEN_FILE });
 }

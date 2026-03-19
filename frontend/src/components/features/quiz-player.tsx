@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useAiUi, QUIZ_RESTRICTED_STARTER_PROMPTS } from "@/components/providers/ai-ui-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { QuizMistakeReview } from "@/components/features/quiz-mistake-review";
 import {
   CheckCircle,
   XCircle,
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, apiPost } from "@/lib/api-fetch";
+import { trackAiEvent } from "@/lib/ai-tracking";
 import type { Quiz, QuizQuestion, QuizAnswer, QuizAttempt } from "@/types";
 
 interface QuizPlayerProps {
@@ -25,11 +28,13 @@ interface QuizPlayerProps {
   context?: {
     courseId: string;
     lessonId?: string;
+    currentPath?: string;
   };
   onComplete?: (result: QuizResult) => void;
 }
 
 interface QuizResult {
+  attempt_id: string | null;
   score: number;
   is_passed: boolean;
   total_points: number;
@@ -63,7 +68,7 @@ const normalizeAnswers = (answers: unknown): AnswerMap => {
   return normalized;
 };
 
-const computeResult = (quiz: Quiz, answers: AnswerMap): QuizResult => {
+const computeResult = (quiz: Quiz, answers: AnswerMap, attemptId: string | null = null): QuizResult => {
   const questions = quiz.questions || [];
   let totalPoints = 0;
   let earnedPoints = 0;
@@ -103,6 +108,7 @@ const computeResult = (quiz: Quiz, answers: AnswerMap): QuizResult => {
     totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
 
   return {
+    attempt_id: attemptId,
     score,
     is_passed: score >= (quiz.passing_score ?? 70),
     total_points: totalPoints,
@@ -111,7 +117,8 @@ const computeResult = (quiz: Quiz, answers: AnswerMap): QuizResult => {
   };
 };
 
-export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
+export function QuizPlayer({ quiz, context, onComplete }: QuizPlayerProps) {
+  const { openChat, setPriorityPageContext } = useAiUi();
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -126,9 +133,11 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
   );
   const [isLoadingAttempts, setIsLoadingAttempts] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restrictedBannerTrackedRef = useRef(false);
 
   const questions = quiz.questions || [];
   const isOutOfAttempts = attemptsRemaining !== null && attemptsRemaining <= 0;
+  const assessmentActive = hasStarted && !result;
 
   useEffect(() => {
     if (!hasStarted || timeLeft === null || result) return;
@@ -149,6 +158,44 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStarted, result]);
+
+  useEffect(() => {
+    if (!assessmentActive) {
+      setPriorityPageContext(null);
+      restrictedBannerTrackedRef.current = false;
+      return;
+    }
+
+    setPriorityPageContext({
+      surface: "quiz_restricted",
+      title: "Quiz đang diễn ra",
+      description:
+        "AI đang ở chế độ giới hạn trong lúc bạn làm quiz. Chỉ hỗ trợ cách nộp bài, điều hướng, thời gian và nơi xem lại sau khi nộp.",
+      starterPrompts: QUIZ_RESTRICTED_STARTER_PROMPTS,
+      currentPath: context?.currentPath,
+      courseId: context?.courseId,
+      lessonId: context?.lessonId,
+    });
+
+    if (!restrictedBannerTrackedRef.current) {
+      restrictedBannerTrackedRef.current = true;
+      trackAiEvent("restricted_banner_impression", {
+        quiz_id: String(quiz.id),
+        current_path: context?.currentPath ?? "",
+      });
+    }
+
+    return () => {
+      setPriorityPageContext(null);
+    };
+  }, [
+    assessmentActive,
+    context?.courseId,
+    context?.currentPath,
+    context?.lessonId,
+    quiz.id,
+    setPriorityPageContext,
+  ]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -195,7 +242,7 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
           ? quizResult
           : bestResult;
       setBestResult(newBest);
-      setResult(newBest);
+      setResult(quizResult);
 
       if (timerRef.current) clearInterval(timerRef.current);
 
@@ -254,14 +301,22 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
         }, null);
 
         if (bestAttempt) {
-          const restoredBest = computeResult(
-            quiz,
-            normalizeAnswers(bestAttempt.answers)
+        const restoredBest = computeResult(
+          quiz,
+          normalizeAnswers(bestAttempt.answers),
+          String(bestAttempt.id)
+        );
+        setBestResult(restoredBest);
+        const latestAttempt = list[0];
+        if (latestAttempt) {
+          setResult(
+            computeResult(quiz, normalizeAnswers(latestAttempt.answers), String(latestAttempt.id))
           );
-          setBestResult(restoredBest);
+        } else {
           setResult(restoredBest);
-          setHasStarted(false);
         }
+        setHasStarted(false);
+      }
       } finally {
         if (mounted) setIsLoadingAttempts(false);
       }
@@ -398,6 +453,17 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
           ))}
         </div>
 
+        {result.attempt_id ? (
+          <QuizMistakeReview
+            quizId={String(quiz.id)}
+            attemptId={result.attempt_id}
+            lessonId={context?.lessonId}
+            courseId={context?.courseId}
+            currentPath={context?.currentPath ?? ""}
+            onRetry={!isOutOfAttempts ? handleRetry : undefined}
+          />
+        ) : null}
+
         {!isOutOfAttempts && (
           <div className="text-center">
             <Button onClick={handleRetry} variant="outline" className="gap-2">
@@ -415,8 +481,8 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>
             {answeredCount}/{questions.length} câu đã trả lời
           </span>
@@ -438,6 +504,31 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
       </div>
 
       <Progress value={progressPercent} />
+
+      <div className="rounded-[22px] border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">AI bị giới hạn trong lúc làm quiz</p>
+            <p className="mt-2 text-sm leading-6 text-amber-800">
+              AI sẽ không hỗ trợ giải bài, kiểm tra đáp án đúng sai hoặc gợi ý làm lộ đáp án. Bạn vẫn có thể hỏi về cách nộp bài, thời gian, lượt làm và nơi xem lại sau khi nộp.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-amber-900">
+              <Badge className="rounded-full bg-white text-amber-800 hover:bg-white">Nộp bài</Badge>
+              <Badge className="rounded-full bg-white text-amber-800 hover:bg-white">Điều hướng</Badge>
+              <Badge className="rounded-full bg-white text-amber-800 hover:bg-white">Thời gian</Badge>
+              <Badge className="rounded-full bg-white text-amber-800 hover:bg-white">Xem lại sau nộp</Badge>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100 sm:w-auto"
+            onClick={() => openChat()}
+          >
+            Hỏi AI
+          </Button>
+        </div>
+      </div>
 
       <div className="space-y-6">
         {questions
@@ -528,7 +619,7 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
           onClick={handleSubmit}
           disabled={isSubmitting || answeredCount === 0 || isOutOfAttempts}
           size="lg"
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           {isSubmitting ? (
             <Loader2 className="size-4 animate-spin" />

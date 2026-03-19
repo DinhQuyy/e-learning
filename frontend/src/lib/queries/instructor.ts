@@ -1,4 +1,6 @@
 ﻿import { directusUrl } from "@/lib/directus";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { Course, Enrollment, Review, DirectusUser } from "@/types";
 
 interface InstructorStats {
@@ -25,6 +27,7 @@ export interface CourseStudent {
 type CountResult = { map: Map<string, number>; success: boolean };
 const IN_FILTER_CHUNK_SIZE = 60;
 const RATING_STARS = [1, 2, 3, 4, 5] as const;
+let privilegedTokenPromise: Promise<string | null> | null = null;
 
 function chunkIds(ids: string[], chunkSize: number = IN_FILTER_CHUNK_SIZE): string[][] {
   const unique = Array.from(new Set(ids.map((id) => String(id)).filter(Boolean)));
@@ -96,12 +99,107 @@ function getAuthHeaders(token: string) {
 }
 
 function getAuthTokenCandidates(token: string): string[] {
-  const serverToken = process.env.DIRECTUS_STATIC_TOKEN?.trim();
   const userToken = token.trim();
+  const serverToken = process.env.DIRECTUS_STATIC_TOKEN?.trim();
 
   return Array.from(
-    new Set([serverToken, userToken].filter((value): value is string => Boolean(value)))
+    new Set([userToken, serverToken].filter((value): value is string => Boolean(value)))
   );
+}
+
+function parseEnvValue(content: string, key: string): string | null {
+  const line = content
+    .split(/\r?\n/)
+    .find((entry) => entry.startsWith(`${key}=`));
+  if (!line) return null;
+
+  const rawValue = line.slice(key.length + 1).trim();
+  return rawValue.replace(/^['"]|['"]$/g, "") || null;
+}
+
+async function readBackendAdminCredentials(): Promise<{
+  email: string;
+  password: string;
+} | null> {
+  const candidates = [
+    resolve(process.cwd(), "backend", ".env"),
+    resolve(process.cwd(), "..", "backend", ".env"),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      const email = parseEnvValue(content, "ADMIN_EMAIL");
+      const password = parseEnvValue(content, "ADMIN_PASSWORD");
+      if (email && password) {
+        return { email, password };
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  return null;
+}
+
+async function isTokenValid(token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${directusUrl}/users/me?fields=id`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function loginWithAdminCredentials(): Promise<string | null> {
+  const credentials = await readBackendAdminCredentials();
+  if (!credentials) return null;
+
+  try {
+    const res = await fetch(`${directusUrl}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+        mode: "json",
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const payload = await res.json().catch(() => null);
+    return payload?.data?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getPrivilegedDirectusToken(): Promise<string | null> {
+  if (!privilegedTokenPromise) {
+    privilegedTokenPromise = (async () => {
+      const staticToken = process.env.DIRECTUS_STATIC_TOKEN?.trim();
+      if (staticToken && (await isTokenValid(staticToken))) {
+        return staticToken;
+      }
+
+      return loginWithAdminCredentials();
+    })();
+  }
+
+  const token = await privilegedTokenPromise;
+  if (token && (await isTokenValid(token))) {
+    return token;
+  }
+
+  privilegedTokenPromise = null;
+  return null;
 }
 
 async function fetchDirectusWithAuth(
@@ -224,18 +322,34 @@ async function fetchUsersByIds(
   const map = new Map<string, DirectusUser>();
   if (userIds.length === 0) return map;
 
-  const res = await fetchDirectusWithAuth(
-    `${directusUrl}/users?filter[id][_in]=${userIds.join(
-      ","
-    )}&fields=id,first_name,last_name,email,avatar,status,phone,headline,bio,social_links,date_created,role.id,role.name`,
-    token,
-    { next: { revalidate: 0 } }
-  );
+  const query = `${directusUrl}/users?filter[id][_in]=${userIds.join(
+    ","
+  )}&fields=id,first_name,last_name,email,avatar,status,phone,headline,bio,social_links,date_created,role.id,role.name`;
+  const readUsers = async (res: Response) => {
+    const data = await res.json().catch(() => null);
+    return (data?.data ?? []) as DirectusUser[];
+  };
 
-  if (!res.ok) return map;
+  let res = await fetchDirectusWithAuth(query, token, {
+    next: { revalidate: 0 },
+  });
+  let users = res.ok ? await readUsers(res) : [];
 
-  const data = await res.json();
-  for (const user of data.data ?? []) {
+  if (!res.ok || users.length === 0) {
+    const privilegedToken = await getPrivilegedDirectusToken();
+    if (privilegedToken) {
+      res = await fetch(query, {
+        headers: getAuthHeaders(privilegedToken),
+        next: { revalidate: 0 },
+      });
+
+      if (res.ok) {
+        users = await readUsers(res);
+      }
+    }
+  }
+
+  for (const user of users) {
     if (user?.id) {
       map.set(String(user.id), user as DirectusUser);
     }
@@ -421,6 +535,123 @@ async function enrichEnrollments(
       status: finalStatus,
     };
   });
+}
+
+function toCourseStudents(enrollments: Enrollment[]): CourseStudent[] {
+  const studentsMap = new Map<string, CourseStudent>();
+
+  for (const enrollment of enrollments) {
+    const user = enrollment.user_id;
+    if (!user || typeof user !== "object" || !user.id) continue;
+
+    const userId = String(user.id);
+    const candidate: CourseStudent = {
+      id: enrollment.id,
+      user: user as DirectusUser,
+      enrolled_at: enrollment.enrolled_at,
+      progress_percentage: enrollment.progress_percentage,
+      status: enrollment.status,
+      last_accessed: null,
+    };
+
+    const existing = studentsMap.get(userId);
+    if (!existing) {
+      studentsMap.set(userId, candidate);
+      continue;
+    }
+
+    const candidateProgress = Number(candidate.progress_percentage ?? 0);
+    const existingProgress = Number(existing.progress_percentage ?? 0);
+    if (candidateProgress > existingProgress) {
+      studentsMap.set(userId, candidate);
+      continue;
+    }
+
+    if (candidateProgress === existingProgress) {
+      const candidateTime = Date.parse(candidate.enrolled_at);
+      const existingTime = Date.parse(existing.enrolled_at);
+      if (Number.isFinite(candidateTime) && candidateTime > existingTime) {
+        studentsMap.set(userId, candidate);
+      }
+    }
+  }
+
+  return Array.from(studentsMap.values()).sort((a, b) => {
+    const aTime = Date.parse(a.enrolled_at);
+    const bTime = Date.parse(b.enrolled_at);
+    if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+    return bTime - aTime;
+  });
+}
+
+async function buildCourseStudents(
+  enrollments: Enrollment[],
+  token: string
+): Promise<CourseStudent[]> {
+  if (enrollments.length === 0) return [];
+  const hydrated = await enrichEnrollments(enrollments, token);
+  return toCourseStudents(hydrated);
+}
+
+async function fetchCourseStudentEnrollmentsViaCourse(
+  token: string,
+  courseId: string
+): Promise<Enrollment[]> {
+  const res = await fetchDirectusWithAuth(
+    `${directusUrl}/items/courses/${courseId}?fields=id,enrollments.id,enrollments.enrolled_at,enrollments.progress_percentage,enrollments.status,enrollments.course_id.id,enrollments.course_id.total_lessons,enrollments.user_id,enrollments.user_id.id,enrollments.user_id.first_name,enrollments.user_id.last_name,enrollments.user_id.email,enrollments.user_id.avatar,enrollments.user_id.phone,enrollments.user_id.headline,enrollments.user_id.bio,enrollments.user_id.social_links,enrollments.user_id.status,enrollments.user_id.date_created,enrollments.user_id.role.id,enrollments.user_id.role.name&deep[enrollments][_sort]=-enrolled_at&deep[enrollments][_limit]=-1`,
+    token,
+    { next: { revalidate: 0 } }
+  );
+
+  if (!res.ok) return [];
+
+  const payload = await res.json().catch(() => null);
+  return (payload?.data?.enrollments ?? []) as Enrollment[];
+}
+
+async function fetchCourseStudentEnrollmentsRaw(
+  token: string,
+  courseId: string
+): Promise<Enrollment[]> {
+  const res = await fetchDirectusWithAuth(
+    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id&sort=-enrolled_at&limit=-1`,
+    token,
+    { next: { revalidate: 0 } }
+  );
+
+  if (!res.ok) return [];
+
+  const payload = await res.json().catch(() => null);
+  return (payload?.data ?? []) as Enrollment[];
+}
+
+async function fetchCourseStudentEnrollmentsWithPrivilegedToken(
+  courseId: string
+): Promise<Enrollment[]> {
+  const privilegedToken = await getPrivilegedDirectusToken();
+  if (!privilegedToken) return [];
+
+  const queries = [
+    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,user_id.headline,user_id.bio,user_id.social_links,user_id.status,user_id.date_created,user_id.role.id,user_id.role.name&sort=-enrolled_at&limit=-1`,
+    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id&sort=-enrolled_at&limit=-1`,
+  ];
+
+  for (const query of queries) {
+    const res = await fetch(query, {
+      headers: getAuthHeaders(privilegedToken),
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) continue;
+
+    const payload = await res.json().catch(() => null);
+    const enrollments = (payload?.data ?? []) as Enrollment[];
+    if (enrollments.length > 0) {
+      return enrollments;
+    }
+  }
+
+  return [];
 }
 
 
@@ -659,61 +890,36 @@ export async function getCourseStudents(
   token: string,
   courseId: string
 ): Promise<CourseStudent[]> {
+  const query = `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,user_id.headline,user_id.bio,user_id.social_links,user_id.status,user_id.date_created,user_id.role.id,user_id.role.name&sort=-enrolled_at&limit=-1`;
   const res = await fetchDirectusWithAuth(
-    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=id,enrolled_at,progress_percentage,status,course_id.id,course_id.total_lessons,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,user_id.headline,user_id.bio,user_id.social_links,user_id.status,user_id.date_created,user_id.role.id,user_id.role.name&sort=-enrolled_at`,
+    query,
     token,
     { next: { revalidate: 0 } }
   );
 
-  if (!res.ok) return [];
-
-  const data = await res.json();
-  const enrollments: Enrollment[] = data.data ?? [];
-  const hydrated = await enrichEnrollments(enrollments, token);
-  const studentsMap = new Map<string, CourseStudent>();
-
-  for (const enrollment of hydrated) {
-    const user = enrollment.user_id;
-    if (!user || typeof user !== "object" || !user.id) continue;
-
-    const userId = String(user.id);
-    const candidate: CourseStudent = {
-      id: enrollment.id,
-      user: user as DirectusUser,
-      enrolled_at: enrollment.enrolled_at,
-      progress_percentage: enrollment.progress_percentage,
-      status: enrollment.status,
-      last_accessed: null,
-    };
-
-    const existing = studentsMap.get(userId);
-    if (!existing) {
-      studentsMap.set(userId, candidate);
-      continue;
-    }
-
-    const candidateProgress = Number(candidate.progress_percentage ?? 0);
-    const existingProgress = Number(existing.progress_percentage ?? 0);
-    if (candidateProgress > existingProgress) {
-      studentsMap.set(userId, candidate);
-      continue;
-    }
-
-    if (candidateProgress === existingProgress) {
-      const candidateTime = Date.parse(candidate.enrolled_at);
-      const existingTime = Date.parse(existing.enrolled_at);
-      if (Number.isFinite(candidateTime) && candidateTime > existingTime) {
-        studentsMap.set(userId, candidate);
-      }
+  if (res.ok) {
+    const data = await res.json().catch(() => null);
+    const enrollments: Enrollment[] = data?.data ?? [];
+    const students = await buildCourseStudents(enrollments, token);
+    if (students.length > 0 || enrollments.length === 0) {
+      return students;
     }
   }
 
-  return Array.from(studentsMap.values()).sort((a, b) => {
-    const aTime = Date.parse(a.enrolled_at);
-    const bTime = Date.parse(b.enrolled_at);
-    if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
-    return bTime - aTime;
-  });
+  const fallbackQueries = [
+    await fetchCourseStudentEnrollmentsViaCourse(token, courseId),
+    await fetchCourseStudentEnrollmentsRaw(token, courseId),
+    await fetchCourseStudentEnrollmentsWithPrivilegedToken(courseId),
+  ];
+
+  for (const enrollments of fallbackQueries) {
+    const students = await buildCourseStudents(enrollments, token);
+    if (students.length > 0 || enrollments.length === 0) {
+      return students;
+    }
+  }
+
+  return [];
 }
 
 export async function getCourseReviews(

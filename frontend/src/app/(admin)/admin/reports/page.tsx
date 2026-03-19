@@ -1,5 +1,5 @@
 ﻿import { requireAuth } from "@/lib/dal";
-import { getReportData, getRevenueStats } from "@/lib/queries/admin";
+import { getAiAnalytics, getReportData, getRevenueStats } from "@/lib/queries/admin";
 import { getAssetUrl } from "@/lib/directus";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -24,6 +24,7 @@ import type { Metadata } from "next";
 import {
   EnrollmentTrendChart,
   RatingDistributionChart,
+  AiEventTrendChart,
 } from "./report-charts";
 import { ReportFilters } from "./report-filters";
 
@@ -53,9 +54,10 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
   const from = params.from || "";
   const to = params.to || "";
 
-  const [reportData, revenueStats] = await Promise.all([
+  const [reportData, revenueStats, aiAnalytics] = await Promise.all([
     getReportData(token),
     getRevenueStats(token, from, to),
+    getAiAnalytics(token, from, to),
   ]);
 
   // Process enrollment trends by month (last 6 months)
@@ -184,6 +186,116 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
         />
       </div>
 
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+            AI Usage & Quality
+          </h2>
+          <p className="text-sm text-gray-500">
+            Theo dõi lượt dùng AI, tín hiệu an toàn và mức hữu ích của phản hồi trong khoảng thời gian đang lọc.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-500">Lượt mở AI</p>
+              <p className="mt-2 text-2xl font-bold">{numberFormatter.format(aiAnalytics.summary.chatOpens)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-500">Tin nhắn gửi</p>
+              <p className="mt-2 text-2xl font-bold">{numberFormatter.format(aiAnalytics.summary.messageSends)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-500">Prompt bị chặn</p>
+              <p className="mt-2 text-2xl font-bold">{numberFormatter.format(aiAnalytics.summary.blockedPrompts)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-500">Tỷ lệ phản hồi hữu ích</p>
+              <p className="mt-2 text-2xl font-bold">{aiAnalytics.summary.helpfulFeedbackRate.toFixed(1)}%</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="min-w-0">
+            <AiEventTrendChart data={aiAnalytics.trend} />
+          </div>
+
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle>Top surfaces AI</CardTitle>
+              <CardDescription>
+                Những ngữ cảnh AI đang được sử dụng nhiều nhất
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {aiAnalytics.surfaces.length === 0 ? (
+                <p className="py-8 text-center text-gray-500">Chưa có dữ liệu AI.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Surface</TableHead>
+                        <TableHead className="text-right">Số lượt</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiAnalytics.surfaces.map((item) => (
+                        <TableRow key={item.surface}>
+                          <TableCell className="font-medium">{item.surface}</TableCell>
+                          <TableCell className="text-right">{numberFormatter.format(item.count)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>Top AI actions / CTAs</CardTitle>
+            <CardDescription>
+              Các hành động hoặc CTA AI được kích hoạt nhiều nhất
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {aiAnalytics.actions.length === 0 ? (
+              <p className="py-8 text-center text-gray-500">Chưa có dữ liệu AI.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Action</TableHead>
+                      <TableHead className="text-right">Số lượt</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aiAnalytics.actions.map((item) => (
+                      <TableRow key={item.name}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="text-right">{numberFormatter.format(item.count)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Tables Row */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Popular Courses */}
@@ -203,51 +315,53 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
                 Chưa có dữ liệu.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">#</TableHead>
-                    <TableHead>Tiêu đề</TableHead>
-                    <TableHead>Ghi danh</TableHead>
-                    <TableHead>Đánh giá</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.popularCourses.map(
-                    (
-                      course: {
-                        id: string;
-                        title: string;
-                        total_enrollments: number;
-                        average_rating: number;
-                      },
-                      index: number
-                    ) => (
-                      <TableRow key={course.id}>
-                        <TableCell className="font-bold text-gray-500">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell className="max-w-48 truncate font-medium">
-                          {course.title}
-                        </TableCell>
-                        <TableCell>
-                          {numberFormatter.format(
-                            course.total_enrollments ?? 0
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm">
-                              {Number(course.average_rating ?? 0).toFixed(1)}
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>Tiêu đề</TableHead>
+                      <TableHead>Ghi danh</TableHead>
+                      <TableHead>Đánh giá</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.popularCourses.map(
+                      (
+                        course: {
+                          id: string;
+                          title: string;
+                          total_enrollments: number;
+                          average_rating: number;
+                        },
+                        index: number
+                      ) => (
+                        <TableRow key={course.id}>
+                          <TableCell className="font-bold text-gray-500">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell className="max-w-48 truncate font-medium">
+                            {course.title}
+                          </TableCell>
+                          <TableCell>
+                            {numberFormatter.format(
+                              course.total_enrollments ?? 0
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm">
+                                {Number(course.average_rating ?? 0).toFixed(1)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -269,66 +383,68 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
                 Chưa có dữ liệu.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">#</TableHead>
-                    <TableHead>Giảng viên</TableHead>
-                    <TableHead>Khóa học</TableHead>
-                    <TableHead>Học viên</TableHead>
-                    <TableHead>TB</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.topInstructors.map(
-                    (
-                      instructor: {
-                        id: string;
-                        name: string;
-                        avatar: string | null;
-                        coursesCount: number;
-                        totalStudents: number;
-                        avgRating: number;
-                      },
-                      index: number
-                    ) => (
-                      <TableRow key={instructor.id}>
-                        <TableCell className="font-bold text-gray-500">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7">
-                              <AvatarImage
-                                src={getAssetUrl(instructor.avatar)}
-                                alt={instructor.name}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {instructor.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">
-                              {instructor.name}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{instructor.coursesCount}</TableCell>
-                        <TableCell>
-                          {numberFormatter.format(instructor.totalStudents)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm">
-                              {instructor.avgRating.toFixed(1)}
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>Giảng viên</TableHead>
+                      <TableHead>Khóa học</TableHead>
+                      <TableHead>Học viên</TableHead>
+                      <TableHead>TB</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.topInstructors.map(
+                      (
+                        instructor: {
+                          id: string;
+                          name: string;
+                          avatar: string | null;
+                          coursesCount: number;
+                          totalStudents: number;
+                          avgRating: number;
+                        },
+                        index: number
+                      ) => (
+                        <TableRow key={instructor.id}>
+                          <TableCell className="font-bold text-gray-500">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage
+                                  src={getAssetUrl(instructor.avatar)}
+                                  alt={instructor.name}
+                                />
+                                <AvatarFallback className="text-xs">
+                                  {instructor.name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">
+                                {instructor.name}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{instructor.coursesCount}</TableCell>
+                          <TableCell>
+                            {numberFormatter.format(instructor.totalStudents)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm">
+                                {instructor.avgRating.toFixed(1)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

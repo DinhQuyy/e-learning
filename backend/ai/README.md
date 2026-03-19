@@ -8,6 +8,9 @@ FastAPI service for the authenticated Kognify chat assistant.
 - Supports multi-turn chat with `previous_response_id`
 - Answers course, module, and lesson questions from live database data
 - Stores conversations, messages, feedback, tool traces, and OpenAI response IDs
+- Caches structured `lesson-study` output in Postgres using lesson content hash + model + prompt version
+- Serves deterministic lesson references from internal platform content
+- Caches structured `quiz-mistake-review` output in Postgres by immutable attempt ID + model + prompt version
 
 ## Environment
 
@@ -32,7 +35,11 @@ REDIS_URL=redis://redis:6379/0
 ## API
 
 - `GET /v1/health`
+- `GET /v1/dashboard-coach`
+- `GET /v1/lesson-references`
 - `POST /v1/chat`
+- `POST /v1/lesson-study`
+- `POST /v1/quiz-mistake-review`
 - `POST /v1/feedback`
 
 All requests require `X-AI-Internal-Key`.

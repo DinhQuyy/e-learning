@@ -1,5 +1,5 @@
 import { readItems, aggregate } from "@directus/sdk";
-import { directus } from "../directus";
+import { publicDirectus } from "../directus";
 import type { Category } from "@/types";
 
 export interface CategoryWithCount extends Category {
@@ -7,7 +7,7 @@ export interface CategoryWithCount extends Category {
 }
 
 export async function getCategories(): Promise<CategoryWithCount[]> {
-  const categories = await directus.request(
+  const categories = await publicDirectus.request(
     readItems("categories", {
       filter: {
         status: { _eq: "published" },
@@ -28,7 +28,7 @@ export async function getCategories(): Promise<CategoryWithCount[]> {
 
   const counts = await Promise.all(
     (categories as unknown as Category[]).map(async (cat) => {
-      const result = await directus.request(
+      const result = await publicDirectus.request(
         aggregate("courses", {
           aggregate: { count: "*" },
           query: {
@@ -53,7 +53,7 @@ export async function getCategoryBySlug(
   slug: string
 ): Promise<Category | null> {
   try {
-    const results = await directus.request(
+    const results = await publicDirectus.request(
       readItems("categories", {
         filter: {
           slug: { _eq: slug },

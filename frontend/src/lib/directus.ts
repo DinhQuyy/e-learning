@@ -4,6 +4,8 @@ import type { Schema } from "@/types";
 const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
 const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
 
+export const publicDirectus = createDirectus<Schema>(directusUrl).with(rest());
+
 export const directus = serverToken
   ? createDirectus<Schema>(directusUrl)
       .with(staticToken(serverToken))

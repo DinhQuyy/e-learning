@@ -25,13 +25,17 @@ import {
 } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingStars } from "@/components/features/rating-stars";
+import { AiFaqBlock } from "@/components/features/ai-faq-block";
+import { CourseAiAdvisor } from "@/components/features/course-ai-advisor";
 import { ShareButton } from "./share-button";
 import { ReviewList } from "./review-list";
 import { CourseTabs } from "./course-tabs";
 import { CourseCard } from "@/components/features/course-card";
 import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog";
 import { CourseActions } from "./course-actions";
+import { getSession } from "@/lib/dal";
 import { getCourseBySlug, getRelatedCourses, getCoursesByInstructor } from "@/lib/queries/courses";
+import { buildCourseAiFaq } from "@/lib/ai-faq";
 import { getAssetUrl } from "@/lib/directus";
 import { getCourseImageSrc } from "@/lib/course-image";
 import type {
@@ -173,6 +177,7 @@ export default async function CourseDetailPage({
   searchParams,
 }: CourseDetailPageProps) {
   const { slug } = await params;
+  const session = await getSession();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const course = await getCourseBySlug(slug);
 
@@ -293,6 +298,10 @@ export default async function CourseDetailPage({
     stripHtml(course.description) ||
     stripHtml(course.short_description) ||
     "Khoá học thực chiến được thiết kế với lộ trình rõ ràng và cập nhật liên tục.";
+
+  const currentPath = `/courses/${slug}`;
+  const viewerCanChat = Boolean(session);
+  const courseFaq = buildCourseAiFaq(course.title, course.slug, viewerCanChat);
 
   const previewNode = (
     <div className="relative aspect-video overflow-hidden">
@@ -874,6 +883,16 @@ export default async function CourseDetailPage({
                   <ShareButton title={course.title} slug={course.slug} />
                 </div>
               </div>
+
+              <CourseAiAdvisor
+                courseId={course.id}
+                courseSlug={course.slug}
+                courseTitle={course.title}
+                currentPath={currentPath}
+                viewerCanChat={viewerCanChat}
+              />
+
+              <AiFaqBlock config={courseFaq} />
             </div>
           </aside>
         </div>

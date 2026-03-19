@@ -23,6 +23,7 @@ import {
   Check,
   Copy,
   Loader2,
+  ClipboardCheck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -261,6 +262,12 @@ function CourseTable({ courses }: { courses: InstructorCourse[] }) {
                         <Link href={`/instructor/courses/${course.id}/reviews`}>
                           <Star className="mr-2 size-4" />
                           Đánh giá
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/instructor/courses/${course.id}/assignments`}>
+                          <ClipboardCheck className="mr-2 size-4" />
+                          Bài tập
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem

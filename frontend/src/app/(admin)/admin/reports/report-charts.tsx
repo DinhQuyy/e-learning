@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TrendingUp, BarChart3 } from "lucide-react";
+import { TrendingUp, BarChart3, Sparkles } from "lucide-react";
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 
@@ -116,6 +116,51 @@ export function RatingDistributionChart({
               />
               <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} />
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface AiEventTrendChartProps {
+  data: { day: string; value: number }[];
+}
+
+export function AiEventTrendChart({ data }: AiEventTrendChartProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5" />
+          Xu hướng sử dụng AI
+        </CardTitle>
+        <CardDescription>
+          Số lượng sự kiện AI theo ngày trong khoảng thời gian đang lọc
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="day" className="text-xs" />
+              <YAxis className="text-xs" allowDecimals={false} />
+              <Tooltip
+                formatter={(value) => [
+                  numberFormatter.format(value as number),
+                  "Sự kiện AI",
+                ]}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#0f766e"
+                strokeWidth={2}
+                dot={{ r: 4, fill: "#0f766e" }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

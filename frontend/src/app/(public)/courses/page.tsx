@@ -34,7 +34,7 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   const params = await searchParams;
   const page = Number(params.page) || 1;
   const search = params.search || "";
-  const category = params.category || "";
+  const category = params.category?.trim() || "";
   const level = params.level || "";
   const price = params.price || "";
   const rating = params.rating || "";
@@ -77,6 +77,10 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
         })
       : Promise.resolve(null),
   ]);
+  const currentCategory =
+    categories.find(
+      (item) => item.slug === category || item.id === category
+    )?.slug ?? category;
 
   const totalPages = Math.ceil(coursesResult.total / COURSES_PER_PAGE);
   const startIndex =
@@ -143,7 +147,7 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
           <CourseFilters
             categories={categories}
             currentSearch={search}
-            currentCategory={category}
+            currentCategory={currentCategory}
             currentLevel={level}
             currentPrice={price}
             currentRating={rating}

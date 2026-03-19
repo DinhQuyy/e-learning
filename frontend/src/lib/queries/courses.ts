@@ -1,5 +1,5 @@
 import { readItems, aggregate } from "@directus/sdk";
-import { directus } from "../directus";
+import { publicDirectus } from "../directus";
 import type { Course } from "@/types";
 
 type RatingMap = Record<string, { avg: number; count: number }>;
@@ -10,7 +10,6 @@ async function fetchRatingsByCourse(courseIds: string[]): Promise<RatingMap> {
   if (courseIds.length === 0) return result;
 
   try {
-    const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
     const url = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
     const params = new URLSearchParams();
     params.set("filter[status][_eq]", "approved");
@@ -20,11 +19,8 @@ async function fetchRatingsByCourse(courseIds: string[]): Promise<RatingMap> {
     params.append("aggregate[avg]", "rating");
     params.append("limit", "-1");
 
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (serverToken) headers["Authorization"] = `Bearer ${serverToken}`;
-
     const res = await fetch(`${url}/items/reviews?${params.toString()}`, {
-      headers,
+      headers: { "Content-Type": "application/json" },
       cache: "no-store",
     });
 
@@ -57,7 +53,6 @@ async function fetchEnrollmentCountsByCourse(
   if (courseIds.length === 0) return result;
 
   try {
-    const serverToken = process.env.DIRECTUS_STATIC_TOKEN;
     const url = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "http://localhost:8055";
     const params = new URLSearchParams();
     params.set("filter[course_id][_in]", courseIds.join(","));
@@ -65,11 +60,8 @@ async function fetchEnrollmentCountsByCourse(
     params.append("aggregate[countDistinct]", "user_id");
     params.append("limit", "-1");
 
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (serverToken) headers["Authorization"] = `Bearer ${serverToken}`;
-
     const res = await fetch(`${url}/items/enrollments?${params.toString()}`, {
-      headers,
+      headers: { "Content-Type": "application/json" },
       cache: "no-store",
     });
 
@@ -147,11 +139,14 @@ function getCategoryParentId(
   return null;
 }
 
-async function resolveCategoryTreeIdsBySlug(
-  categorySlug: string
+async function resolveCategoryTreeIds(
+  categoryValue: string
 ): Promise<string[] | null> {
+  const normalizedValue = categoryValue.trim();
+  if (!normalizedValue) return null;
+
   try {
-    const categories = (await directus.request(
+    const categories = (await publicDirectus.request(
       readItems("categories", {
         filter: {
           status: { _eq: "published" },
@@ -162,7 +157,7 @@ async function resolveCategoryTreeIdsBySlug(
     )) as unknown as CategoryTreeNode[];
 
     const selectedCategory = categories.find(
-      (item) => item.slug === categorySlug
+      (item) => item.slug === normalizedValue || item.id === normalizedValue
     );
     if (!selectedCategory) return null;
 
@@ -258,16 +253,14 @@ export async function getCourses({
   }
 
   if (category) {
-    const categoryIds = await resolveCategoryTreeIdsBySlug(category);
+    const categoryIds = await resolveCategoryTreeIds(category);
     if (categoryIds && categoryIds.length > 0) {
       filter.category_id =
         categoryIds.length === 1
           ? { _eq: categoryIds[0] }
           : { _in: categoryIds };
     } else {
-      filter.category_id = {
-        slug: { _eq: category },
-      };
+      filter.id = { _eq: "__invalid_category__" };
     }
   }
 
@@ -287,7 +280,7 @@ export async function getCourses({
 
   try {
     const [data, countResult] = await Promise.all([
-      directus.request(
+      publicDirectus.request(
         readItems("courses", {
           filter,
           sort: getSortField(sort) as never,
@@ -312,13 +305,13 @@ export async function getCourses({
             {
               instructors: [
                 "id",
-                { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+                { user_id: ["id", "first_name", "last_name", "avatar"] },
               ],
             },
           ],
         })
       ),
-      directus.request(
+      publicDirectus.request(
         aggregate("courses", {
           aggregate: { count: "*" },
           query: { filter },
@@ -347,7 +340,7 @@ export async function getCourses({
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
   try {
-    const results = await directus.request(
+    const results = await publicDirectus.request(
       readItems("courses", {
         filter: {
           slug: { _eq: slug },
@@ -355,7 +348,27 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
         },
         limit: 1,
         fields: [
-          "*",
+          "id",
+          "title",
+          "slug",
+          "description",
+          "short_description",
+          "content",
+          "thumbnail",
+          "price",
+          "discount_price",
+          "level",
+          "average_rating",
+          "total_enrollments",
+          "total_lessons",
+          "total_duration",
+          "language",
+          "promo_video_url",
+          "date_created",
+          "date_updated",
+          "what_you_learn",
+          "requirements",
+          "target_audience",
           { category_id: ["id", "name", "slug"] },
           {
             instructors: [
@@ -365,11 +378,9 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
                   "id",
                   "first_name",
                   "last_name",
-                  "email",
                   "avatar",
                   "bio",
                   "headline",
-                  "social_links",
                 ],
               },
             ],
@@ -400,9 +411,8 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
               "rating",
               "comment",
               "date_created",
-              "status",
               {
-                user_id: ["id", "first_name", "last_name", "email", "avatar"],
+                user_id: ["id", "first_name", "last_name", "avatar"],
               },
             ],
           },
@@ -432,7 +442,7 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
 }
 
 export async function getFeaturedCourses(limit = 8): Promise<Course[]> {
-  const data = await directus.request(
+  const data = await publicDirectus.request(
     readItems("courses", {
       filter: {
         status: { _eq: "published" },
@@ -459,7 +469,7 @@ export async function getFeaturedCourses(limit = 8): Promise<Course[]> {
         {
           instructors: [
             "id",
-            { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+            { user_id: ["id", "first_name", "last_name", "avatar"] },
           ],
         },
       ],
@@ -511,7 +521,7 @@ export async function getCoursesByInstructor(
 
     if (courseIds.length === 0) return [];
 
-    const courses = await directus.request(
+    const courses = await publicDirectus.request(
       readItems("courses", {
         filter: {
           id: { _in: courseIds },
@@ -531,7 +541,7 @@ export async function getCoursesByInstructor(
 
 export async function getLatestCourses(limit = 8): Promise<Course[]> {
   try {
-    const data = await directus.request(
+    const data = await publicDirectus.request(
       readItems("courses", {
         filter: { status: { _eq: "published" } },
         sort: ["-date_created"],
@@ -554,7 +564,7 @@ export async function getLatestCourses(limit = 8): Promise<Course[]> {
           {
             instructors: [
               "id",
-              { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+              { user_id: ["id", "first_name", "last_name", "avatar"] },
             ],
           },
         ],
@@ -574,7 +584,7 @@ export async function getLatestCourses(limit = 8): Promise<Course[]> {
 
 export async function getPopularCourses(limit = 8): Promise<Course[]> {
   try {
-    const data = await directus.request(
+    const data = await publicDirectus.request(
       readItems("courses", {
         filter: { status: { _eq: "published" } },
         sort: ["-total_enrollments"],
@@ -597,7 +607,7 @@ export async function getPopularCourses(limit = 8): Promise<Course[]> {
           {
             instructors: [
               "id",
-              { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+              { user_id: ["id", "first_name", "last_name", "avatar"] },
             ],
           },
         ],
@@ -673,7 +683,7 @@ const LISTING_FIELDS = [
   {
     instructors: [
       "id",
-      { user_id: ["id", "first_name", "last_name", "email", "avatar"] },
+      { user_id: ["id", "first_name", "last_name", "avatar"] },
     ],
   },
 ] as never[];
@@ -702,15 +712,19 @@ export async function getRelatedCourses(
     filter.category_id = { _eq: categoryId };
   }
 
-  const data = await directus.request(
-    readItems("courses", {
-      filter,
-      sort: ["-average_rating", "-total_enrollments"],
-      limit,
-      fields: LISTING_FIELDS,
-    })
-  );
-  return enrichCourses(data as unknown as Course[]);
+  try {
+    const data = await publicDirectus.request(
+      readItems("courses", {
+        filter,
+        sort: ["-average_rating", "-total_enrollments"],
+        limit,
+        fields: LISTING_FIELDS,
+      })
+    );
+    return enrichCourses(data as unknown as Course[]);
+  } catch {
+    return [];
+  }
 }
 
 // ── Course Recommendations ──

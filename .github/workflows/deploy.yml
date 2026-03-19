@@ -35,7 +35,7 @@ jobs:
             chown -R 1000:1000 uploads extensions snapshots
 
             docker compose -f docker-compose.deploy.yml pull
-            docker compose -f docker-compose.deploy.yml up -d
+            docker compose -f docker-compose.deploy.yml up -d --build
 
             echo "=== Waiting for Directus and AI API ==="
             for i in $(seq 1 30); do

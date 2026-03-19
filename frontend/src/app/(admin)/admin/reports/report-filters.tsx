@@ -31,30 +31,30 @@ export function ReportFilters({ from, to }: ReportFiltersProps) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <CalendarIcon className="h-4 w-4 text-gray-500" />
         <span className="text-sm text-gray-600">Từ ngày</span>
         <Input
           type="date"
           value={fromValue}
           onChange={(e) => setFromValue(e.target.value)}
-          className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          className="h-8 w-full border-gray-300 text-sm text-gray-700 sm:w-40"
         />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <span className="text-sm text-gray-600">Đến ngày</span>
         <Input
           type="date"
           value={toValue}
           onChange={(e) => setToValue(e.target.value)}
-          className="h-8 w-40 border-gray-300 text-sm text-gray-700"
+          className="h-8 w-full border-gray-300 text-sm text-gray-700 sm:w-40"
         />
       </div>
       <Button
         size="sm"
         onClick={handleFilter}
-        className="bg-gray-900 text-white hover:bg-gray-800"
+        className="w-full bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
       >
         Lọc
       </Button>
@@ -63,7 +63,7 @@ export function ReportFilters({ from, to }: ReportFiltersProps) {
           size="sm"
           variant="outline"
           onClick={handleClear}
-          className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+          className="w-full border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-700 sm:w-auto"
         >
           <X className="mr-1 h-3 w-3" />
           Xóa bộ lọc

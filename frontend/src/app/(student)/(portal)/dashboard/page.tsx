@@ -20,7 +20,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AiFaqBlock } from "@/components/features/ai-faq-block";
+import { DashboardAiCoach } from "@/components/features/dashboard-ai-coach";
 import { CourseRecommendationSection } from "@/components/features/course-recommendations";
+import { dashboardAiFaq } from "@/lib/ai-faq";
 import type { Course, Category, Lesson } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -199,6 +202,10 @@ export default async function StudentDashboard() {
           </Button>
         </div>
       </section>
+
+      <DashboardAiCoach />
+      <AiFaqBlock config={dashboardAiFaq} />
+
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-2xl border-0 bg-gradient-to-br from-[#eef3ff] to-[#f5f8ff] shadow-[0_14px_30px_-24px_rgba(47,87,239,0.6)]">
           <CardContent className="p-5">

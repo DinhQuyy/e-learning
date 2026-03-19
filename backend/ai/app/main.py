@@ -7,10 +7,25 @@ from typing import Any
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from .chat_service import ChatServiceError, run_chat
+from .chat_service import ChatServiceError, run_chat, run_lesson_study
 from .config import get_settings
+from .course_advisor_service import build_course_advisor
+from .dashboard_coach_service import build_dashboard_coach
 from .migrate import run_migrations
-from .models import ChatRequest, FeedbackRequest, FeedbackResponse
+from .models import (
+    ChatRequest,
+    CourseAdvisorRequest,
+    FeedbackRequest,
+    FeedbackResponse,
+    InstructorReviewCopilotRequest,
+    LessonReferenceIntent,
+    LessonReferencesRequest,
+    LessonStudyRequest,
+    QuizMistakeReviewRequest,
+    RoleType,
+)
+from .p2_service import build_lesson_references, build_quiz_mistake_review
+from .p3b_service import build_instructor_review_copilot
 from .redis_client import get_redis
 from .store import ensure_conversation, get_latest_assistant_response_id, log_message, save_feedback
 
@@ -45,6 +60,29 @@ def health() -> dict[str, Any]:
     return {"status": "ok", "service": "ai-api"}
 
 
+@app.get("/v1/dashboard-coach")
+def dashboard_coach(
+    user_id: str,
+    role: RoleType,
+    _auth: None = Depends(verify_internal_key),
+) -> JSONResponse:
+    _rate_limit(user_id, "dashboard_coach")
+    data = build_dashboard_coach(user_id=user_id)
+    return JSONResponse({"data": data})
+
+
+@app.post("/v1/course-advisor")
+def course_advisor(payload: CourseAdvisorRequest, _auth: None = Depends(verify_internal_key)) -> JSONResponse:
+    _rate_limit(payload.user_id, "course_advisor")
+    data, latency_ms = build_course_advisor(
+        course_id=payload.course_id,
+        user_id=payload.user_id,
+        role=payload.role,
+        current_path=payload.current_path,
+    )
+    return JSONResponse({"data": data, "meta": {"latency_ms": latency_ms}})
+
+
 @app.post("/v1/chat")
 def chat(payload: ChatRequest, _auth: None = Depends(verify_internal_key)) -> JSONResponse:
     _rate_limit(payload.user_id, "chat")
@@ -65,6 +103,8 @@ def chat(payload: ChatRequest, _auth: None = Depends(verify_internal_key)) -> JS
         previous_response_id=previous_response_id,
         course_id=payload.course_id,
         current_path=payload.current_path,
+        lesson_id=payload.lesson_id,
+        surface=payload.surface,
     )
 
     assistant_message_id = log_message(
@@ -88,6 +128,68 @@ def chat(payload: ChatRequest, _auth: None = Depends(verify_internal_key)) -> JS
             "data": response_data,
         }
     )
+
+
+@app.post("/v1/lesson-study")
+def lesson_study(payload: LessonStudyRequest, _auth: None = Depends(verify_internal_key)) -> JSONResponse:
+    _rate_limit(payload.user_id, "lesson_study")
+    data, latency_ms = run_lesson_study(
+        lesson_id=payload.lesson_id,
+        user_id=payload.user_id,
+        role=payload.role,
+        current_path=payload.current_path,
+        mode=payload.mode,
+    )
+    return JSONResponse({"data": data, "meta": {"latency_ms": latency_ms}})
+
+
+@app.get("/v1/lesson-references")
+def lesson_references(
+    user_id: str,
+    role: RoleType,
+    lesson_id: str,
+    intent: LessonReferenceIntent | None = None,
+    _auth: None = Depends(verify_internal_key),
+) -> JSONResponse:
+    _rate_limit(user_id, "lesson_references")
+    payload = LessonReferencesRequest(user_id=user_id, role=role, lesson_id=lesson_id, intent=intent)
+    data = build_lesson_references(
+        lesson_id=payload.lesson_id,
+        user_id=payload.user_id,
+        role=payload.role,
+        intent=payload.intent,
+    )
+    return JSONResponse({"data": data})
+
+
+@app.post("/v1/quiz-mistake-review")
+def quiz_mistake_review(
+    payload: QuizMistakeReviewRequest,
+    _auth: None = Depends(verify_internal_key),
+) -> JSONResponse:
+    _rate_limit(payload.user_id, "quiz_mistake_review")
+    try:
+        data, latency_ms = build_quiz_mistake_review(
+            quiz_id=payload.quiz_id,
+            attempt_id=payload.attempt_id,
+            lesson_id=payload.lesson_id,
+            current_path=payload.current_path,
+            user_id=payload.user_id,
+            role=payload.role,
+        )
+    except RuntimeError as exc:
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+    return JSONResponse({"data": data, "meta": {"latency_ms": latency_ms}})
+
+
+@app.post("/v1/instructor-review-copilot")
+def instructor_review_copilot(
+    payload: InstructorReviewCopilotRequest,
+    _auth: None = Depends(verify_internal_key),
+) -> JSONResponse:
+    _rate_limit(payload.user_id, "instructor_review_copilot")
+    data, latency_ms = build_instructor_review_copilot(payload)
+    return JSONResponse({"data": data, "meta": {"latency_ms": latency_ms}})
 
 
 @app.post("/v1/feedback", response_model=FeedbackResponse)

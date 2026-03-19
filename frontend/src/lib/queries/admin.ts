@@ -83,6 +83,38 @@ interface RevenueStatsResult {
   totalOrders: number;
 }
 
+export interface AiAnalyticsSummaryMetric {
+  label: string;
+  value: number;
+}
+
+export interface AiAnalyticsTrendItem {
+  day: string;
+  value: number;
+}
+
+export interface AiAnalyticsBreakdownItem {
+  surface: string;
+  count: number;
+}
+
+export interface AiAnalyticsActionItem {
+  name: string;
+  count: number;
+}
+
+export interface AiAnalyticsResult {
+  summary: {
+    chatOpens: number;
+    messageSends: number;
+    blockedPrompts: number;
+    helpfulFeedbackRate: number;
+  };
+  trend: AiAnalyticsTrendItem[];
+  surfaces: AiAnalyticsBreakdownItem[];
+  actions: AiAnalyticsActionItem[];
+}
+
 interface EnrollmentTrendItem {
   month: string;
   enrollments: number;
@@ -796,4 +828,109 @@ export async function getLatestReviews(token: string, limit: number = 5): Promis
   if (!res.ok) return [];
   const data = await res.json();
   return data.data ?? [];
+}
+
+type AiEventLogRow = {
+  event_name?: string | null;
+  surface?: string | null;
+  current_path?: string | null;
+  payload_json?: Record<string, unknown> | null;
+  created_at?: string | null;
+};
+
+function parseCountMap(rows: AiEventLogRow[], keySelector: (row: AiEventLogRow) => string | null) {
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const key = keySelector(row);
+    if (!key) continue;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return map;
+}
+
+export async function getAiAnalytics(token: string, from?: string, to?: string): Promise<AiAnalyticsResult> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  const filterParts: string[] = [];
+  if (from) {
+    filterParts.push(`filter[created_at][_gte]=${encodeURIComponent(from)}T00:00:00`);
+  }
+  if (to) {
+    filterParts.push(`filter[created_at][_lte]=${encodeURIComponent(to)}T23:59:59`);
+  }
+  const filterQuery = filterParts.length > 0 ? `&${filterParts.join("&")}` : "";
+
+  const res = await fetch(
+    `${directusUrl}/items/ai_event_logs?fields=event_name,surface,current_path,payload_json,created_at&sort=-created_at&limit=5000${filterQuery}`,
+    { headers, next: { revalidate: 0 } }
+  );
+
+  if (!res.ok) {
+    return {
+      summary: {
+        chatOpens: 0,
+        messageSends: 0,
+        blockedPrompts: 0,
+        helpfulFeedbackRate: 0,
+      },
+      trend: [],
+      surfaces: [],
+      actions: [],
+    };
+  }
+
+  const payload = await res.json().catch(() => null);
+  const rows = Array.isArray(payload?.data) ? (payload.data as AiEventLogRow[]) : [];
+
+  const chatOpens = rows.filter((row) =>
+    row.event_name === "chat_open" || row.event_name === "restricted_chat_open"
+  ).length;
+  const messageSends = rows.filter((row) => row.event_name === "message_send").length;
+  const blockedPrompts = rows.filter((row) => row.event_name === "restricted_prompt_blocked").length;
+  const helpfulCount = rows.filter((row) => row.event_name === "feedback_helpful").length;
+  const unhelpfulCount = rows.filter((row) => row.event_name === "feedback_not_helpful").length;
+  const helpfulFeedbackRate =
+    helpfulCount + unhelpfulCount > 0 ? (helpfulCount / (helpfulCount + unhelpfulCount)) * 100 : 0;
+
+  const trendMap = parseCountMap(rows, (row) =>
+    row.created_at ? String(row.created_at).slice(0, 10) : null
+  );
+  const trend = Array.from(trendMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, value]) => ({ day, value }));
+
+  const surfaceMap = parseCountMap(rows, (row) => {
+    const surface = typeof row.surface === "string" ? row.surface.trim() : "";
+    return surface || null;
+  });
+  const surfaces = Array.from(surfaceMap.entries())
+    .map(([surface, count]) => ({ surface, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const actionMap = parseCountMap(rows, (row) => {
+    const payloadObject =
+      row.payload_json && typeof row.payload_json === "object" ? row.payload_json : {};
+    const action = typeof payloadObject.action === "string" ? payloadObject.action.trim() : "";
+    return action || (typeof row.event_name === "string" ? row.event_name : null);
+  });
+  const actions = Array.from(actionMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return {
+    summary: {
+      chatOpens,
+      messageSends,
+      blockedPrompts,
+      helpfulFeedbackRate,
+    },
+    trend,
+    surfaces,
+    actions,
+  };
 }

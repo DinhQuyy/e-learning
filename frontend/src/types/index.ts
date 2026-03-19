@@ -186,6 +186,79 @@ export interface QuizAttempt {
   finished_at: string | null;
 }
 
+export interface Assignment {
+  id: string;
+  lesson_id: string | Lesson;
+  title: string;
+  instructions: string;
+  due_at: string | null;
+  max_score: number;
+  status: "draft" | "published" | "archived";
+  rubric?: AssignmentRubric | null;
+  submissions?: AssignmentSubmission[];
+  date_created?: string | null;
+  date_updated?: string | null;
+}
+
+export interface AssignmentRubric {
+  id: string;
+  assignment_id: string | Assignment;
+  criteria?: AssignmentRubricCriterion[];
+}
+
+export interface AssignmentRubricCriterion {
+  id: string;
+  rubric_id: string | AssignmentRubric;
+  title: string;
+  description: string | null;
+  max_points: number;
+  scoring_guidance: string | null;
+  sort: number;
+}
+
+export interface AssignmentSubmission {
+  id: string;
+  assignment_id: string | Assignment;
+  user_id: string | DirectusUser;
+  body_text: string;
+  reference_url: string | null;
+  status: "submitted" | "reviewed";
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  review?: AssignmentReview | null;
+  ai_artifacts?: AiReviewArtifact[];
+}
+
+export interface AssignmentCriterionScore {
+  criterion_id: string;
+  title: string;
+  max_points: number;
+  score: number;
+  rationale?: string | null;
+}
+
+export interface AssignmentReview {
+  id: string;
+  submission_id: string | AssignmentSubmission;
+  reviewer_id: string | DirectusUser;
+  status: "draft" | "finalized";
+  final_score: number;
+  criterion_scores: AssignmentCriterionScore[] | null;
+  final_feedback: string | null;
+  date_created?: string | null;
+  date_updated?: string | null;
+}
+
+export interface AiReviewArtifact {
+  id: string;
+  submission_id: string | AssignmentSubmission;
+  model: string;
+  prompt_version: string;
+  payload: Record<string, unknown> | null;
+  applied_state: "pending" | "applied" | "ignored";
+  date_created?: string | null;
+}
+
 export interface Notification {
   id: string;
   user_id: string | DirectusUser;

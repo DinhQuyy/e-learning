@@ -130,8 +130,8 @@ export default function QuizListPage() {
       const list: StudentOption[] = data.data ?? [];
       setStudents(list);
 
-      const enrollmentCount = Number(data?.meta?.enrollment_count ?? 0);
-      if (list.length === 0 && enrollmentCount > 0) {
+      const missingUserIdCount = Number(data?.meta?.missing_user_id_count ?? 0);
+      if (list.length === 0 && missingUserIdCount > 0) {
         toast.warning(
           "Có học viên đã đăng ký nhưng chưa đọc được user_id để đặt lại lượt làm quiz."
         );

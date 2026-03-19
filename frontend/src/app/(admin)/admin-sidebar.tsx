@@ -176,7 +176,7 @@ export function AdminSidebar({
         <Shield className="h-7 w-7 text-blue-400" />
         <div>
           <h2 className="text-sm font-bold text-white">Quản trị hệ thống</h2>
-          <p className="text-xs text-slate-400">Bảng quản trị Kognify</p>
+          <p className="text-xs text-slate-400">Bảng quản trị Kiwi</p>
         </div>
       </div>
       <Separator className="bg-slate-700" />

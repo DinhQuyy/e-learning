@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { AiChatWidget } from "@/components/features/ai-chat-widget";
+import { AiUiProvider } from "@/components/providers/ai-ui-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,9 +37,11 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            {children}
-            <AiChatWidget />
-            <Toaster richColors position="top-right" />
+            <AiUiProvider>
+              {children}
+              <AiChatWidget />
+              <Toaster richColors position="top-right" />
+            </AiUiProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

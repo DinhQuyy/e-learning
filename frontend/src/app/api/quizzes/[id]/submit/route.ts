@@ -159,6 +159,7 @@ export async function POST(
     return NextResponse.json({
       data: {
         attempt: attemptData.data,
+        attempt_id: attemptData.data?.id ?? null,
         score,
         is_passed: isPassed,
         total_points: totalPoints,

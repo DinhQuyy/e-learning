@@ -9,18 +9,28 @@ type AiEnvelope<T> = {
   assistantMessageId: string | null;
 };
 
-export async function callAiApiWithMeta<T>(
+type AiRequestMethod = "GET" | "POST";
+
+async function requestAiApi<T>(
+  method: AiRequestMethod,
   path: string,
   body: unknown,
   schema: z.ZodSchema<T>
 ): Promise<AiEnvelope<T>> {
-  const res = await fetch(`${aiApiUrl}${path}`, {
-    method: 'POST',
+  const url =
+    method === "GET" && body && typeof body === "object"
+      ? `${aiApiUrl}${path}?${new URLSearchParams(
+          Object.entries(body as Record<string, string>).filter(([, value]) => Boolean(value))
+        ).toString()}`
+      : `${aiApiUrl}${path}`;
+
+  const res = await fetch(url, {
+    method,
     headers: {
       'Content-Type': 'application/json',
       'X-AI-Internal-Key': aiInternalKey,
     },
-    body: JSON.stringify(body),
+    body: method === "POST" ? JSON.stringify(body) : undefined,
     cache: 'no-store',
   });
 
@@ -46,12 +56,29 @@ export async function callAiApiWithMeta<T>(
   };
 }
 
+export async function callAiApiWithMeta<T>(
+  path: string,
+  body: unknown,
+  schema: z.ZodSchema<T>
+): Promise<AiEnvelope<T>> {
+  return requestAiApi("POST", path, body, schema);
+}
+
 export async function callAiApi<T>(
   path: string,
   body: unknown,
   schema: z.ZodSchema<T>
 ): Promise<T> {
   const envelope = await callAiApiWithMeta(path, body, schema);
+  return envelope.data;
+}
+
+export async function callAiApiGet<T>(
+  path: string,
+  query: Record<string, string>,
+  schema: z.ZodSchema<T>
+): Promise<T> {
+  const envelope = await requestAiApi("GET", path, query, schema);
   return envelope.data;
 }
 

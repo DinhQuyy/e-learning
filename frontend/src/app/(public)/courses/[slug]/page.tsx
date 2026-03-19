@@ -17,7 +17,6 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
@@ -206,7 +205,6 @@ export default async function CourseDetailPage({
 
   const focusedModuleId = readSearchParam(resolvedSearchParams.module);
   const focusedLessonId = readSearchParam(resolvedSearchParams.lesson);
-  const fromAiReferences = readSearchParam(resolvedSearchParams.from) === "ai-references";
   const lessonModuleId =
     focusedLessonId
       ? sortedModules.find((moduleItem) =>
@@ -485,18 +483,6 @@ export default async function CourseDetailPage({
                 {sortedModules.length} chương • {totalLessons} bài học • {formatDuration(course.total_duration)}
               </p>
 
-              {fromAiReferences && (focusedModuleId || focusedLessonId) ? (
-                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
-                  <Badge className="rounded-full bg-background text-cyan-700 ring-1 ring-cyan-200">
-                    Trợ lý AI
-                  </Badge>
-                  <span>
-                    {focusedLessonId
-                      ? "Dang mo bai hoc duoc AI goi y trong kho noi dung nay."
-                      : "Dang mo module duoc AI goi y trong kho noi dung nay."}
-                  </span>
-                </div>
-              ) : null}
 
               {sortedModules.length > 0 ? (
                 <Accordion
@@ -506,7 +492,8 @@ export default async function CourseDetailPage({
                 >
                   {sortedModules.map((moduleItem) => {
                     const isFocusedModule =
-                      fromAiReferences && String(moduleItem.id) === String(defaultOpenModule ?? "");
+                      String(moduleItem.id) === String(defaultOpenModule ?? "") &&
+                      Boolean(focusedModuleId || focusedLessonId);
 
                     return (
                     <AccordionItem
@@ -531,11 +518,6 @@ export default async function CourseDetailPage({
                         <div className="mr-4 flex flex-1 items-center justify-between gap-3">
                           <span className="flex items-center gap-2 text-foreground">
                             {moduleItem.title}
-                            {isFocusedModule ? (
-                              <Badge className="rounded-full bg-white dark:bg-cyan-900 text-cyan-700 dark:text-cyan-200 ring-1 ring-cyan-200">
-                                AI pick
-                              </Badge>
-                            ) : null}
                           </span>
                           <span className="text-xs font-medium text-muted-foreground">
                             {moduleItem.lessons.length} bài học
@@ -551,7 +533,7 @@ export default async function CourseDetailPage({
                           {moduleItem.lessons.map((lesson) => {
                             const lessonData = lesson as Lesson;
                             const isFocusedLesson =
-                              fromAiReferences && String(lessonData.id) === String(focusedLessonId ?? "");
+                              String(lessonData.id) === String(focusedLessonId ?? "");
 
                             return (
                               <li
@@ -572,11 +554,6 @@ export default async function CourseDetailPage({
                                   <span className="truncate text-sm text-foreground">
                                     {lessonData.title}
                                   </span>
-                                  {isFocusedLesson ? (
-                                    <Badge className="rounded-full bg-white dark:bg-cyan-900 text-cyan-700 dark:text-cyan-200 ring-1 ring-cyan-200">
-                                      AI pick
-                                    </Badge>
-                                  ) : null}
                                 </div>
                                 <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                                   {lessonData.is_free ? (
@@ -954,3 +931,4 @@ export default async function CourseDetailPage({
     </div>
   );
 }
+

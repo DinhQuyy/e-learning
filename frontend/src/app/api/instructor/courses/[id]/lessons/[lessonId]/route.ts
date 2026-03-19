@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { enqueueDeleteIndex, enqueueLessonIndex } from "@/lib/ai-indexing";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 
 async function verifyOwnership(userId: string, courseId: string): Promise<boolean> {
@@ -77,14 +76,6 @@ export async function PATCH(
 
     const data = await res.json();
 
-    await enqueueLessonIndex({
-      lessonId,
-      title: String(data.data?.title ?? body.title ?? "Lesson"),
-      content: String(data.data?.content ?? body.content ?? body.title ?? ""),
-      courseId,
-      status: String(data.data?.status ?? body.status ?? "draft"),
-    });
-
     return NextResponse.json({ data: data.data });
   } catch (error) {
     console.error("PATCH lesson error:", error);
@@ -116,8 +107,6 @@ export async function DELETE(
     if (!res.ok) {
       return NextResponse.json({ error: "Không thể xoá bài học." }, { status: res.status });
     }
-
-    await enqueueDeleteIndex("course_lesson", lessonId);
 
     return NextResponse.json({ message: "Da xoa bai hoc thanh cong." });
   } catch (error) {

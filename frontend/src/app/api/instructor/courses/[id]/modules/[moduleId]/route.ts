@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { enqueueDeleteIndex, enqueueModuleIndex } from "@/lib/ai-indexing";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 
 async function verifyOwnership(userId: string, courseId: string): Promise<boolean> {
@@ -47,13 +46,6 @@ export async function PATCH(
 
     const data = await res.json();
 
-    await enqueueModuleIndex({
-      moduleId,
-      title: String(data.data?.title ?? body.title ?? "Module"),
-      description: String(data.data?.description ?? body.description ?? ""),
-      courseId,
-    });
-
     return NextResponse.json({ data: data.data });
   } catch (error) {
     console.error("PATCH module error:", error);
@@ -88,7 +80,6 @@ export async function DELETE(
         await directusFetch(`/items/lessons/${lesson.id}`, {
           method: "DELETE",
         });
-        await enqueueDeleteIndex("course_lesson", String(lesson.id));
       }
     }
 
@@ -99,8 +90,6 @@ export async function DELETE(
     if (!res.ok) {
       return NextResponse.json({ error: "Không thể xoá module." }, { status: res.status });
     }
-
-    await enqueueDeleteIndex("course_module", moduleId);
 
     return NextResponse.json({ message: "Da xoa module thanh cong." });
   } catch (error) {

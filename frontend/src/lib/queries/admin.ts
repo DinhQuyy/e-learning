@@ -1,5 +1,4 @@
 import { directusUrl } from "@/lib/directus";
-import { callAiApiRaw, postAiApiRaw } from "@/lib/ai-client";
 
 // ── Shared types ──
 
@@ -65,7 +64,6 @@ interface ReportDataResult {
   }>;
   enrollments: Array<{ enrolled_at: string }>;
   ratingDistribution: Array<{ rating: number; count: number }>;
-  aiServiceOnline: boolean;
   topInstructors: Array<{
     id: string;
     name: string;
@@ -74,9 +72,6 @@ interface ReportDataResult {
     totalStudents: number;
     avgRating: number;
   }>;
-  aiMetrics: AiMetricsResult;
-  aiDailyMetrics: AiDailyMetricsResult;
-  mentorAnalytics: MentorAnalyticsResult;
 }
 
 interface RevenueStatsResult {
@@ -137,215 +132,6 @@ interface AdminStatsResult {
   totalCourses: number;
   totalEnrollments: number;
   pendingCourses: number;
-}
-
-interface AiMetricsResult {
-  total_requests_24h: number;
-  p95_latency_ms: number;
-  blocked_requests_24h: number;
-  cache_hit_ratio: number;
-  fallback_rate_24h: number;
-  positive_feedback_24h: number;
-  negative_feedback_24h: number;
-}
-
-interface AiDailyMetricRow {
-  metric_date: string;
-  total_requests: number;
-  p95_latency_ms: number;
-  blocked_requests: number;
-  cache_hit_ratio: number;
-  fallback_rate: number;
-  positive_feedback: number;
-  negative_feedback: number;
-}
-
-interface AiDailyMetricsSummary {
-  window_days: number;
-  req_change_pct: number;
-  p95_improvement_pct: number;
-  fallback_improvement_pct: number;
-  positive_feedback_change_pct: number;
-}
-
-interface AiDailyMetricsResult {
-  rows: AiDailyMetricRow[];
-  summary: AiDailyMetricsSummary;
-}
-
-interface MentorAnalyticsResult {
-  lookback_days: number;
-  shown: number;
-  clicked: number;
-  dismissed: number;
-  completed: number;
-  ctr: number;
-  completion_rate: number;
-  clicked_completion_rate: number;
-  non_clicked_completion_rate: number;
-  completion_lift_pp: number;
-  completion_lift_ratio: number;
-  interventions_sent: number;
-  notification_interventions: number;
-  email_interventions: number;
-}
-
-const EMPTY_AI_METRICS: AiMetricsResult = {
-  total_requests_24h: 0,
-  p95_latency_ms: 0,
-  blocked_requests_24h: 0,
-  cache_hit_ratio: 0,
-  fallback_rate_24h: 0,
-  positive_feedback_24h: 0,
-  negative_feedback_24h: 0,
-};
-
-const EMPTY_MENTOR_ANALYTICS: MentorAnalyticsResult = {
-  lookback_days: 30,
-  shown: 0,
-  clicked: 0,
-  dismissed: 0,
-  completed: 0,
-  ctr: 0,
-  completion_rate: 0,
-  clicked_completion_rate: 0,
-  non_clicked_completion_rate: 0,
-  completion_lift_pp: 0,
-  completion_lift_ratio: 0,
-  interventions_sent: 0,
-  notification_interventions: 0,
-  email_interventions: 0,
-};
-
-function toFiniteNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toPositiveInt(value: unknown): number {
-  const parsed = Math.trunc(toFiniteNumber(value));
-  return parsed > 0 ? parsed : 0;
-}
-
-function readObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-}
-
-function normalizeAiMetrics(raw: unknown): AiMetricsResult {
-  const data = readObject(raw);
-  return {
-    total_requests_24h: toPositiveInt(data.total_requests_24h),
-    p95_latency_ms: toPositiveInt(data.p95_latency_ms),
-    blocked_requests_24h: toPositiveInt(data.blocked_requests_24h),
-    cache_hit_ratio: toFiniteNumber(data.cache_hit_ratio),
-    fallback_rate_24h: toFiniteNumber(data.fallback_rate_24h),
-    positive_feedback_24h: toPositiveInt(data.positive_feedback_24h),
-    negative_feedback_24h: toPositiveInt(data.negative_feedback_24h),
-  };
-}
-
-function createEmptyAiDailyMetrics(days: number): AiDailyMetricsResult {
-  const safeDays = Math.max(days, 2);
-  return {
-    rows: [],
-    summary: {
-      window_days: Math.max(Math.floor(safeDays / 2), 1),
-      req_change_pct: 0,
-      p95_improvement_pct: 0,
-      fallback_improvement_pct: 0,
-      positive_feedback_change_pct: 0,
-    },
-  };
-}
-
-function normalizeAiDailyMetrics(raw: unknown, days: number): AiDailyMetricsResult {
-  const data = readObject(raw);
-  const rows = Array.isArray(data.rows)
-    ? data.rows.map((row) => {
-        const r = readObject(row);
-        return {
-          metric_date:
-            typeof r.metric_date === "string" ? r.metric_date : "",
-          total_requests: toPositiveInt(r.total_requests),
-          p95_latency_ms: toPositiveInt(r.p95_latency_ms),
-          blocked_requests: toPositiveInt(r.blocked_requests),
-          cache_hit_ratio: toFiniteNumber(r.cache_hit_ratio),
-          fallback_rate: toFiniteNumber(r.fallback_rate),
-          positive_feedback: toPositiveInt(r.positive_feedback),
-          negative_feedback: toPositiveInt(r.negative_feedback),
-        };
-      })
-    : [];
-
-  const fallback = createEmptyAiDailyMetrics(days);
-  const summaryData = readObject(data.summary);
-
-  return {
-    rows,
-    summary: {
-      window_days:
-        toPositiveInt(summaryData.window_days) || fallback.summary.window_days,
-      req_change_pct: toFiniteNumber(summaryData.req_change_pct),
-      p95_improvement_pct: toFiniteNumber(summaryData.p95_improvement_pct),
-      fallback_improvement_pct: toFiniteNumber(summaryData.fallback_improvement_pct),
-      positive_feedback_change_pct: toFiniteNumber(
-        summaryData.positive_feedback_change_pct
-      ),
-    },
-  };
-}
-
-function normalizeMentorAnalytics(raw: unknown): MentorAnalyticsResult {
-  const data = readObject(raw);
-  return {
-    lookback_days: toPositiveInt(data.lookback_days),
-    shown: toPositiveInt(data.shown),
-    clicked: toPositiveInt(data.clicked),
-    dismissed: toPositiveInt(data.dismissed),
-    completed: toPositiveInt(data.completed),
-    ctr: toFiniteNumber(data.ctr),
-    completion_rate: toFiniteNumber(data.completion_rate),
-    clicked_completion_rate: toFiniteNumber(data.clicked_completion_rate),
-    non_clicked_completion_rate: toFiniteNumber(data.non_clicked_completion_rate),
-    completion_lift_pp: toFiniteNumber(data.completion_lift_pp),
-    completion_lift_ratio: toFiniteNumber(data.completion_lift_ratio),
-    interventions_sent: toPositiveInt(data.interventions_sent),
-    notification_interventions: toPositiveInt(data.notification_interventions),
-    email_interventions: toPositiveInt(data.email_interventions),
-  };
-}
-
-async function getAiMetrics(): Promise<{ result: AiMetricsResult; online: boolean }> {
-  try {
-    const raw = await callAiApiRaw("/v1/admin/metrics");
-    return { result: normalizeAiMetrics(raw), online: true };
-  } catch {
-    return { result: EMPTY_AI_METRICS, online: false };
-  }
-}
-
-async function getAiDailyMetrics(days: number = 14): Promise<AiDailyMetricsResult> {
-  const safeDays = Math.max(days, 2);
-  try {
-    const raw = await callAiApiRaw(
-      `/v1/admin/metrics/daily?days=${encodeURIComponent(String(safeDays))}`
-    );
-    return normalizeAiDailyMetrics(raw, safeDays);
-  } catch {
-    return createEmptyAiDailyMetrics(safeDays);
-  }
-}
-
-async function getMentorAnalytics(days: number = 30): Promise<MentorAnalyticsResult> {
-  try {
-    const raw = await postAiApiRaw("/v1/mentor/analytics", {
-      lookback_days: days,
-      course_ids: [],
-    });
-    return normalizeMentorAnalytics(raw);
-  } catch {
-    return { ...EMPTY_MENTOR_ANALYTICS, lookback_days: days };
-  }
 }
 
 export async function getAdminStats(token: string): Promise<AdminStatsResult> {
@@ -437,7 +223,7 @@ export async function getUsers(token: string, params: GetUsersParams = {}): Prom
   });
 
   if (!res.ok) {
-    throw new Error("KhÃ´ng thá»ƒ táº£i danh sÃ¡ch ngÆ°á»i dÃ¹ng");
+    throw new Error("Không thể tải danh sách người dùng");
   }
 
   return res.json();
@@ -499,6 +285,12 @@ interface ReportCourseRow {
   slug?: string | null;
   average_rating?: number | null;
   instructors?: ReportCourseInstructorRow[] | null;
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function extractCourseIdFromAggregate(row: EnrollmentAggregateRow): string | null {
@@ -602,7 +394,7 @@ export async function getAllCourses(
   });
 
   if (!res.ok) {
-    throw new Error("Không thể tải danh sách khoá học");
+    throw new Error("Không thể tải danh sách khóa học");
   }
 
   const payload = await res.json();
@@ -811,21 +603,11 @@ export async function getReportData(token: string): Promise<ReportDataResult> {
     .sort((a, b) => b.totalStudents - a.totalStudents)
     .slice(0, 10);
 
-  const [{ result: aiMetrics, online: aiServiceOnline }, aiDailyMetrics, mentorAnalytics] = await Promise.all([
-    getAiMetrics(),
-    getAiDailyMetrics(14),
-    getMentorAnalytics(30),
-  ]);
-
   return {
     popularCourses,
     enrollments,
     ratingDistribution: ratingDistRes,
-    aiServiceOnline,
     topInstructors,
-    aiMetrics,
-    aiDailyMetrics,
-    mentorAnalytics,
   };
 }
 
@@ -1015,4 +797,3 @@ export async function getLatestReviews(token: string, limit: number = 5): Promis
   const data = await res.json();
   return data.data ?? [];
 }
-

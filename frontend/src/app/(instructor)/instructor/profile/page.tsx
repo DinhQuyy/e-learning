@@ -35,12 +35,6 @@ export default async function InstructorProfilePage() {
           social_links: user.social_links,
           date_created: user.date_created,
           status: user.status,
-          mentor_notification_email_enabled: user.mentor_notification_email_enabled,
-          mentor_notification_email: user.mentor_notification_email,
-          mentor_notification_email_verified: user.mentor_notification_email_verified,
-          mentor_notification_email_pending: user.mentor_notification_email_pending,
-          mentor_notification_email_verification_expires_at:
-            user.mentor_notification_email_verification_expires_at,
         }}
         displayName={displayName}
         initials={initials}

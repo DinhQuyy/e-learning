@@ -37,14 +37,15 @@ jobs:
             docker compose -f docker-compose.deploy.yml pull
             docker compose -f docker-compose.deploy.yml up -d
 
-            echo "=== Waiting for Directus ==="
+            echo "=== Waiting for Directus and AI API ==="
             for i in $(seq 1 30); do
-              if curl -sf http://localhost:8055/server/health >/dev/null 2>&1; then
-                echo "Directus is healthy!"
+              if curl -sf http://localhost:8055/server/health >/dev/null 2>&1 && curl -sf http://localhost:8090/v1/health >/dev/null 2>&1; then
+                echo "Directus and AI API are healthy!"
                 exit 0
               fi
               sleep 4
             done
-            echo "ERROR: Directus not healthy"
+            echo "ERROR: Service health check failed"
             docker compose -f docker-compose.deploy.yml logs directus --tail=20
+            docker compose -f docker-compose.deploy.yml logs ai-api --tail=20
             exit 1

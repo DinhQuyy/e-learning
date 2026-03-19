@@ -14,11 +14,6 @@ export interface DirectusUser {
   headline: string | null;
   social_links: Record<string, string> | null;
   date_created: string | null;
-  mentor_notification_email_enabled?: boolean | null;
-  mentor_notification_email?: string | null;
-  mentor_notification_email_verified?: boolean | null;
-  mentor_notification_email_pending?: string | null;
-  mentor_notification_email_verification_expires_at?: string | null;
 }
 
 export interface DirectusRole {

@@ -1,37 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { enqueueDeleteIndex, enqueueQuizIndex } from "@/lib/ai-indexing";
 import { directusFetch } from "@/lib/directus-fetch";
-
-async function buildQuizIndexContent(quizId: string): Promise<{ title: string; content: string; courseId: string | null } | null> {
-  const res = await directusFetch(
-    `/items/quizzes/${quizId}?fields=title,description,lesson_id.module_id.course_id.id,lesson_id.module_id.course_id,questions.question_text,questions.explanation`
-  );
-  if (!res.ok) return null;
-
-  const payload = await res.json().catch(() => null);
-  const quiz = payload?.data;
-  if (!quiz) return null;
-
-  const courseId =
-    quiz?.lesson_id?.module_id?.course_id?.id ??
-    quiz?.lesson_id?.module_id?.course_id ??
-    null;
-
-  const lines: string[] = [String(quiz?.title ?? "Quiz"), String(quiz?.description ?? "")];
-  const questions = Array.isArray(quiz?.questions) ? quiz.questions : [];
-
-  for (const q of questions) {
-    lines.push(String(q?.question_text ?? ""));
-    lines.push(String(q?.explanation ?? ""));
-  }
-
-  return {
-    title: String(quiz?.title ?? "Quiz"),
-    content: lines.join("\n"),
-    courseId: courseId ? String(courseId) : null,
-  };
-}
 
 export async function GET(
   _request: NextRequest,
@@ -153,16 +122,6 @@ export async function PATCH(
       }
     }
 
-    const indexData = await buildQuizIndexContent(id);
-    if (indexData) {
-      await enqueueQuizIndex({
-        quizId: id,
-        title: indexData.title,
-        content: indexData.content,
-        courseId: indexData.courseId,
-      });
-    }
-
     return NextResponse.json({ message: "Da cap nhat quiz thanh cong." });
   } catch (error) {
     console.error("PATCH quiz error:", error);
@@ -206,8 +165,6 @@ export async function DELETE(
     if (!res.ok) {
       return NextResponse.json({ error: "Không thể xoá quiz." }, { status: res.status });
     }
-
-    await enqueueDeleteIndex("quiz", id);
 
     return NextResponse.json({ message: "Da xoa quiz thanh cong." });
   } catch (error) {

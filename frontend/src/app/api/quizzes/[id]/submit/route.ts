@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
-import { sendLearningEventSafe } from "@/lib/ai-events";
 
 export async function POST(
   request: NextRequest,
@@ -157,26 +156,6 @@ export async function POST(
     }
 
     const attemptData = await attemptRes.json();
-    const courseId =
-      quiz?.lesson_id?.module_id?.course_id?.id ??
-      quiz?.lesson_id?.module_id?.course_id ??
-      null;
-
-    if (courseId) {
-      await sendLearningEventSafe({
-        user_id: userId,
-        course_id: String(courseId),
-        lesson_id: quiz?.lesson_id?.id ?? quiz?.lesson_id ?? null,
-        event_type: "quiz_attempt",
-        duration_sec: 0,
-        metadata: {
-          quiz_id: quizId,
-          score,
-          passed: isPassed,
-        },
-      });
-    }
-
     return NextResponse.json({
       data: {
         attempt: attemptData.data,

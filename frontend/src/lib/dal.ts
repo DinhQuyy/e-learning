@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { readMe } from "@directus/sdk";
 import { getDirectusClient } from "./directus";
-import { getMentorNotificationPreference } from "./mentor-email-preferences";
 import type { DirectusUser } from "@/types";
 
 export async function getSession(): Promise<{
@@ -21,24 +20,6 @@ export async function getSession(): Promise<{
         fields: ["*", "role.id", "role.name"] as never[],
       })
     );
-
-    try {
-      const preference = await getMentorNotificationPreference(
-        (user as { id: string }).id
-      );
-
-      Object.assign(user as Record<string, unknown>, {
-        mentor_notification_email_enabled: preference.enabled,
-        mentor_notification_email: preference.activeNotificationEmail,
-        mentor_notification_email_verified:
-          preference.activeNotificationEmailVerified,
-        mentor_notification_email_pending: preference.pendingNotificationEmail,
-        mentor_notification_email_verification_expires_at:
-          preference.pendingVerificationExpiresAt,
-      });
-    } catch {
-      // Keep session lookup resilient if mentor email preferences are unavailable.
-    }
 
     return { token, user: user as unknown as DirectusUser };
   } catch {

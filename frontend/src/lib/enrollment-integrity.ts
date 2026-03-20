@@ -27,6 +27,12 @@ export interface CreateOrGetEnrollmentResult {
   duplicatesRemoved: number;
 }
 
+type OrderRow = {
+  items?: Array<{
+    course_id?: string | { id?: string | null } | null;
+  }> | null;
+};
+
 function toTimestamp(value: unknown): number {
   if (typeof value !== "string" || value.length === 0) return 0;
   const parsed = Date.parse(value);
@@ -66,11 +72,20 @@ async function directusServerFetch(
     Authorization: `Bearer ${staticToken}`,
   };
 
-  return fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
     cache: "no-store",
   });
+
+  if (response.status === 401 || response.status === 403) {
+    return directusFetch(
+      path,
+      options as unknown as Parameters<typeof directusFetch>[1]
+    );
+  }
+
+  return response;
 }
 
 async function listEnrollmentsByUserCourse(
@@ -136,6 +151,34 @@ async function tryReadErrorMessage(response: Response): Promise<string | null> {
   }
 }
 
+async function hasSuccessfulOrderForCourse(
+  userId: string,
+  courseId: string
+): Promise<boolean> {
+  const encodedUserId = encodeURIComponent(userId);
+  const query =
+    `/items/orders?filter[user_id][_eq]=${encodedUserId}` +
+    "&filter[status][_eq]=success" +
+    "&fields=id,items.course_id.id" +
+    "&sort=-paid_at,-date_created,-id&limit=50";
+
+  const res = await directusServerFetch(query);
+  if (!res.ok) return false;
+
+  const data = await res.json().catch(() => null);
+  const rows = Array.isArray(data?.data) ? (data.data as OrderRow[]) : [];
+
+  return rows.some((row) =>
+    (row.items ?? []).some((item) => {
+      const orderedCourseId =
+        typeof item?.course_id === "object"
+          ? item.course_id?.id
+          : item?.course_id;
+      return String(orderedCourseId ?? "") === courseId;
+    })
+  );
+}
+
 export async function createOrGetEnrollment(
   params: CreateOrGetEnrollmentParams
 ): Promise<CreateOrGetEnrollmentResult> {
@@ -192,6 +235,27 @@ export async function createOrGetEnrollment(
   const message =
     (await tryReadErrorMessage(createRes)) ?? "Không thể đăng ký khoá học";
   throw new Error(message);
+}
+
+export async function ensureEnrollmentFromSuccessfulOrder(
+  userId: string,
+  courseId: string
+): Promise<EnrollmentRecord | null> {
+  const existing = await listEnrollmentsByUserCourse(userId, courseId);
+  if (existing.length > 0) {
+    const collapsed = await removeDuplicateEnrollments(existing);
+    return collapsed.keeper;
+  }
+
+  const hasSuccessfulOrder = await hasSuccessfulOrderForCourse(userId, courseId);
+  if (!hasSuccessfulOrder) return null;
+
+  const result = await createOrGetEnrollment({
+    userId,
+    courseId,
+  });
+
+  return result.enrollment;
 }
 
 export async function dedupeEnrollmentsByUserCourse(

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BookOpen, ExternalLink, Menu } from "lucide-react";
 import { requireAuth } from "@/lib/dal";
 import { directusUrl } from "@/lib/directus";
+import { ensureEnrollmentFromSuccessfulOrder } from "@/lib/enrollment-integrity";
 import {
   getEnrollmentByCourseSlug,
   getCourseProgress,
@@ -42,13 +43,19 @@ export default async function CoursePlayerLayout({
   children: React.ReactNode;
   params: Promise<{ courseSlug: string }>;
 }) {
-  const { token } = await requireAuth();
+  const { token, user } = await requireAuth();
   const { courseSlug } = await params;
 
   const course = await getCourseBySlug(token, courseSlug);
   if (!course) redirect("/my-courses");
 
-  const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
+  let enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
+  if (!enrollment) {
+    enrollment = (await ensureEnrollmentFromSuccessfulOrder(
+      user.id,
+      course.id
+    ).catch(() => null)) as typeof enrollment;
+  }
   if (!enrollment) redirect(`/courses/${courseSlug}`);
 
   const progressRecords = await getCourseProgress(token, enrollment.id);

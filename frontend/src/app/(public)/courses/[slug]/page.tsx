@@ -33,6 +33,7 @@ import { CourseTabs } from "./course-tabs";
 import { CourseCard } from "@/components/features/course-card";
 import { LessonPreviewDialog } from "@/components/features/lesson-preview-dialog";
 import { CourseActions } from "./course-actions";
+import { ensureEnrollment } from "@/lib/ai-auth";
 import { getSession } from "@/lib/dal";
 import { getCourseBySlug, getRelatedCourses, getCoursesByInstructor } from "@/lib/queries/courses";
 import { buildCourseAiFaq } from "@/lib/ai-faq";
@@ -191,13 +192,16 @@ export default async function CourseDetailPage({
 
   const firstInstructorId = instructors[0]?.id ?? null;
 
-  const [relatedCoursesResult, instructorCoursesResult] = await Promise.allSettled([
+  const [relatedCoursesResult, instructorCoursesResult, enrollmentResult] = await Promise.allSettled([
     getRelatedCourses(course.id, categoryId, 4),
     firstInstructorId ? getCoursesByInstructor(firstInstructorId, course.id, 4) : Promise.resolve([]),
+    session ? ensureEnrollment(session.user.id, course.id) : Promise.resolve(false),
   ]);
 
   const relatedCourses = relatedCoursesResult.status === "fulfilled" ? relatedCoursesResult.value : [];
   const instructorCourses = instructorCoursesResult.status === "fulfilled" ? instructorCoursesResult.value : [];
+  const initialIsEnrolled =
+    enrollmentResult.status === "fulfilled" ? enrollmentResult.value : false;
 
   const sortedModules = (course.modules || [])
     .sort((a, b) => a.sort - b.sort)
@@ -801,6 +805,7 @@ export default async function CourseDetailPage({
                     courseSlug={course.slug}
                     price={course.price}
                     discountPrice={course.discount_price}
+                    initialIsEnrolled={initialIsEnrolled}
                   />
                 </div>
 

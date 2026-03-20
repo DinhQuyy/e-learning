@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch, apiPost } from "@/lib/api-fetch";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ShoppingCart, Heart, Zap, PlayCircle, LogIn } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { apiFetch, apiPost } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 
 interface CourseActionsProps {
@@ -15,6 +15,7 @@ interface CourseActionsProps {
   courseSlug: string;
   price: number;
   discountPrice: number | null;
+  initialIsEnrolled?: boolean;
 }
 
 export function CourseActions({
@@ -22,57 +23,129 @@ export function CourseActions({
   courseSlug,
   price,
   discountPrice,
+  initialIsEnrolled = false,
 }: CourseActionsProps) {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(initialIsEnrolled);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [inCart, setInCart] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(isLoggedIn && !initialIsEnrolled);
 
-  const effectivePrice = discountPrice !== null && discountPrice < price ? discountPrice : price;
+  const effectivePrice =
+    discountPrice !== null && discountPrice < price ? discountPrice : price;
   const isFree = effectivePrice === 0;
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      setChecking(false);
-      return;
-    }
+    let cancelled = false;
 
-    Promise.all([
-      apiFetch("/api/enrollments").then((r) => r.ok ? r.json() : { data: [] }),
-      apiFetch("/api/cart").then((r) => r.ok ? r.json() : { data: [] }),
-      apiFetch("/api/wishlist").then((r) => r.ok ? r.json() : { data: [] }),
-    ])
-      .then(([enrollments, cart, wishlist]) => {
+    const refreshStatus = async () => {
+      if (initialIsEnrolled) {
+        if (!cancelled) {
+          setIsEnrolled(true);
+          setInCart(false);
+          setChecking(false);
+        }
+        return;
+      }
+
+      if (!isLoggedIn) {
+        if (!cancelled) {
+          setIsEnrolled(false);
+          setIsWishlisted(false);
+          setInCart(false);
+          setChecking(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setChecking(true);
+      }
+
+      try {
+        const [enrollments, cart, wishlist] = await Promise.all([
+          apiFetch("/api/enrollments", { cache: "no-store" }).then((response) =>
+            response.ok ? response.json() : { data: [] }
+          ),
+          apiFetch("/api/cart", { cache: "no-store" }).then((response) =>
+            response.ok ? response.json() : { data: [] }
+          ),
+          apiFetch("/api/wishlist", { cache: "no-store" }).then((response) =>
+            response.ok ? response.json() : { data: [] }
+          ),
+        ]);
+
+        if (cancelled) return;
+
         const enrolled = (enrollments.data ?? []).some(
-          (e: { course_id: string | { id: string } }) => {
-            const cId = typeof e.course_id === "string" ? e.course_id : e.course_id?.id;
-            return cId === courseId;
+          (enrollment: { course_id: string | { id: string } }) => {
+            const targetCourseId =
+              typeof enrollment.course_id === "string"
+                ? enrollment.course_id
+                : enrollment.course_id?.id;
+            return targetCourseId === courseId;
           }
         );
         setIsEnrolled(enrolled);
 
         const cartItem = (cart.data ?? []).some(
           (item: { course_id: string | { id: string } }) => {
-            const cId = typeof item.course_id === "string" ? item.course_id : item.course_id?.id;
-            return cId === courseId;
+            const targetCourseId =
+              typeof item.course_id === "string"
+                ? item.course_id
+                : item.course_id?.id;
+            return targetCourseId === courseId;
           }
         );
         setInCart(cartItem);
 
         const wishlisted = (wishlist.data ?? []).some(
           (item: { course_id: string | { id: string } }) => {
-            const cId = typeof item.course_id === "string" ? item.course_id : item.course_id?.id;
-            return cId === courseId;
+            const targetCourseId =
+              typeof item.course_id === "string"
+                ? item.course_id
+                : item.course_id?.id;
+            return targetCourseId === courseId;
           }
         );
         setIsWishlisted(wishlisted);
-      })
-      .catch(() => {})
-      .finally(() => setChecking(false));
-  }, [isLoggedIn, courseId]);
+      } catch {
+        // Ignore transient refresh failures; next focus/pageshow will try again.
+      } finally {
+        if (!cancelled) {
+          setChecking(false);
+        }
+      }
+    };
+
+    const handlePageShow = () => {
+      void refreshStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStatus();
+      }
+    };
+
+    const handleFocus = () => {
+      void refreshStatus();
+    };
+
+    void refreshStatus();
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [courseId, initialIsEnrolled, isLoggedIn]);
 
   const handleAddToCart = async () => {
     setLoading(true);
@@ -95,7 +168,6 @@ export function CourseActions({
   const handleBuyNow = async () => {
     setLoading(true);
     try {
-      // Add to cart first if not already
       if (!inCart) {
         const cartRes = await apiPost("/api/cart", { course_id: courseId });
         if (!cartRes.ok) {
@@ -104,6 +176,7 @@ export function CourseActions({
           return;
         }
       }
+
       router.push("/checkout");
     } catch {
       toast.error("Lỗi hệ thống");
@@ -139,11 +212,14 @@ export function CourseActions({
       const res = await apiPost("/api/wishlist", { course_id: courseId });
       if (res.ok) {
         const json = await res.json();
-        setIsWishlisted(json.action === "added");
-        toast.success(json.action === "added" ? "Đã thêm vào yêu thích" : "Đã bỏ yêu thích");
+        const added = !json.removed;
+        setIsWishlisted(added);
+        toast.success(
+          added ? "Đã thêm vào yêu thích" : "Đã bỏ yêu thích"
+        );
       }
     } catch {
-      // ignore
+      // Ignore wishlist failures to avoid blocking the main purchase flow.
     }
   };
 
@@ -155,19 +231,6 @@ export function CourseActions({
     );
   }
 
-  // Guest
-  if (!isLoggedIn) {
-    return (
-      <Button className="w-full" size="lg" asChild>
-        <Link href={`/login?redirect=/courses/${courseSlug}`}>
-          <LogIn className="size-4" />
-          Đăng nhập để mua
-        </Link>
-      </Button>
-    );
-  }
-
-  // Enrolled
   if (isEnrolled) {
     return (
       <Button className="w-full" size="lg" asChild>
@@ -179,7 +242,17 @@ export function CourseActions({
     );
   }
 
-  // Free course
+  if (!isLoggedIn) {
+    return (
+      <Button className="w-full" size="lg" asChild>
+        <Link href={`/login?redirect=/courses/${courseSlug}`}>
+          <LogIn className="size-4" />
+          Đăng nhập để mua
+        </Link>
+      </Button>
+    );
+  }
+
   if (isFree) {
     return (
       <div className="space-y-3">
@@ -210,7 +283,6 @@ export function CourseActions({
     );
   }
 
-  // Paid course
   return (
     <div className="space-y-3">
       {inCart ? (
@@ -231,6 +303,7 @@ export function CourseActions({
           Thêm vào giỏ hàng
         </Button>
       )}
+
       <Button
         variant="outline"
         className="w-full"
@@ -241,6 +314,7 @@ export function CourseActions({
         <Zap className="size-4" />
         Mua ngay
       </Button>
+
       <Button
         variant="ghost"
         size="sm"

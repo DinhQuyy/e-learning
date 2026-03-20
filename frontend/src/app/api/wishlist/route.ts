@@ -1,5 +1,9 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, max-age=0",
+};
 
 interface WishlistCourseRef {
   id?: string | null;
@@ -17,10 +21,17 @@ export async function GET() {
     );
 
     if (res.status === 401) {
-      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Chưa đăng nhập" },
+        { status: 401, headers: NO_STORE_HEADERS }
+      );
     }
+
     if (!res.ok) {
-      return NextResponse.json({ error: "Không thể tải wishlist" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Không thể tải wishlist" },
+        { status: 500, headers: NO_STORE_HEADERS }
+      );
     }
 
     const data = await res.json();
@@ -28,7 +39,6 @@ export async function GET() {
       ? (data.data as WishlistItemRow[])
       : [];
 
-    // Hide orphan wishlist rows where the related course is missing/inaccessible.
     const filtered = items.filter((item) => {
       const course = item?.course_id;
       if (!course || typeof course !== "object") return false;
@@ -36,9 +46,15 @@ export async function GET() {
       return typeof courseRef.id === "string" && courseRef.id.length > 0;
     });
 
-    return NextResponse.json({ data: filtered });
+    return NextResponse.json(
+      { data: filtered },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch {
-    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Lỗi hệ thống" },
+      { status: 500, headers: NO_STORE_HEADERS }
+    );
   }
 }
 
@@ -57,7 +73,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already in wishlist — if so, remove it (toggle)
     const checkRes = await directusFetch(
       `/items/wishlists?filter[course_id][_eq]=${course_id}&limit=1`
     );
@@ -86,7 +101,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await res.json();
-    return NextResponse.json({ data: data.data, removed: false }, { status: 201 });
+    return NextResponse.json(
+      { data: data.data, removed: false },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }

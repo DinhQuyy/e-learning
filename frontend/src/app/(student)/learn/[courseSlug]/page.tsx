@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/dal";
 import { directusUrl } from "@/lib/directus";
+import { ensureEnrollmentFromSuccessfulOrder } from "@/lib/enrollment-integrity";
 import { getEnrollmentByCourseSlug } from "@/lib/queries/enrollments";
 import { redirect } from "next/navigation";
 import type { Course, Module, Lesson } from "@/types";
@@ -31,7 +32,7 @@ export default async function CoursePlayerPage({
 }: {
   params: Promise<{ courseSlug: string }>;
 }) {
-  const { token } = await requireAuth();
+  const { token, user } = await requireAuth();
   const { courseSlug } = await params;
 
   const course = await getCourseBySlug(token, courseSlug);
@@ -40,7 +41,14 @@ export default async function CoursePlayerPage({
     redirect("/my-courses");
   }
 
-  const enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
+  let enrollment = await getEnrollmentByCourseSlug(token, courseSlug);
+
+  if (!enrollment) {
+    enrollment = (await ensureEnrollmentFromSuccessfulOrder(
+      user.id,
+      course.id
+    ).catch(() => null)) as typeof enrollment;
+  }
 
   if (!enrollment) {
     redirect(`/courses/${courseSlug}`);

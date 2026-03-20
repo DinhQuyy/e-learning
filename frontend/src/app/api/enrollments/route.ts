@@ -7,6 +7,10 @@ import {
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
 import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, max-age=0",
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -110,19 +114,28 @@ export async function GET() {
     );
 
     if (res.status === 401) {
-      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Chưa đăng nhập" },
+        { status: 401, headers: NO_STORE_HEADERS }
+      );
     }
 
     if (!res.ok) {
       return NextResponse.json(
         { error: "Không thể tải danh sách khóa học" },
-        { status: 500 }
+        { status: 500, headers: NO_STORE_HEADERS }
       );
     }
 
     const data = await res.json();
-    return NextResponse.json({ data: data.data });
+    return NextResponse.json(
+      { data: data.data },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch {
-    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Lỗi hệ thống" },
+      { status: 500, headers: NO_STORE_HEADERS }
+    );
   }
 }

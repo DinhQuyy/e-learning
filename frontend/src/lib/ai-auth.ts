@@ -1,4 +1,5 @@
 import { directusFetch } from '@/lib/directus-fetch';
+import { ensureEnrollmentFromSuccessfulOrder } from "@/lib/enrollment-integrity";
 
 export type AiUserContext = {
   userId: string;
@@ -37,5 +38,12 @@ export async function ensureEnrollment(userId: string, courseId: string): Promis
 
   if (!res.ok) return false;
   const payload = await res.json().catch(() => null);
-  return Array.isArray(payload?.data) && payload.data.length > 0;
+  if (Array.isArray(payload?.data) && payload.data.length > 0) {
+    return true;
+  }
+
+  const enrollment = await ensureEnrollmentFromSuccessfulOrder(userId, courseId).catch(
+    () => null
+  );
+  return Boolean(enrollment);
 }

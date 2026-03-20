@@ -1,5 +1,5 @@
 import { readItems, aggregate } from "@directus/sdk";
-import { publicDirectus } from "../directus";
+import { publicDirectus, directus} from "../directus";
 import type { Course } from "@/types";
 
 type RatingMap = Record<string, { avg: number; count: number }>;

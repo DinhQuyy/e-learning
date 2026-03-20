@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { CURRENT_USER_FIELDS } from "@/lib/directus-fields";
 
 const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL || "http://localhost:8055";
@@ -36,13 +37,16 @@ export async function POST(request: Request) {
     const refreshToken: string = loginData.data.refresh_token;
 
     // Fetch user profile to determine role
-    const meRes = await fetch(`${DIRECTUS_URL}/users/me?fields=*,role.*`, {
+    const meRes = await fetch(
+      `${DIRECTUS_URL}/users/me?fields=${encodeURIComponent(CURRENT_USER_FIELDS)}`,
+      {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-    });
+      }
+    );
 
     if (!meRes.ok) {
       return NextResponse.json(

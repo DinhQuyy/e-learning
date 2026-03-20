@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { readMe } from "@directus/sdk";
 import { getDirectusClient } from "./directus";
+import { CURRENT_USER_FIELD_LIST } from "./directus-fields";
 import type { DirectusUser } from "@/types";
 
 export async function getSession(): Promise<{
@@ -17,7 +18,7 @@ export async function getSession(): Promise<{
     const client = getDirectusClient(token);
     const user = await client.request(
       readMe({
-        fields: ["*", "role.id", "role.name"] as never[],
+        fields: [...CURRENT_USER_FIELD_LIST] as never[],
       })
     );
 

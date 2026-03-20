@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { CART_ITEM_FIELDS } from "@/lib/directus-fields";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
@@ -8,7 +9,7 @@ const NO_STORE_HEADERS = {
 export async function GET() {
   try {
     const res = await directusFetch(
-      "/items/cart_items?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.price,course_id.discount_price,course_id.instructors.user_id.first_name,course_id.instructors.user_id.last_name&sort=-date_created"
+      `/items/cart_items?fields=${CART_ITEM_FIELDS}&sort=-date_created`
     );
 
     if (res.status === 401) {

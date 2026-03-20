@@ -1,5 +1,9 @@
 ﻿import { directusUrl } from "@/lib/directus";
 import { readFile } from "node:fs/promises";
+import {
+  COURSE_REVIEW_FIELDS,
+  INSTRUCTOR_COURSE_SUMMARY_FIELDS,
+} from "@/lib/directus-fields";
 import { resolve } from "node:path";
 import type { Course, Enrollment, Review, DirectusUser } from "@/types";
 
@@ -702,7 +706,7 @@ export async function getInstructorCourses(
     courseIdChunks.map(async (chunk) => {
       const params = new URLSearchParams();
       params.set("filter[id][_in]", chunk.join(","));
-      params.set("fields", "*,category_id.id,category_id.name");
+      params.set("fields", INSTRUCTOR_COURSE_SUMMARY_FIELDS);
       params.set("sort", "-date_created");
       params.set("limit", "-1");
 
@@ -928,7 +932,7 @@ export async function getCourseReviews(
   sort: string = "-date_created"
 ): Promise<Review[]> {
   const res = await fetch(
-    `${directusUrl}/items/reviews?filter[course_id][_eq]=${courseId}&fields=*,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar&sort=${sort}`,
+    `${directusUrl}/items/reviews?filter[course_id][_eq]=${courseId}&fields=${COURSE_REVIEW_FIELDS}&sort=${sort}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

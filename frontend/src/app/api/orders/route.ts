@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import {
+  CART_CHECKOUT_ITEM_FIELDS,
+  ORDER_LIST_FIELDS,
+} from "@/lib/directus-fields";
 
 function generateOrderNumber(): string {
   const now = new Date();
@@ -11,7 +15,7 @@ function generateOrderNumber(): string {
 export async function GET() {
   try {
     const res = await directusFetch(
-      "/items/orders?fields=*,items.id,items.course_id.id,items.course_id.title,items.course_id.slug,items.course_id.thumbnail,items.price&sort=-date_created"
+      `/items/orders?fields=${ORDER_LIST_FIELDS}&sort=-date_created`
     );
 
     if (res.status === 401) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
@@ -33,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Get cart items
     const cartRes = await directusFetch(
-      "/items/cart_items?fields=*,course_id.id,course_id.title,course_id.slug,course_id.price,course_id.discount_price"
+      `/items/cart_items?fields=${CART_CHECKOUT_ITEM_FIELDS}`
     );
 
     if (!cartRes.ok) return NextResponse.json({ error: "Không thể tải giỏ hàng" }, { status: 500 });

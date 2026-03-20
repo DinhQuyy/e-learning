@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
 import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
+import { ORDER_PAYMENT_FIELDS } from "@/lib/directus-fields";
 
 type OrderItemRow = {
   course_id?: string | { id?: string | null } | null;
@@ -54,7 +55,7 @@ export async function POST(
     const { success } = await request.json();
 
     const orderRes = await directusFetch(
-      `/items/orders/${id}?fields=*,items.course_id.id,items.course_id.slug`
+      `/items/orders/${id}?fields=${ORDER_PAYMENT_FIELDS}`
     );
 
     if (orderRes.status === 401) {

@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { extractFileIdFromUrl } from "@/lib/directus";
 
+const INSTRUCTOR_COURSE_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "description",
+  "content",
+  "thumbnail",
+  "level",
+  "language",
+  "promo_video_url",
+  "price",
+  "discount_price",
+  "requirements",
+  "what_you_learn",
+  "target_audience",
+  "status",
+  "date_created",
+  "date_updated",
+  "category_id.id",
+  "category_id.name",
+  "modules.id",
+  "modules.title",
+  "modules.sort",
+  "modules.lessons.id",
+  "modules.lessons.title",
+  "modules.lessons.sort",
+  "modules.lessons.type",
+  "modules.lessons.duration",
+  "modules.lessons.status",
+].join(",");
+
 async function verifyOwnership(
   userId: string,
   courseId: string
@@ -37,9 +68,7 @@ export async function GET(
       );
     }
 
-    const res = await directusFetch(
-      `/items/courses/${id}?fields=*,category_id.id,category_id.name,modules.id,modules.title,modules.sort,modules.lessons.id,modules.lessons.title,modules.lessons.sort,modules.lessons.type,modules.lessons.duration,modules.lessons.status`
-    );
+    const res = await directusFetch(`/items/courses/${id}?fields=${INSTRUCTOR_COURSE_FIELDS}`);
 
     if (!res.ok) {
       return NextResponse.json(

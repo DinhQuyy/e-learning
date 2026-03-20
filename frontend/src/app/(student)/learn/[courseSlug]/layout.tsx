@@ -19,9 +19,26 @@ import {
 } from "@/components/ui/sheet";
 import type { Course, Lesson, Module, Progress } from "@/types";
 
+const COURSE_LAYOUT_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "modules.id",
+  "modules.title",
+  "modules.sort",
+  "modules.lessons.id",
+  "modules.lessons.title",
+  "modules.lessons.slug",
+  "modules.lessons.video_url",
+  "modules.lessons.duration",
+  "modules.lessons.type",
+  "modules.lessons.sort",
+  "modules.lessons.status",
+].join(",");
+
 async function getCourseBySlug(token: string, slug: string): Promise<Course | null> {
   const res = await fetch(
-    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=*,modules.id,modules.title,modules.sort,modules.lessons.id,modules.lessons.title,modules.lessons.slug,modules.lessons.video_url,modules.lessons.duration,modules.lessons.type,modules.lessons.sort,modules.lessons.status&limit=1`,
+    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=${COURSE_LAYOUT_FIELDS}&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

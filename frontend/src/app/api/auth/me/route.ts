@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
+import { CURRENT_USER_FIELDS } from "@/lib/directus-fields";
 import { cookies } from "next/headers";
 
 const isProduction = process.env.NODE_ENV === "production";
 
 export async function GET() {
   try {
-    const meRes = await directusFetch(`/users/me?fields=*,role.*`);
+    const meRes = await directusFetch(`/users/me?fields=${CURRENT_USER_FIELDS}`);
 
     if (meRes.status === 401) {
       return NextResponse.json(

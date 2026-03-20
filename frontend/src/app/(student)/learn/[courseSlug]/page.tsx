@@ -7,12 +7,24 @@ import type { Course, Module, Lesson } from "@/types";
 
 export const dynamic = 'force-dynamic';
 
+const COURSE_PLAYER_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "modules.id",
+  "modules.sort",
+  "modules.lessons.id",
+  "modules.lessons.slug",
+  "modules.lessons.sort",
+  "modules.lessons.status",
+].join(",");
+
 async function getCourseBySlug(
   token: string,
   slug: string
 ): Promise<Course | null> {
   const res = await fetch(
-    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=*,modules.id,modules.sort,modules.lessons.id,modules.lessons.slug,modules.lessons.sort,modules.lessons.status&limit=1`,
+    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=${COURSE_PLAYER_FIELDS}&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

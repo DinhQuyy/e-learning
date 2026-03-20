@@ -203,6 +203,7 @@ export interface Assignment {
 export interface AssignmentRubric {
   id: string;
   assignment_id: string | Assignment;
+  title?: string | null;
   criteria?: AssignmentRubricCriterion[];
 }
 
@@ -370,6 +371,12 @@ export interface Schema {
   courses_instructors: CourseInstructor[];
   modules: Module[];
   lessons: Lesson[];
+  assignments: Assignment[];
+  assignment_rubrics: AssignmentRubric[];
+  assignment_rubric_criteria: AssignmentRubricCriterion[];
+  assignment_submissions: AssignmentSubmission[];
+  assignment_reviews: AssignmentReview[];
+  ai_review_artifacts: AiReviewArtifact[];
   enrollments: Enrollment[];
   certificates: Certificate[];
   progress: Progress[];

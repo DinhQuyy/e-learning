@@ -1301,7 +1301,7 @@ GET /items/courses
 
 ```
 GET /items/courses/[id]
-  ?fields=*,
+  ?fields=id,title,slug,description,content,price,discount_price,
           thumbnail.id,thumbnail.filename_download,
           category_id.id,category_id.name,category_id.slug,
           courses_instructors.directus_users_id.id,

@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 
+const MODULE_WITH_LESSON_FIELDS = [
+  "id",
+  "title",
+  "description",
+  "sort",
+  "course_id",
+  "lessons.id",
+  "lessons.title",
+  "lessons.slug",
+  "lessons.sort",
+  "lessons.type",
+  "lessons.duration",
+  "lessons.status",
+  "lessons.is_free",
+  "lessons.quizzes.id",
+].join(",");
+
 async function verifyOwnership(
   userId: string,
   courseId: string
@@ -37,7 +54,7 @@ export async function GET(
     }
 
     const res = await directusFetch(
-      `/items/modules?filter[course_id][_eq]=${courseId}&fields=*,lessons.id,lessons.title,lessons.slug,lessons.sort,lessons.type,lessons.duration,lessons.status,lessons.is_free,lessons.quizzes.id&sort=sort`
+      `/items/modules?filter[course_id][_eq]=${courseId}&fields=${MODULE_WITH_LESSON_FIELDS}&sort=sort`
     );
 
     if (!res.ok) {

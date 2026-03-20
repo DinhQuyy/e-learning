@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { directusFetch } from "@/lib/directus-fetch";
+import { QUIZ_EDITOR_FIELDS } from "@/lib/directus-fields";
 
 export async function GET(
   _request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     const { id } = await params;
 
     const res = await directusFetch(
-      `/items/quizzes/${id}?fields=*,questions.id,questions.question_text,questions.question_type,questions.explanation,questions.sort,questions.points,questions.answers.id,questions.answers.answer_text,questions.answers.is_correct,questions.answers.sort`
+      `/items/quizzes/${id}?fields=${QUIZ_EDITOR_FIELDS}`
     );
 
     if (res.status === 401) {

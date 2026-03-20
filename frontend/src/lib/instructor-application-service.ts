@@ -1,4 +1,5 @@
 import { directusFetch, getDirectusError } from "@/lib/directus-fetch";
+import { CURRENT_USER_FIELDS } from "@/lib/directus-fields";
 import {
   ALLOWED_DOCUMENT_MIME_TYPES,
   APPLICATION_COOLDOWN_DAYS,
@@ -118,7 +119,7 @@ export interface FetchResult<T> {
 export async function fetchCurrentUserProfile(): Promise<
   FetchResult<CurrentUserProfile>
 > {
-  const res = await directusFetch("/users/me?fields=*,role.id,role.name");
+  const res = await directusFetch(`/users/me?fields=${CURRENT_USER_FIELDS}`);
 
   if (res.status === 401) {
     return { ok: false, status: 401, data: null, error: "Not authenticated" };

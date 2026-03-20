@@ -28,9 +28,43 @@ import type { Course, Lesson, Module, Progress, Review } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+const COURSE_LESSON_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "modules.id",
+  "modules.title",
+  "modules.sort",
+  "modules.lessons.id",
+  "modules.lessons.title",
+  "modules.lessons.slug",
+  "modules.lessons.content",
+  "modules.lessons.video_url",
+  "modules.lessons.duration",
+  "modules.lessons.type",
+  "modules.lessons.sort",
+  "modules.lessons.status",
+  "modules.lessons.quizzes.id",
+  "modules.lessons.quizzes.title",
+  "modules.lessons.quizzes.description",
+  "modules.lessons.quizzes.passing_score",
+  "modules.lessons.quizzes.time_limit",
+  "modules.lessons.quizzes.max_attempts",
+  "modules.lessons.quizzes.questions.id",
+  "modules.lessons.quizzes.questions.question_text",
+  "modules.lessons.quizzes.questions.question_type",
+  "modules.lessons.quizzes.questions.explanation",
+  "modules.lessons.quizzes.questions.sort",
+  "modules.lessons.quizzes.questions.points",
+  "modules.lessons.quizzes.questions.answers.id",
+  "modules.lessons.quizzes.questions.answers.answer_text",
+  "modules.lessons.quizzes.questions.answers.is_correct",
+  "modules.lessons.quizzes.questions.answers.sort",
+].join(",");
+
 async function getCourseBySlug(token: string, slug: string): Promise<Course | null> {
   const res = await fetch(
-    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=*,modules.id,modules.title,modules.sort,modules.lessons.id,modules.lessons.title,modules.lessons.slug,modules.lessons.content,modules.lessons.video_url,modules.lessons.duration,modules.lessons.type,modules.lessons.sort,modules.lessons.status,modules.lessons.quizzes.id,modules.lessons.quizzes.title,modules.lessons.quizzes.description,modules.lessons.quizzes.passing_score,modules.lessons.quizzes.time_limit,modules.lessons.quizzes.max_attempts,modules.lessons.quizzes.questions.id,modules.lessons.quizzes.questions.question_text,modules.lessons.quizzes.questions.question_type,modules.lessons.quizzes.questions.explanation,modules.lessons.quizzes.questions.sort,modules.lessons.quizzes.questions.points,modules.lessons.quizzes.questions.answers.id,modules.lessons.quizzes.questions.answers.answer_text,modules.lessons.quizzes.questions.answers.is_correct,modules.lessons.quizzes.questions.answers.sort&limit=1`,
+    `${directusUrl}/items/courses?filter[slug][_eq]=${slug}&fields=${COURSE_LESSON_FIELDS}&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

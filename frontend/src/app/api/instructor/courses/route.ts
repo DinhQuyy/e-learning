@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 import { extractFileIdFromUrl } from "@/lib/directus";
 
+const INSTRUCTOR_COURSE_LIST_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "thumbnail",
+  "price",
+  "discount_price",
+  "status",
+  "average_rating",
+  "date_created",
+  "category_id.id",
+  "category_id.name",
+].join(",");
+
 export async function GET() {
   try {
     const userId = await getCurrentUserId();
@@ -56,7 +70,7 @@ export async function GET() {
     const courseResults = await Promise.all(
       courseIdChunks.map(async (chunk) => {
         const coursesRes = await directusFetch(
-          `/items/courses?filter[id][_in]=${chunk.join(",")}&fields=*,category_id.id,category_id.name&sort=-date_created&limit=-1`
+          `/items/courses?filter[id][_in]=${chunk.join(",")}&fields=${INSTRUCTOR_COURSE_LIST_FIELDS}&sort=-date_created&limit=-1`
         );
 
         if (!coursesRes.ok) return null;

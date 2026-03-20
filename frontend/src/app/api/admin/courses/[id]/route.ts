@@ -1,4 +1,5 @@
 import { directusFetch } from "@/lib/directus-fetch";
+import { ADMIN_COURSE_DETAIL_FIELDS } from "@/lib/directus-fields";
 import { isValidCourseStatus } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyInstructorCourseStatus } from "@/lib/notifications-helper";
@@ -11,7 +12,7 @@ export async function GET(
 
   try {
     const res = await directusFetch(
-      `/items/courses/${id}?fields=*,category_id.id,category_id.name,instructors.user_id.id,instructors.user_id.first_name,instructors.user_id.last_name,instructors.user_id.email,instructors.user_id.avatar,modules.id,modules.title,modules.sort,modules.lessons.id,modules.lessons.title,modules.lessons.type,modules.lessons.duration,modules.lessons.is_free,modules.lessons.sort,modules.lessons.status,modules.lessons.content,reviews.id,reviews.rating,reviews.comment,reviews.status,reviews.date_created,reviews.user_id.first_name,reviews.user_id.last_name`
+      `/items/courses/${id}?fields=${ADMIN_COURSE_DETAIL_FIELDS}`
     );
 
     if (res.status === 401) {

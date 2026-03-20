@@ -1,4 +1,5 @@
 import { directusUrl } from "@/lib/directus";
+import { ENROLLMENT_FIELDS, PROGRESS_FIELDS } from "@/lib/directus-fields";
 import type { Enrollment, Progress } from "@/types";
 
 function getCourseId(enrollment: Enrollment): string | null {
@@ -81,7 +82,7 @@ async function hydrateCourseRelations(
 
 export async function getUserEnrollments(token: string): Promise<Enrollment[]> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.level,course_id.category_id.id,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at,-date_created,-id`,
+    `${directusUrl}/items/enrollments?fields=${ENROLLMENT_FIELDS}&sort=-enrolled_at,-date_created,-id`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -109,7 +110,7 @@ export async function getEnrollmentByCourse(
   courseId: string
 ): Promise<Enrollment | null> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&sort=-enrolled_at,-date_created,-id&limit=1`,
+    `${directusUrl}/items/enrollments?filter[course_id][_eq]=${courseId}&fields=${ENROLLMENT_FIELDS}&sort=-enrolled_at,-date_created,-id&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -132,7 +133,7 @@ export async function getEnrollmentByCourseSlug(
   courseSlug: string
 ): Promise<Enrollment | null> {
   const res = await fetch(
-    `${directusUrl}/items/enrollments?filter[course_id][slug][_eq]=${courseSlug}&fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail&sort=-enrolled_at,-date_created,-id&limit=1`,
+    `${directusUrl}/items/enrollments?filter[course_id][slug][_eq]=${courseSlug}&fields=${ENROLLMENT_FIELDS}&sort=-enrolled_at,-date_created,-id&limit=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -155,7 +156,7 @@ export async function getCourseProgress(
   enrollmentId: string
 ): Promise<Progress[]> {
   const res = await fetch(
-    `${directusUrl}/items/progress?filter[enrollment_id][_eq]=${enrollmentId}&fields=*,lesson_id.id,lesson_id.title,lesson_id.slug`,
+    `${directusUrl}/items/progress?filter[enrollment_id][_eq]=${enrollmentId}&fields=${PROGRESS_FIELDS}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

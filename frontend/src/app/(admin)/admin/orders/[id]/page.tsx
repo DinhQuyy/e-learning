@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/dal";
 import { directusFetch } from "@/lib/directus-fetch";
 import { getAssetUrl } from "@/lib/directus";
+import { ORDER_DETAIL_WITH_USER_FIELDS } from "@/lib/directus-fields";
 import { getCourseImageSrc } from "@/lib/course-image";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -87,7 +88,7 @@ export default async function AdminOrderDetailPage({
   await requireAuth();
 
   const res = await directusFetch(
-    `/items/orders/${id}?fields=*,user_id.id,user_id.first_name,user_id.last_name,user_id.email,user_id.avatar,user_id.phone,items.id,items.price,items.course_id.id,items.course_id.title,items.course_id.slug,items.course_id.thumbnail`
+    `/items/orders/${id}?fields=${ORDER_DETAIL_WITH_USER_FIELDS}`
   );
 
   if (!res.ok) {

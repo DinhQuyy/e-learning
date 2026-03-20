@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
 
+const LESSON_DETAIL_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "type",
+  "content",
+  "video_url",
+  "duration",
+  "sort",
+  "is_free",
+  "status",
+  "date_created",
+  "module_id.id",
+  "module_id.title",
+].join(",");
+
 async function verifyOwnership(userId: string, courseId: string): Promise<boolean> {
   const res = await directusFetch(
     `/items/courses_instructors?filter[course_id][_eq]=${courseId}&filter[user_id][_eq]=${userId}&limit=1`
@@ -28,9 +44,7 @@ export async function GET(
       return NextResponse.json({ error: "Không có quyền truy cập." }, { status: 403 });
     }
 
-    const res = await directusFetch(
-      `/items/lessons/${lessonId}?fields=*,module_id.id,module_id.title`
-    );
+    const res = await directusFetch(`/items/lessons/${lessonId}?fields=${LESSON_DETAIL_FIELDS}`);
 
     if (!res.ok) {
       return NextResponse.json({ error: "Không tìm thấy bài học." }, { status: res.status });

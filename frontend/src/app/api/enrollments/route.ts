@@ -6,6 +6,7 @@ import {
 } from "@/lib/notifications-helper";
 import { recalculateCourseEnrollments } from "@/lib/enrollment-counter";
 import { createOrGetEnrollment } from "@/lib/enrollment-integrity";
+import { ENROLLMENT_FIELDS } from "@/lib/directus-fields";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const res = await directusFetch(
-      "/items/enrollments?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.total_lessons,course_id.total_duration,course_id.average_rating,course_id.level,course_id.category_id.name,last_lesson_id.id,last_lesson_id.title,last_lesson_id.slug&sort=-enrolled_at"
+      `/items/enrollments?fields=${ENROLLMENT_FIELDS}&sort=-enrolled_at`
     );
 
     if (res.status === 401) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { WISHLIST_ITEM_FIELDS } from "@/lib/directus-fields";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
@@ -17,7 +18,7 @@ interface WishlistItemRow {
 export async function GET() {
   try {
     const res = await directusFetch(
-      "/items/wishlists?fields=*,course_id.id,course_id.title,course_id.slug,course_id.thumbnail,course_id.price,course_id.discount_price,course_id.average_rating,course_id.total_enrollments&sort=-date_created"
+      `/items/wishlists?fields=${WISHLIST_ITEM_FIELDS}&sort=-date_created`
     );
 
     if (res.status === 401) {

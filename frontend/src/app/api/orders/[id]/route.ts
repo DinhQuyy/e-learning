@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch } from "@/lib/directus-fetch";
+import { ORDER_DETAIL_FIELDS } from "@/lib/directus-fields";
 
 export async function GET(
   _request: NextRequest,
@@ -9,7 +10,7 @@ export async function GET(
     const { id } = await params;
 
     const res = await directusFetch(
-      `/items/orders/${id}?fields=*,items.id,items.course_id.id,items.course_id.title,items.course_id.slug,items.course_id.thumbnail,items.price`
+      `/items/orders/${id}?fields=${ORDER_DETAIL_FIELDS}`
     );
 
     if (res.status === 401) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });

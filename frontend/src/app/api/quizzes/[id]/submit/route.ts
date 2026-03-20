@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { directusFetch, getCurrentUserId } from "@/lib/directus-fetch";
+import { QUIZ_SUBMISSION_FIELDS } from "@/lib/directus-fields";
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +36,7 @@ export async function POST(
 
     // Fetch quiz with questions and correct answers
     const quizRes = await directusFetch(
-      `/items/quizzes/${quizId}?fields=*,lesson_id.id,lesson_id.module_id.course_id.id,questions.id,questions.question_text,questions.question_type,questions.explanation,questions.points,questions.sort,questions.answers.id,questions.answers.answer_text,questions.answers.is_correct,questions.answers.sort`
+      `/items/quizzes/${quizId}?fields=${QUIZ_SUBMISSION_FIELDS}`
     );
 
     if (quizRes.status === 401) {

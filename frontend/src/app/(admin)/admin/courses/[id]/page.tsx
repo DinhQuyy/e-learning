@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/dal";
 import { directusUrl } from "@/lib/directus";
+import { ADMIN_COURSE_DETAIL_FIELDS } from "@/lib/directus-fields";
 import { getCourseImageSrc } from "@/lib/course-image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -77,7 +78,7 @@ export default async function AdminCourseDetailPage({ params }: PageProps) {
   const { token } = await requireAuth();
 
   const res = await fetch(
-    `${directusUrl}/items/courses/${id}?fields=*,category_id.id,category_id.name,instructors.user_id.id,instructors.user_id.first_name,instructors.user_id.last_name,instructors.user_id.email,instructors.user_id.avatar,modules.id,modules.title,modules.sort,modules.lessons.id,modules.lessons.title,modules.lessons.type,modules.lessons.duration,modules.lessons.is_free,modules.lessons.sort,modules.lessons.status,reviews.id,reviews.rating,reviews.comment,reviews.status,reviews.date_created,reviews.user_id.first_name,reviews.user_id.last_name`,
+    `${directusUrl}/items/courses/${id}?fields=${ADMIN_COURSE_DETAIL_FIELDS}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
